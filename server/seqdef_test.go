@@ -202,6 +202,42 @@ func TestSeqDefBranch(t *testing.T) {
 	}
 }
 
+func TestSeqDefBind(t *testing.T) {
+	definition := NewSeqDef(Concat(
+		Bind("category", Values("RES", "CAP")),
+		Literal("-"),
+		Bind("number", Range(0, 99).Width(2)),
+	))
+
+	result, err := definition.ParseValues("CAP-42")
+	if err != nil {
+		t.Fatalf("ParseValues() error = %v", err)
+	}
+	if result.Value != "CAP-42" {
+		t.Fatalf("ParseValues().Value = %q, want %q", result.Value, "CAP-42")
+	}
+	for name, want := range map[string]string{"category": "CAP", "number": "42"} {
+		if got := result.Bindings[name]; got != want {
+			t.Errorf("binding %q = %q, want %q", name, got, want)
+		}
+	}
+}
+
+func TestSeqDefBindDoesNotLeakFromFailedBranch(t *testing.T) {
+	definition := NewSeqDef(Branch(
+		Concat(Bind("kind", Literal("OLD")), Literal("-"), Literal("bad")),
+		Concat(Bind("kind", Literal("NEW")), Literal("-"), Literal("good")),
+	))
+
+	result, err := definition.ParseValues("NEW-good")
+	if err != nil {
+		t.Fatalf("ParseValues() error = %v", err)
+	}
+	if got := result.Bindings["kind"]; got != "NEW" {
+		t.Fatalf("binding kind = %q, want %q", got, "NEW")
+	}
+}
+
 func Places(count int, alphabet string) SeqNode {
 	places := make([]string, count)
 	for i := range places {

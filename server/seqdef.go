@@ -21,17 +21,29 @@ func (d SeqDef) WithID(id SeqDefID) SeqDef {
 }
 
 func (d SeqDef) Parse(input string) (string, error) {
+	result, err := d.ParseValues(input)
+	return result.Value, err
+}
+
+type ParseResult struct {
+	Value    string
+	Bindings map[string]string
+}
+
+func (d SeqDef) ParseValues(input string) (ParseResult, error) {
 	if d.root.kind == nodeInvalid {
-		return "", fmt.Errorf("sequence definition has no root")
+		return ParseResult{}, fmt.Errorf("sequence definition has no root")
 	}
-	value, next, err := d.root.parseAt(input, 0)
+
+	bindings := map[string]string{}
+	value, next, err := d.root.parseAt(input, 0, bindings)
 	if err != nil {
-		return "", err
+		return ParseResult{}, err
 	}
 	if next != len(input) {
-		return "", expected(next, "end of input")
+		return ParseResult{}, expected(next, "end of input")
 	}
-	return value, nil
+	return ParseResult{Value: value, Bindings: bindings}, nil
 }
 
 type nodeKind uint8
@@ -46,6 +58,7 @@ const (
 	nodeValues
 	nodeRangeRadix
 	nodeBranch
+	nodeBind
 )
 
 // SeqNode is the AST. Its fields stay private so nodes are built through the
@@ -60,9 +73,11 @@ type SeqNode struct {
 	width     int
 	pad       byte
 	values    []string
+	name      string
+	child     *SeqNode
 }
 
-func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
+func (n SeqNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
 	switch n.kind {
 	case nodeLiteral:
 		if len(input)-offset < len(n.text) || input[offset:offset+len(n.text)] != n.text {
@@ -73,7 +88,7 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 	case nodeConcat, nodeRangeRadix:
 		value := ""
 		for _, child := range n.children {
-			part, next, err := child.parseAt(input, offset)
+			part, next, err := child.parseAt(input, offset, bindings)
 			if err != nil {
 				return "", offset, err
 			}
@@ -85,8 +100,10 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 	case nodeChoice, nodeBranch:
 		var err error
 		for _, child := range n.children {
-			value, next, childErr := child.parseAt(input, offset)
+			trial := cloneBindings(bindings)
+			value, next, childErr := child.parseAt(input, offset, trial)
 			if childErr == nil {
+				copyBindings(bindings, trial)
 				return value, next, nil
 			}
 			err = childErr
@@ -103,6 +120,14 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 			}
 		}
 		return "", offset, expected(offset, "one of the values")
+
+	case nodeBind:
+		value, next, err := n.child.parseAt(input, offset, bindings)
+		if err != nil {
+			return "", offset, err
+		}
+		bindings[n.name] = value
+		return value, next, nil
 
 	case nodePlaces:
 		start := offset
@@ -159,6 +184,11 @@ func Branch(nodes ...SeqNode) SeqNode {
 	return SeqNode{kind: nodeBranch, children: append([]SeqNode(nil), nodes...)}
 }
 
+// Bind records the text matched by child under name.
+func Bind(name string, child SeqNode) SeqNode {
+	return SeqNode{kind: nodeBind, name: name, child: &child}
+}
+
 // Values is an ordered set of literal values. Unlike Choice, it is intended
 // to remain generation-friendly.
 func Values(values ...string) SeqNode {
@@ -209,4 +239,16 @@ func contains(alphabet string, value byte) bool {
 
 func expected(position int, what string) error {
 	return fmt.Errorf("invalid sequence at position %d: expected %s", position, what)
+}
+
+func cloneBindings(bindings map[string]string) map[string]string {
+	clone := make(map[string]string, len(bindings))
+	copyBindings(clone, bindings)
+	return clone
+}
+
+func copyBindings(dst, src map[string]string) {
+	for name, value := range src {
+		dst[name] = value
+	}
 }

@@ -8,12 +8,16 @@ import "fmt"
 type Part struct {
 }
 
+type PartNumberID string
+type PartRevisionID string
+
 type LineItem struct {
-	PartNumber   PartNumber
-	PartRevision PartRevision
+	PartNumberID   PartNumberID
+	PartRevisionID PartRevisionID
 }
 
 type PartRevision struct {
+	ID   PartRevisionID
 	BOM  []LineItem
 	Part Part
 }
@@ -22,11 +26,12 @@ type PartRevision struct {
 // partial construction or fully qualified -- where a fully qualified part number possesses values
 // for every level of the related taxonomy definition.
 type PartNumber struct {
-	Value          string         // SeqDef parseable canonical part number
-	PartRevision   []PartRevision // Part revision.
-	SeqDefID       SeqDefID       // SeqDef version used to generate this part number.
-	TaxonomyDefID  TaxonomyDefID  // Taxonomy applied to this part number.
-	TaxonomyNodeID TaxonomyNodeID // Taxonomy node containing this part number.
+	ID             PartNumberID     // unique part number ID
+	Value          string           // SeqDef parseable canonical part number
+	PartRevision   []PartRevisionID // Part revision.
+	SeqDefID       SeqDefID         // SeqDef version used to generate this part number.
+	TaxonomyDefID  TaxonomyDefID    // Taxonomy applied to this part number.
+	TaxonomyNodeID TaxonomyNodeID   // Taxonomy node containing this part number.
 	// TODO, post MVP, sort out attributes and their types.
 	// AttributeSchemas []AttributeSchemaID // Attribute schema attached to this part number.
 }

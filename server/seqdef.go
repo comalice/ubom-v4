@@ -18,10 +18,10 @@ func (d SeqDef) WithID(id SeqDefID) SeqDef {
 }
 
 func (d SeqDef) Parse(input string) (string, error) {
-	if d.root == nil {
+	if d.root.kind == nodeInvalid {
 		return "", fmt.Errorf("sequence definition has no root")
 	}
-	value, next, err := d.root(input, 0)
+	value, next, err := d.root.parseAt(input, 0)
 	if err != nil {
 		return "", err
 	}
@@ -31,23 +31,37 @@ func (d SeqDef) Parse(input string) (string, error) {
 	return value, nil
 }
 
-// SeqNode parses input at offset and returns the matched text and next offset.
-type SeqNode func(input string, offset int) (value string, next int, err error)
+type nodeKind uint8
 
-func Literal(text string) SeqNode {
-	return func(input string, offset int) (string, int, error) {
-		if len(input)-offset < len(text) || input[offset:offset+len(text)] != text {
-			return "", offset, expected(offset, fmt.Sprintf("%q", text))
-		}
-		return text, offset + len(text), nil
-	}
+const (
+	nodeInvalid nodeKind = iota
+	nodeLiteral
+	nodeConcat
+	nodeChoice
+	nodePlaces
+)
+
+// SeqNode is the AST. Its fields stay private so nodes are built through the
+// small constructors below; later generation can walk this same tree.
+type SeqNode struct {
+	kind      nodeKind
+	text      string
+	children  []SeqNode
+	alphabets []string
 }
 
-func Concat(nodes ...SeqNode) SeqNode {
-	return func(input string, offset int) (string, int, error) {
+func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
+	switch n.kind {
+	case nodeLiteral:
+		if len(input)-offset < len(n.text) || input[offset:offset+len(n.text)] != n.text {
+			return "", offset, expected(offset, fmt.Sprintf("%q", n.text))
+		}
+		return n.text, offset + len(n.text), nil
+
+	case nodeConcat:
 		value := ""
-		for _, node := range nodes {
-			part, next, err := node(input, offset)
+		for _, child := range n.children {
+			part, next, err := child.parseAt(input, offset)
 			if err != nil {
 				return "", offset, err
 			}
@@ -55,33 +69,24 @@ func Concat(nodes ...SeqNode) SeqNode {
 			offset = next
 		}
 		return value, offset, nil
-	}
-}
 
-// Choice tries alternatives from left to right.
-func Choice(nodes ...SeqNode) SeqNode {
-	return func(input string, offset int) (string, int, error) {
+	case nodeChoice:
 		var err error
-		for _, node := range nodes {
-			value, next, nodeErr := node(input, offset)
-			if nodeErr == nil {
+		for _, child := range n.children {
+			value, next, childErr := child.parseAt(input, offset)
+			if childErr == nil {
 				return value, next, nil
 			}
-			err = nodeErr
+			err = childErr
 		}
 		if err == nil {
 			err = expected(offset, "one of the choices")
 		}
 		return "", offset, err
-	}
-}
 
-// PlaceSequence consumes one character from each alphabet. Alphabet lengths
-// are the radices of the places.
-func PlaceSequence(alphabets ...string) SeqNode {
-	return func(input string, offset int) (string, int, error) {
+	case nodePlaces:
 		start := offset
-		for _, alphabet := range alphabets {
+		for _, alphabet := range n.alphabets {
 			if alphabet == "" {
 				return "", start, fmt.Errorf("place has an empty alphabet")
 			}
@@ -92,6 +97,27 @@ func PlaceSequence(alphabets ...string) SeqNode {
 		}
 		return input[start:offset], offset, nil
 	}
+
+	return "", offset, fmt.Errorf("invalid sequence node")
+}
+
+func Literal(text string) SeqNode {
+	return SeqNode{kind: nodeLiteral, text: text}
+}
+
+func Concat(nodes ...SeqNode) SeqNode {
+	return SeqNode{kind: nodeConcat, children: append([]SeqNode(nil), nodes...)}
+}
+
+// Choice tries alternatives from left to right.
+func Choice(nodes ...SeqNode) SeqNode {
+	return SeqNode{kind: nodeChoice, children: append([]SeqNode(nil), nodes...)}
+}
+
+// PlaceSequence consumes one character from each alphabet. Alphabet lengths
+// are the radices of the places.
+func PlaceSequence(alphabets ...string) SeqNode {
+	return SeqNode{kind: nodePlaces, alphabets: append([]string(nil), alphabets...)}
 }
 
 func contains(alphabet string, value byte) bool {

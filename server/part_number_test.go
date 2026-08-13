@@ -44,6 +44,50 @@ func TestNewPartNumber(t *testing.T) {
 	}
 }
 
+func TestPartNumberIdentityFlow(t *testing.T) {
+	seqDef := NewSeqDef(Concat(
+		Bind("category", Range(0, 999).Width(3)),
+		Literal("-"),
+		Bind("family", Range(0, 99999).Width(5)),
+		Literal("-"),
+		Bind("id", Range(0, 999).Width(3)),
+	)).WithID("component-pn-v1")
+
+	taxonomyDef := TaxonomyDef{
+		ID:     "component-taxonomy-v1",
+		SeqDef: seqDef.ID,
+		Taxonomy: Taxonomy{Root: TaxonomyNode{
+			ID: "components",
+			Children: []TaxonomyNode{{
+				ID:      "resistors",
+				Matches: map[string]string{"category": "001"},
+				Children: []TaxonomyNode{{
+					ID:      "thick-film",
+					Matches: map[string]string{"family": "00042"},
+				}},
+			}},
+		}},
+	}
+
+	part, err := NewPartNumber("001-00042-001", seqDef, taxonomyDef)
+	if err != nil {
+		t.Fatalf("NewPartNumber() error = %v", err)
+	}
+
+	want := PartNumber{
+		Value:          "001-00042-001",
+		SeqDefID:       "component-pn-v1",
+		TaxonomyDefID:  "component-taxonomy-v1",
+		TaxonomyNodeID: "thick-film",
+	}
+	if part.Value != want.Value ||
+		part.SeqDefID != want.SeqDefID ||
+		part.TaxonomyDefID != want.TaxonomyDefID ||
+		part.TaxonomyNodeID != want.TaxonomyNodeID {
+		t.Fatalf("PartNumber = %#v, want %#v", part, want)
+	}
+}
+
 func TestNewPartNumberRejectsInvalidDefinitionLinks(t *testing.T) {
 	seqDef := NewSeqDef(Literal("PN-1")).WithID("pn-v1")
 

@@ -22,10 +22,11 @@ type PartRevision struct {
 // partial construction or fully qualified -- where a fully qualified part number possesses values
 // for every level of the related taxonomy definition.
 type PartNumber struct {
-	Value         string         // SeqDef parseable canonical part number
-	PartRevision  []PartRevision // Part revision.
-	SeqDefID      SeqDefID       // SeqDef version used to generate this part number.
-	TaxonomyDefID TaxonomyDefID  // Taxonomy applied to this part number.
+	Value          string         // SeqDef parseable canonical part number
+	PartRevision   []PartRevision // Part revision.
+	SeqDefID       SeqDefID       // SeqDef version used to generate this part number.
+	TaxonomyDefID  TaxonomyDefID  // Taxonomy applied to this part number.
+	TaxonomyNodeID TaxonomyNodeID // Taxonomy node containing this part number.
 	// TODO, post MVP, sort out attributes and their types.
 	// AttributeSchemas []AttributeSchemaID // Attribute schema attached to this part number.
 }
@@ -42,15 +43,20 @@ func NewPartNumber(value string, seqDef SeqDef, taxonomy TaxonomyDef) (PartNumbe
 	if taxonomy.SeqDef != seqDef.ID {
 		return PartNumber{}, fmt.Errorf("taxonomy does not belong to sequence definition")
 	}
-	canonical, err := seqDef.Parse(value)
+	parsed, err := seqDef.ParseValues(value)
+	if err != nil {
+		return PartNumber{}, err
+	}
+	nodeID, err := taxonomy.Taxonomy.ProjectNode(parsed)
 	if err != nil {
 		return PartNumber{}, err
 	}
 
 	return PartNumber{
-		Value:         canonical,
-		SeqDefID:      seqDef.ID,
-		TaxonomyDefID: taxonomy.ID,
+		Value:          parsed.Value,
+		SeqDefID:       seqDef.ID,
+		TaxonomyDefID:  taxonomy.ID,
+		TaxonomyNodeID: nodeID,
 	}, nil
 }
 

@@ -10,7 +10,21 @@ func TestNewPartNumber(t *testing.T) {
 		Literal("-"),
 		Bind("id", Range(0, 999).Width(3)),
 	)).WithID("pn-v1")
-	taxonomy := TaxonomyDef{ID: "components-v1", SeqDef: seqDef.ID}
+	taxonomy := TaxonomyDef{
+		ID:     "components-v1",
+		SeqDef: seqDef.ID,
+		Taxonomy: Taxonomy{Root: TaxonomyNode{
+			ID: "components",
+			Children: []TaxonomyNode{{
+				ID:      "resistors",
+				Matches: map[string]string{"category": "001"},
+				Children: []TaxonomyNode{{
+					ID:      "thick-film",
+					Matches: map[string]string{"family": "00042"},
+				}},
+			}},
+		}},
+	}
 
 	part, err := NewPartNumber("001-00042-001", seqDef, taxonomy)
 	if err != nil {
@@ -24,6 +38,9 @@ func TestNewPartNumber(t *testing.T) {
 	}
 	if part.TaxonomyDefID != taxonomy.ID {
 		t.Fatalf("TaxonomyDefID = %q, want %q", part.TaxonomyDefID, taxonomy.ID)
+	}
+	if part.TaxonomyNodeID != "thick-film" {
+		t.Fatalf("TaxonomyNodeID = %q, want %q", part.TaxonomyNodeID, "thick-film")
 	}
 }
 

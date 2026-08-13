@@ -153,8 +153,8 @@ func TestSeqDefRangeRetainsPadding(t *testing.T) {
 	}
 }
 
-func TestSeqDefValues(t *testing.T) {
-	definition := NewSeqDef(Values("A", "BC", "D"))
+func TestSeqDefChoice(t *testing.T) {
+	definition := NewSeqDef(Choice(Literal("A"), Literal("BC"), Literal("D")))
 
 	for _, input := range []string{"A", "BC", "D"} {
 		if _, err := definition.Parse(input); err != nil {
@@ -171,7 +171,7 @@ func TestSeqDefValues(t *testing.T) {
 func TestSeqDefRangeRadix(t *testing.T) {
 	definition := NewSeqDef(Concat(
 		Literal("PN-"),
-		RangeRadix(Values("A", "B", "C"), Range(0, 9)),
+		RangeRadix(Choice(Literal("A"), Literal("B"), Literal("C")), Range(0, 9)),
 	))
 
 	for _, input := range []string{"PN-A0", "PN-B7", "PN-C9"} {
@@ -204,7 +204,7 @@ func TestSeqDefBranch(t *testing.T) {
 
 func TestSeqDefBind(t *testing.T) {
 	definition := NewSeqDef(Concat(
-		Bind("category", Values("RES", "CAP")),
+		Bind("category", Choice(Literal("RES"), Literal("CAP"))),
 		Literal("-"),
 		Bind("number", Range(0, 99).Width(2)),
 	))

@@ -55,7 +55,6 @@ const (
 	nodeChoice
 	nodePlaces
 	nodeRange
-	nodeValues
 	nodeRangeRadix
 	nodeBranch
 	nodeBind
@@ -72,7 +71,6 @@ type SeqNode struct {
 	max       int
 	width     int
 	pad       byte
-	values    []string
 	name      string
 	child     *SeqNode
 }
@@ -112,14 +110,6 @@ func (n SeqNode) parseAt(input string, offset int, bindings map[string]string) (
 			err = expected(offset, "one of the choices")
 		}
 		return "", offset, err
-
-	case nodeValues:
-		for _, value := range n.values {
-			if len(input)-offset >= len(value) && input[offset:offset+len(value)] == value {
-				return value, offset + len(value), nil
-			}
-		}
-		return "", offset, expected(offset, "one of the values")
 
 	case nodeBind:
 		value, next, err := n.child.parseAt(input, offset, bindings)
@@ -187,12 +177,6 @@ func Branch(nodes ...SeqNode) SeqNode {
 // Bind records the text matched by child under name.
 func Bind(name string, child SeqNode) SeqNode {
 	return SeqNode{kind: nodeBind, name: name, child: &child}
-}
-
-// Values is an ordered set of literal values. Unlike Choice, it is intended
-// to remain generation-friendly.
-func Values(values ...string) SeqNode {
-	return SeqNode{kind: nodeValues, values: append([]string(nil), values...)}
 }
 
 // RangeRadix is a sequence of ordered fields. It currently parses like

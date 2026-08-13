@@ -109,6 +109,81 @@ func TestSeqDefRejectsMissingRoot(t *testing.T) {
 	}
 }
 
+func TestSeqDefRange(t *testing.T) {
+	definition := NewSeqDef(Concat(
+		Literal("PN-"),
+		Range(0, 17).Width(2, '0'),
+	))
+
+	for _, input := range []string{"PN-00", "PN-09", "PN-17"} {
+		if _, err := definition.Parse(input); err != nil {
+			t.Errorf("Parse(%q) error = %v", input, err)
+		}
+	}
+	for _, input := range []string{"PN-18", "PN-1", "PN-AA"} {
+		if _, err := definition.Parse(input); err == nil {
+			t.Errorf("Parse(%q) accepted invalid input", input)
+		}
+	}
+}
+
+func TestSeqDefRangeDefaultsToMaximumWidth(t *testing.T) {
+	definition := NewSeqDef(Range(0, 99))
+
+	for _, input := range []string{"00", "07", "99"} {
+		if _, err := definition.Parse(input); err != nil {
+			t.Errorf("Parse(%q) error = %v", input, err)
+		}
+	}
+	for _, input := range []string{"0", "000", "100", "AA"} {
+		if _, err := definition.Parse(input); err == nil {
+			t.Errorf("Parse(%q) accepted invalid input", input)
+		}
+	}
+}
+
+func TestSeqDefRangeRetainsPadding(t *testing.T) {
+	node := Range(0, 17).Width(2, 'X')
+
+	if node.pad != 'X' {
+		t.Fatalf("range padding = %q, want %q", node.pad, 'X')
+	}
+	if _, err := NewSeqDef(node).Parse("07"); err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+}
+
+func TestSeqDefValues(t *testing.T) {
+	definition := NewSeqDef(Values("A", "BC", "D"))
+
+	for _, input := range []string{"A", "BC", "D"} {
+		if _, err := definition.Parse(input); err != nil {
+			t.Errorf("Parse(%q) error = %v", input, err)
+		}
+	}
+	for _, input := range []string{"B", "C", "E", "BCX"} {
+		if _, err := definition.Parse(input); err == nil {
+			t.Errorf("Parse(%q) accepted invalid input", input)
+		}
+	}
+}
+
+func TestSeqDefRangeRadix(t *testing.T) {
+	definition := NewSeqDef(Concat(
+		Literal("PN-"),
+		RangeRadix(Values("A", "B", "C"), Range(0, 9)),
+	))
+
+	for _, input := range []string{"PN-A0", "PN-B7", "PN-C9"} {
+		if _, err := definition.Parse(input); err != nil {
+			t.Errorf("Parse(%q) error = %v", input, err)
+		}
+	}
+	if _, err := definition.Parse("PN-D0"); err == nil {
+		t.Error("Parse accepted a value outside the radix")
+	}
+}
+
 func Places(count int, alphabet string) SeqNode {
 	places := make([]string, count)
 	for i := range places {

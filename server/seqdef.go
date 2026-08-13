@@ -1,6 +1,9 @@
 package ubom
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type SeqDefID string
 
@@ -39,6 +42,9 @@ const (
 	nodeConcat
 	nodeChoice
 	nodePlaces
+	nodeRange
+	nodeValues
+	nodeRangeRadix
 )
 
 // SeqNode is the AST. Its fields stay private so nodes are built through the
@@ -48,6 +54,11 @@ type SeqNode struct {
 	text      string
 	children  []SeqNode
 	alphabets []string
+	min       int
+	max       int
+	width     int
+	pad       byte
+	values    []string
 }
 
 func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
@@ -58,7 +69,7 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 		}
 		return n.text, offset + len(n.text), nil
 
-	case nodeConcat:
+	case nodeConcat, nodeRangeRadix:
 		value := ""
 		for _, child := range n.children {
 			part, next, err := child.parseAt(input, offset)
@@ -84,6 +95,14 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 		}
 		return "", offset, err
 
+	case nodeValues:
+		for _, value := range n.values {
+			if len(input)-offset >= len(value) && input[offset:offset+len(value)] == value {
+				return value, offset + len(value), nil
+			}
+		}
+		return "", offset, expected(offset, "one of the values")
+
 	case nodePlaces:
 		start := offset
 		for _, alphabet := range n.alphabets {
@@ -96,6 +115,25 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 			offset++
 		}
 		return input[start:offset], offset, nil
+
+	case nodeRange:
+		if n.min < 0 || n.max < n.min || n.width < 1 {
+			return "", offset, fmt.Errorf("invalid range definition")
+		}
+		if len(input)-offset < n.width {
+			return "", offset, expected(offset, fmt.Sprintf("%d digits", n.width))
+		}
+		text := input[offset : offset+n.width]
+		for i := range text {
+			if text[i] < '0' || text[i] > '9' {
+				return "", offset, expected(offset+i, "a decimal digit")
+			}
+		}
+		value, err := strconv.Atoi(text)
+		if err != nil || value < n.min || value > n.max {
+			return "", offset, expected(offset, fmt.Sprintf("a number from %d to %d", n.min, n.max))
+		}
+		return text, offset + n.width, nil
 	}
 
 	return "", offset, fmt.Errorf("invalid sequence node")
@@ -114,10 +152,43 @@ func Choice(nodes ...SeqNode) SeqNode {
 	return SeqNode{kind: nodeChoice, children: append([]SeqNode(nil), nodes...)}
 }
 
+// Values is an ordered set of literal values. Unlike Choice, it is intended
+// to remain generation-friendly.
+func Values(values ...string) SeqNode {
+	return SeqNode{kind: nodeValues, values: append([]string(nil), values...)}
+}
+
+// RangeRadix is a sequence of ordered fields. It currently parses like
+// Concat, but keeps its own AST kind for future sequencing behavior.
+func RangeRadix(nodes ...SeqNode) SeqNode {
+	return SeqNode{kind: nodeRangeRadix, children: append([]SeqNode(nil), nodes...)}
+}
+
 // PlaceSequence consumes one character from each alphabet. Alphabet lengths
 // are the radices of the places.
 func PlaceSequence(alphabets ...string) SeqNode {
 	return SeqNode{kind: nodePlaces, alphabets: append([]string(nil), alphabets...)}
+}
+
+// Range matches a zero-padded decimal number. Its default width is the number
+// of digits in max; Width can override it.
+func Range(min, max int) SeqNode {
+	width := len(strconv.Itoa(max))
+	return SeqNode{kind: nodeRange, min: min, max: max, width: width, pad: '0'}
+}
+
+// Width sets the fixed width and optional padding character for a range.
+// Padding is metadata for generation; parsing currently requires decimal
+// digits in every position.
+func (n SeqNode) Width(width int, pad ...byte) SeqNode {
+	if n.kind != nodeRange {
+		return n
+	}
+	n.width = width
+	if len(pad) > 0 {
+		n.pad = pad[0]
+	}
+	return n
 }
 
 func contains(alphabet string, value byte) bool {

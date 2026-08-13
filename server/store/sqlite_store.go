@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 
 	_ "modernc.org/sqlite"
 	ubom "ubom-v4"
@@ -63,7 +64,8 @@ func (s *SQLiteStore) init() error {
 				REFERENCES taxonomy_nodes(taxonomy_def_id, id)
 		);
 		CREATE TABLE IF NOT EXISTS part_numbers (
-			value TEXT PRIMARY KEY,
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			value TEXT NOT NULL UNIQUE,
 			seq_def_id TEXT NOT NULL,
 			taxonomy_def_id TEXT NOT NULL,
 			taxonomy_node_id TEXT NOT NULL,
@@ -209,25 +211,35 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 	return ubom.Taxonomy{Root: *root}, nil
 }
 
-func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) error {
+func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	if _, err := s.GetPartNumber(part.Value); !errors.Is(err, ErrNotFound) {
-		return err
+		return ubom.PartNumber{}, err
 	}
-	_, err := s.db.Exec(`INSERT INTO part_numbers
+	result, err := s.db.Exec(`INSERT INTO part_numbers
 		(value, seq_def_id, taxonomy_def_id, taxonomy_node_id)
 		VALUES (?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID)
-	return err
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
+	return part, nil
 }
 
 func (s *SQLiteStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	var part ubom.PartNumber
-	if err := s.db.QueryRow(`SELECT value, seq_def_id, taxonomy_def_id, taxonomy_node_id
+	var id int64
+	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id
 		FROM part_numbers WHERE value = ?`, value).Scan(
-		&part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID); err != nil {
+		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartNumber{}, ErrNotFound
 		}
 		return ubom.PartNumber{}, err
 	}
+	part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
 	return part, nil
 }

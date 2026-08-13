@@ -25,9 +25,14 @@ func TestMemoryStoreRoundTrip(t *testing.T) {
 	if err := store.CreateTaxonomyDef(taxonomyDef); err != nil {
 		t.Fatalf("CreateTaxonomyDef() error = %v", err)
 	}
-	if err := store.CreatePartNumber(part); err != nil {
+	created, err := store.CreatePartNumber(part)
+	if err != nil {
 		t.Fatalf("CreatePartNumber() error = %v", err)
 	}
+	if created.ID == "" {
+		t.Fatal("CreatePartNumber() returned an empty ID")
+	}
+	part = created
 
 	got, err := store.GetPartNumber(part.Value)
 	if err != nil {
@@ -42,10 +47,10 @@ func TestMemoryStoreRejectsDuplicatePartNumber(t *testing.T) {
 	store := NewMemoryStore()
 	part := ubom.PartNumber{Value: "PN-1"}
 
-	if err := store.CreatePartNumber(part); err != nil {
+	if _, err := store.CreatePartNumber(part); err != nil {
 		t.Fatalf("first CreatePartNumber() error = %v", err)
 	}
-	if err := store.CreatePartNumber(part); !errors.Is(err, ErrAlreadyExists) {
+	if _, err := store.CreatePartNumber(part); !errors.Is(err, ErrAlreadyExists) {
 		t.Fatalf("second CreatePartNumber() error = %v, want ErrAlreadyExists", err)
 	}
 }

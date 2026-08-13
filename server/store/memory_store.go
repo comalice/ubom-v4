@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"strconv"
 
 	ubom "ubom-v4"
 )
@@ -15,6 +16,7 @@ type MemoryStore struct {
 	seqDefs      map[ubom.SeqDefID]ubom.SeqDef
 	taxonomyDefs map[ubom.TaxonomyDefID]ubom.TaxonomyDef
 	partNumbers  map[string]ubom.PartNumber
+	nextPartID   int64
 }
 
 // compile time interface check
@@ -25,6 +27,7 @@ func NewMemoryStore() *MemoryStore {
 		seqDefs:      map[ubom.SeqDefID]ubom.SeqDef{},
 		taxonomyDefs: map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
 		partNumbers:  map[string]ubom.PartNumber{},
+		nextPartID:   1,
 	}
 }
 
@@ -60,12 +63,14 @@ func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 	return def, nil
 }
 
-func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) error {
+func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	if _, ok := s.partNumbers[part.Value]; ok {
-		return ErrAlreadyExists
+		return ubom.PartNumber{}, ErrAlreadyExists
 	}
+	part.ID = ubom.PartNumberID(strconv.FormatInt(s.nextPartID, 10))
+	s.nextPartID++
 	s.partNumbers[part.Value] = part
-	return nil
+	return part, nil
 }
 
 func (s *MemoryStore) GetPartNumber(value string) (ubom.PartNumber, error) {

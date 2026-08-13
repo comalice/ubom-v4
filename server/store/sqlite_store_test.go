@@ -43,9 +43,14 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	if err := store.CreateTaxonomyDef(taxonomyDef); err != nil {
 		t.Fatalf("CreateTaxonomyDef() error = %v", err)
 	}
-	if err := store.CreatePartNumber(part); err != nil {
+	createdPart, err := store.CreatePartNumber(part)
+	if err != nil {
 		t.Fatalf("CreatePartNumber() error = %v", err)
 	}
+	if createdPart.ID == "" {
+		t.Fatal("CreatePartNumber() returned an empty ID")
+	}
+	part = createdPart
 
 	gotSeqDef, err := store.GetSeqDef(seqDef.ID)
 	if err != nil {

@@ -9,6 +9,6 @@ type Store interface {
 	CreateTaxonomyDef(ubom.TaxonomyDef) error
 	GetTaxonomyDef(ubom.TaxonomyDefID) (ubom.TaxonomyDef, error)
 
-	CreatePartNumber(ubom.PartNumber) error
+	CreatePartNumber(ubom.PartNumber) (ubom.PartNumber, error)
 	GetPartNumber(string) (ubom.PartNumber, error)
 }

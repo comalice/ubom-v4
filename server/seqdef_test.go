@@ -238,7 +238,7 @@ func TestSeqDefBindDoesNotLeakFromFailedBranch(t *testing.T) {
 	}
 }
 
-func Places(count int, alphabet string) SeqNode {
+func Places(count int, alphabet string) SeqDefNode {
 	places := make([]string, count)
 	for i := range places {
 		places[i] = alphabet

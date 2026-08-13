@@ -17,6 +17,9 @@ type MemoryStore struct {
 	partNumbers  map[string]ubom.PartNumber
 }
 
+// compile time interface check
+var _ Store = (*MemoryStore)(nil)
+
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		seqDefs:      map[ubom.SeqDefID]ubom.SeqDef{},

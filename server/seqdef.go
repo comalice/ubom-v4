@@ -45,6 +45,7 @@ const (
 	nodeRange
 	nodeValues
 	nodeRangeRadix
+	nodeBranch
 )
 
 // SeqNode is the AST. Its fields stay private so nodes are built through the
@@ -81,7 +82,7 @@ func (n SeqNode) parseAt(input string, offset int) (string, int, error) {
 		}
 		return value, offset, nil
 
-	case nodeChoice:
+	case nodeChoice, nodeBranch:
 		var err error
 		for _, child := range n.children {
 			value, next, childErr := child.parseAt(input, offset)
@@ -150,6 +151,12 @@ func Concat(nodes ...SeqNode) SeqNode {
 // Choice tries alternatives from left to right.
 func Choice(nodes ...SeqNode) SeqNode {
 	return SeqNode{kind: nodeChoice, children: append([]SeqNode(nil), nodes...)}
+}
+
+// Branch chooses between complete grammar shapes. It currently parses like
+// Choice, but keeps a distinct AST kind for future branch-aware generation.
+func Branch(nodes ...SeqNode) SeqNode {
+	return SeqNode{kind: nodeBranch, children: append([]SeqNode(nil), nodes...)}
 }
 
 // Values is an ordered set of literal values. Unlike Choice, it is intended

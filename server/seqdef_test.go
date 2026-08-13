@@ -184,6 +184,24 @@ func TestSeqDefRangeRadix(t *testing.T) {
 	}
 }
 
+func TestSeqDefBranch(t *testing.T) {
+	definition := NewSeqDef(Branch(
+		Concat(Literal("RES-"), Range(0, 99).Width(2)),
+		Concat(Literal("CAP-"), Choice(Literal("X5R"), Literal("X7R"))),
+	))
+
+	for _, input := range []string{"RES-00", "RES-99", "CAP-X5R", "CAP-X7R"} {
+		if _, err := definition.Parse(input); err != nil {
+			t.Errorf("Parse(%q) error = %v", input, err)
+		}
+	}
+	for _, input := range []string{"RES-100", "CAP-10", "DIO-01", "CAP-X8R"} {
+		if _, err := definition.Parse(input); err == nil {
+			t.Errorf("Parse(%q) accepted invalid input", input)
+		}
+	}
+}
+
 func Places(count int, alphabet string) SeqNode {
 	places := make([]string, count)
 	for i := range places {

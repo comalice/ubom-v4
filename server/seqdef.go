@@ -14,6 +14,8 @@ type SeqDef struct {
 
 func NewSeqDef(root SeqDefNode) SeqDef { return SeqDef{root: root} }
 
+func (d SeqDef) Root() SeqDefNode { return d.root }
+
 func (d SeqDef) WithID(id SeqDefID) SeqDef {
 	d.ID = id
 	return d
@@ -50,22 +52,22 @@ type SeqDefNode interface {
 	parseAt(input string, offset int, bindings map[string]string) (string, int, error)
 }
 
-type literalNode struct{ text string }
+type LiteralNode struct{ Text string }
 
-func (n literalNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
-	if len(input)-offset < len(n.text) || input[offset:offset+len(n.text)] != n.text {
-		return "", offset, expected(offset, fmt.Sprintf("%q", n.text))
+func (n LiteralNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
+	if len(input)-offset < len(n.Text) || input[offset:offset+len(n.Text)] != n.Text {
+		return "", offset, expected(offset, fmt.Sprintf("%q", n.Text))
 	}
-	return n.text, offset + len(n.text), nil
+	return n.Text, offset + len(n.Text), nil
 }
 
-func Literal(text string) SeqDefNode { return literalNode{text: text} }
+func Literal(text string) SeqDefNode { return LiteralNode{Text: text} }
 
-type concatNode struct{ children []SeqDefNode }
+type ConcatNode struct{ Children []SeqDefNode }
 
-func (n concatNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
+func (n ConcatNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
 	value := ""
-	for _, child := range n.children {
+	for _, child := range n.Children {
 		part, next, err := child.parseAt(input, offset, bindings)
 		if err != nil {
 			return "", offset, err
@@ -77,14 +79,33 @@ func (n concatNode) parseAt(input string, offset int, bindings map[string]string
 }
 
 func Concat(nodes ...SeqDefNode) SeqDefNode {
-	return concatNode{children: append([]SeqDefNode(nil), nodes...)}
+	return ConcatNode{Children: append([]SeqDefNode(nil), nodes...)}
 }
 
-type choiceNode struct{ children []SeqDefNode }
+type ChoiceNode struct{ Children []SeqDefNode }
 
-func (n choiceNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
+func (n ChoiceNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
+	return parseAlternatives(n.Children, input, offset, bindings)
+}
+
+func Choice(nodes ...SeqDefNode) SeqDefNode {
+	return ChoiceNode{Children: append([]SeqDefNode(nil), nodes...)}
+}
+
+type BranchNode struct{ Children []SeqDefNode }
+
+func (n BranchNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
+	return parseAlternatives(n.Children, input, offset, bindings)
+}
+
+// Branch chooses between complete grammar shapes.
+func Branch(nodes ...SeqDefNode) SeqDefNode {
+	return BranchNode{Children: append([]SeqDefNode(nil), nodes...)}
+}
+
+func parseAlternatives(nodes []SeqDefNode, input string, offset int, bindings map[string]string) (string, int, error) {
 	var err error
-	for _, child := range n.children {
+	for _, child := range nodes {
 		trial := cloneBindings(bindings)
 		value, next, childErr := child.parseAt(input, offset, trial)
 		if childErr == nil {
@@ -99,57 +120,41 @@ func (n choiceNode) parseAt(input string, offset int, bindings map[string]string
 	return "", offset, err
 }
 
-// Choice chooses between parser alternatives.
-func Choice(nodes ...SeqDefNode) SeqDefNode {
-	return choiceNode{children: append([]SeqDefNode(nil), nodes...)}
+type BindNode struct {
+	Name  string
+	Child SeqDefNode
 }
 
-type branchNode struct{ children []SeqDefNode }
-
-func (n branchNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
-	return choiceNode{children: n.children}.parseAt(input, offset, bindings)
-}
-
-// Branch chooses between complete grammar shapes.
-func Branch(nodes ...SeqDefNode) SeqDefNode {
-	return branchNode{children: append([]SeqDefNode(nil), nodes...)}
-}
-
-type bindNode struct {
-	name  string
-	child SeqDefNode
-}
-
-func (n bindNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
-	value, next, err := n.child.parseAt(input, offset, bindings)
+func (n BindNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
+	value, next, err := n.Child.parseAt(input, offset, bindings)
 	if err != nil {
 		return "", offset, err
 	}
-	bindings[n.name] = value
+	bindings[n.Name] = value
 	return value, next, nil
 }
 
 // Bind records the text matched by child under name.
 func Bind(name string, child SeqDefNode) SeqDefNode {
-	return bindNode{name: name, child: child}
+	return BindNode{Name: name, Child: child}
 }
 
-type rangeRadixNode struct{ children []SeqDefNode }
+type RangeRadixNode struct{ Children []SeqDefNode }
 
-func (n rangeRadixNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
-	return concatNode{children: n.children}.parseAt(input, offset, bindings)
+func (n RangeRadixNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
+	return ConcatNode{Children: n.Children}.parseAt(input, offset, bindings)
 }
 
 // RangeRadix is a sequence of ordered fields.
 func RangeRadix(nodes ...SeqDefNode) SeqDefNode {
-	return rangeRadixNode{children: append([]SeqDefNode(nil), nodes...)}
+	return RangeRadixNode{Children: append([]SeqDefNode(nil), nodes...)}
 }
 
-type placeSequenceNode struct{ alphabets []string }
+type PlaceSequenceNode struct{ Alphabets []string }
 
-func (n placeSequenceNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
+func (n PlaceSequenceNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
 	start := offset
-	for _, alphabet := range n.alphabets {
+	for _, alphabet := range n.Alphabets {
 		if alphabet == "" {
 			return "", start, fmt.Errorf("place has an empty alphabet")
 		}
@@ -162,47 +167,47 @@ func (n placeSequenceNode) parseAt(input string, offset int, _ map[string]string
 }
 
 func PlaceSequence(alphabets ...string) SeqDefNode {
-	return placeSequenceNode{alphabets: append([]string(nil), alphabets...)}
+	return PlaceSequenceNode{Alphabets: append([]string(nil), alphabets...)}
 }
 
-type rangeNode struct {
-	min   int
-	max   int
-	width int
-	pad   byte
+type RangeNode struct {
+	Min        int
+	Max        int
+	WidthValue int
+	Pad        byte
 }
 
-func (n rangeNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
-	if n.min < 0 || n.max < n.min || n.width < 1 {
+func (n RangeNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
+	if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
 		return "", offset, fmt.Errorf("invalid range definition")
 	}
-	if len(input)-offset < n.width {
-		return "", offset, expected(offset, fmt.Sprintf("%d digits", n.width))
+	if len(input)-offset < n.WidthValue {
+		return "", offset, expected(offset, fmt.Sprintf("%d digits", n.WidthValue))
 	}
-	text := input[offset : offset+n.width]
+	text := input[offset : offset+n.WidthValue]
 	for i := range text {
 		if text[i] < '0' || text[i] > '9' {
 			return "", offset, expected(offset+i, "a decimal digit")
 		}
 	}
 	value, err := strconv.Atoi(text)
-	if err != nil || value < n.min || value > n.max {
-		return "", offset, expected(offset, fmt.Sprintf("a number from %d to %d", n.min, n.max))
+	if err != nil || value < n.Min || value > n.Max {
+		return "", offset, expected(offset, fmt.Sprintf("a number from %d to %d", n.Min, n.Max))
 	}
-	return text, offset + n.width, nil
+	return text, offset + n.WidthValue, nil
 }
 
 // Range matches a zero-padded decimal number. Its default width is the number
 // of digits in max; Width can override it.
-func Range(min, max int) rangeNode {
-	return rangeNode{min: min, max: max, width: len(strconv.Itoa(max)), pad: '0'}
+func Range(min, max int) RangeNode {
+	return RangeNode{Min: min, Max: max, WidthValue: len(strconv.Itoa(max)), Pad: '0'}
 }
 
 // Width sets the fixed width and optional padding character for a range.
-func (n rangeNode) Width(width int, pad ...byte) rangeNode {
-	n.width = width
+func (n RangeNode) Width(width int, pad ...byte) RangeNode {
+	n.WidthValue = width
 	if len(pad) > 0 {
-		n.pad = pad[0]
+		n.Pad = pad[0]
 	}
 	return n
 }

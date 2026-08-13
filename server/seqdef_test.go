@@ -145,8 +145,8 @@ func TestSeqDefRangeDefaultsToMaximumWidth(t *testing.T) {
 func TestSeqDefRangeRetainsPadding(t *testing.T) {
 	node := Range(0, 17).Width(2, 'X')
 
-	if node.pad != 'X' {
-		t.Fatalf("range padding = %q, want %q", node.pad, 'X')
+	if node.Pad != 'X' {
+		t.Fatalf("range padding = %q, want %q", node.Pad, 'X')
 	}
 	if _, err := NewSeqDef(node).Parse("07"); err != nil {
 		t.Fatalf("Parse() error = %v", err)

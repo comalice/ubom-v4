@@ -1,5 +1,7 @@
 package ubom
 
+import "fmt"
+
 // Part intentionally left bare for now. Leaf node in a BOM tree.
 // TODO sort out _what_ goes into Part. Eventually the concept of Artifact, ArtifactSource,
 // mfr mpn, etc?
@@ -26,6 +28,30 @@ type PartNumber struct {
 	TaxonomyDefID TaxonomyDefID  // Taxonomy applied to this part number.
 	// TODO, post MVP, sort out attributes and their types.
 	// AttributeSchemas []AttributeSchemaID // Attribute schema attached to this part number.
+}
+
+// NewPartNumber validates value against seqDef and permanently links the
+// resulting part number to both definition IDs.
+func NewPartNumber(value string, seqDef SeqDef, taxonomy TaxonomyDef) (PartNumber, error) {
+	if seqDef.ID == "" {
+		return PartNumber{}, fmt.Errorf("sequence definition has no ID")
+	}
+	if taxonomy.ID == "" {
+		return PartNumber{}, fmt.Errorf("taxonomy definition has no ID")
+	}
+	if taxonomy.SeqDef != seqDef.ID {
+		return PartNumber{}, fmt.Errorf("taxonomy does not belong to sequence definition")
+	}
+	canonical, err := seqDef.Parse(value)
+	if err != nil {
+		return PartNumber{}, err
+	}
+
+	return PartNumber{
+		Value:         canonical,
+		SeqDefID:      seqDef.ID,
+		TaxonomyDefID: taxonomy.ID,
+	}, nil
 }
 
 // Next generates the next part number from the part number's SeqDef.

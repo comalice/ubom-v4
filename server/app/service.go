@@ -114,6 +114,14 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 	return view, nil
 }
 
+func (s *Service) GetPartNumberViewByValue(value string) (PartNumberView, error) {
+	part, err := s.store.GetPartNumber(value)
+	if err != nil {
+		return PartNumberView{}, err
+	}
+	return s.GetPartNumberView(part.ID)
+}
+
 func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) (TaxonomyNodeView, error) {
 	taxonomyDef, err := s.store.GetTaxonomyDef(taxonomyID)
 	if err != nil {

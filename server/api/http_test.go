@@ -51,6 +51,29 @@ func TestPartNumberViewNotFound(t *testing.T) {
 	}
 }
 
+func TestPartNumberViewByValue(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/parts/by-value/PN-A", nil)
+	server.Handler().ServeHTTP(recording, request)
+
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", recording.Code, http.StatusOK, recording.Body)
+	}
+	var view app.PartNumberView
+	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if view.Value != "PN-A" {
+		t.Fatalf("value = %q, want PN-A", view.Value)
+	}
+}
+
 func TestTaxonomyNodeView(t *testing.T) {
 	persistence := store.NewMemoryStore()
 	if _, err := app.LoadSampleData(persistence); err != nil {

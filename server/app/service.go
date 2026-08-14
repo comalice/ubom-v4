@@ -49,6 +49,18 @@ type PartNumberSummary struct {
 	Value string            `json:"value"`
 }
 
+type RevisionDetailView struct {
+	ID         ubom.PartRevisionID `json:"id"`
+	PartNumber PartNumberSummary   `json:"partNumber"`
+	BOM        []BOMNodeView       `json:"bom"`
+}
+
+type BOMNodeView struct {
+	PartNumber PartNumberSummary   `json:"partNumber"`
+	RevisionID ubom.PartRevisionID `json:"revisionId"`
+	BOM        []BOMNodeView       `json:"bom"`
+}
+
 func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error) {
 	part, err := s.store.GetPartNumberByID(id)
 	if err != nil {
@@ -121,6 +133,54 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	}
 	for _, part := range parts {
 		view.PartNumbers = append(view.PartNumbers, PartNumberSummary{ID: part.ID, Value: part.Value})
+	}
+	return view, nil
+}
+
+func (s *Service) GetRevisionView(id ubom.PartRevisionID) (RevisionDetailView, error) {
+	revision, err := s.store.GetPartRevision(id)
+	if err != nil {
+		return RevisionDetailView{}, err
+	}
+	return s.buildRevisionView(revision, map[ubom.PartRevisionID]bool{})
+}
+
+func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.PartRevisionID]bool) (RevisionDetailView, error) {
+	if active[revision.ID] {
+		return RevisionDetailView{}, errors.New("cycle detected in BOM")
+	}
+	active[revision.ID] = true
+	defer delete(active, revision.ID)
+
+	part, err := s.store.GetPartNumberByID(revision.PartNumberID)
+	if err != nil {
+		return RevisionDetailView{}, err
+	}
+	view := RevisionDetailView{
+		ID: revision.ID,
+		PartNumber: PartNumberSummary{
+			ID:    part.ID,
+			Value: part.Value,
+		},
+		BOM: make([]BOMNodeView, 0, len(revision.BOM)),
+	}
+	for _, item := range revision.BOM {
+		childRevision, err := s.store.GetPartRevision(item.PartRevisionID)
+		if err != nil {
+			return RevisionDetailView{}, err
+		}
+		if childRevision.PartNumberID != item.PartNumberID {
+			return RevisionDetailView{}, errors.New("line item revision does not belong to line item part number")
+		}
+		childView, err := s.buildRevisionView(childRevision, active)
+		if err != nil {
+			return RevisionDetailView{}, err
+		}
+		view.BOM = append(view.BOM, BOMNodeView{
+			PartNumber: childView.PartNumber,
+			RevisionID: childView.ID,
+			BOM:        childView.BOM,
+		})
 	}
 	return view, nil
 }

@@ -87,3 +87,45 @@ func TestTaxonomyNodeViewNotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recording.Code, http.StatusNotFound)
 	}
 }
+
+func TestRevisionView(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	parent, err := app.LoadSampleData(persistence)
+	if err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+	parent, err = persistence.GetPartNumber(parent.Value)
+	if err != nil {
+		t.Fatalf("GetPartNumber() error = %v", err)
+	}
+
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/revisions/"+string(parent.PartRevisionID[0]), nil)
+	server.Handler().ServeHTTP(recording, request)
+
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", recording.Code, http.StatusOK, recording.Body)
+	}
+	var view app.RevisionDetailView
+	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if view.PartNumber.Value != "PN-1" || len(view.BOM) != 1 {
+		t.Fatalf("revision view = %#v, want PN-1 with one BOM node", view)
+	}
+	if view.BOM[0].PartNumber.Value != "PN-2" || view.BOM[0].RevisionID == "" {
+		t.Fatalf("BOM node = %#v, want PN-2 with revision ID", view.BOM[0])
+	}
+}
+
+func TestRevisionViewNotFound(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/revisions/missing", nil)
+	server.Handler().ServeHTTP(recording, request)
+
+	if recording.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", recording.Code, http.StatusNotFound)
+	}
+}

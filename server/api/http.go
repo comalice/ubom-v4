@@ -23,6 +23,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/part-numbers/", s.handlePartNumber)
 	mux.HandleFunc("/api/taxonomy-definitions/", s.handleTaxonomyNode)
+	mux.HandleFunc("/api/revisions/", s.handleRevision)
 	return mux
 }
 
@@ -69,6 +70,31 @@ func (s *Server) handleTaxonomyNode(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "could not load taxonomy node")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(view); err != nil {
+		return
+	}
+}
+
+func (s *Server) handleRevision(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	id := strings.TrimPrefix(r.URL.Path, "/api/revisions/")
+	if id == "" || strings.Contains(id, "/") {
+		writeError(w, http.StatusBadRequest, "invalid revision ID")
+		return
+	}
+	view, err := s.service.GetRevisionView(ubom.PartRevisionID(id))
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "revision not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "could not load revision")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

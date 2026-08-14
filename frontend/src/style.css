@@ -49,6 +49,8 @@ ul { line-height: 1.8; }
 .identity-link { display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; }
 .identity-link a { color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .85rem; overflow-wrap: anywhere; }
 .identity-link a:hover { color: var(--ink); }
+.part-identity h1 .identity-link, .part-identity h1 .identity-link a { font-size: inherit; line-height: inherit; }
+.part-identity h1 .identity-link a { font-family: inherit; }
 .copy-button { display: inline-flex; flex: none; align-items: center; justify-content: center; padding: .2rem; color: var(--muted); background: transparent; border: 0; border-radius: .2rem; cursor: pointer; }
 .copy-button:hover, .copy-button:focus-visible { color: var(--ink); background: var(--ground); outline: none; }
 .copy-feedback { color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .65rem; }

@@ -3,6 +3,7 @@
   import BomNode from './BomNode.svelte'
   import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
   import IdentityLink from './IdentityLink.svelte'
+  import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
   import { getPart, getRevision, getTaxonomyNodeByPath, type PartNumberView, type RevisionView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
@@ -98,13 +99,7 @@
     </section>
   {:else if part}
     <p class="eyebrow">Part number</p>
-    <h1>{part.value}</h1>
-    <nav class="taxonomy-path" aria-label="Part category">
-      {#each part.taxonomyPath as label, index}
-        {#if index > 0}<span class="breadcrumb-separator" aria-hidden="true">/</span>{/if}
-        <a href={taxonomyPath(part.taxonomyPath.slice(0, index + 1))}>{label}</a>
-      {/each}
-    </nav>
+    <PartIdentity partNumber={part.value} taxonomy={part.taxonomyPath} />
     <h2>Revisions</h2>
     {#if part.revisions.length > 0}
       <div class="table-frame">
@@ -132,7 +127,7 @@
     {:else}<p class="muted">No revisions.</p>{/if}
   {:else if revision}
     <p class="eyebrow">Revision {revision.id}</p>
-    <h1><IdentityLink partNumber={revision.partNumber.value} revision={String(revision.id)} /></h1>
+    <PartIdentity partNumber={revision.partNumber.value} revision={String(revision.id)} taxonomy={revision.taxonomyPath} />
     <h2>Bill of Materials</h2>
     {#if revision.bom.length > 0}<ul>{#each revision.bom as node (node.revisionId)}<BomNode node={node} />{/each}</ul>
     {:else}<p class="muted">No BOM entries.</p>{/if}

@@ -28,6 +28,7 @@ export type BomNode = {
 export type RevisionView = {
   id: string
   partNumber: PartSummary
+  taxonomyPath: string[]
   bom: BomNode[]
 }
 

@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 
 	ubom "ubom-v4"
@@ -81,18 +80,8 @@ func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	if err := part.Validate(); err != nil {
 		return ubom.PartNumber{}, err
 	}
-	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
+	if err := validatePartNumberReferences(s, part); err != nil {
 		return ubom.PartNumber{}, err
-	}
-	taxonomyDef, err := s.GetTaxonomyDef(part.TaxonomyDefID)
-	if err != nil {
-		return ubom.PartNumber{}, err
-	}
-	if taxonomyDef.SeqDef != part.SeqDefID {
-		return ubom.PartNumber{}, fmt.Errorf("taxonomy definition does not belong to sequence definition")
-	}
-	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
-		return ubom.PartNumber{}, ErrNotFound
 	}
 	if _, ok := s.partNumbers[part.Value]; ok {
 		return ubom.PartNumber{}, ErrAlreadyExists
@@ -123,22 +112,10 @@ func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 	if err := revision.Validate(); err != nil {
 		return ubom.PartRevision{}, err
 	}
-	part, ok := s.partNumbersByID(revision.PartNumberID)
-	if !ok {
-		return ubom.PartRevision{}, ErrNotFound
+	if err := validatePartRevisionReferences(s, revision); err != nil {
+		return ubom.PartRevision{}, err
 	}
-	for _, item := range revision.BOM {
-		if _, ok := s.partNumbersByID(item.PartNumberID); !ok {
-			return ubom.PartRevision{}, ErrNotFound
-		}
-		if _, ok := s.partRevisions[item.PartRevisionID]; !ok {
-			return ubom.PartRevision{}, ErrNotFound
-		}
-		childRevision := s.partRevisions[item.PartRevisionID]
-		if childRevision.PartNumberID != item.PartNumberID {
-			return ubom.PartRevision{}, fmt.Errorf("line item revision does not belong to line item part number")
-		}
-	}
+	part, _ := s.partNumbersByID(revision.PartNumberID)
 
 	revision.ID = ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))
 	s.nextRevisionID++
@@ -163,16 +140,4 @@ func (s *MemoryStore) partNumbersByID(id ubom.PartNumberID) (ubom.PartNumber, bo
 		}
 	}
 	return ubom.PartNumber{}, false
-}
-
-func taxonomyNodeExists(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) bool {
-	if node.ID == id {
-		return true
-	}
-	for _, child := range node.Children {
-		if taxonomyNodeExists(child, id) {
-			return true
-		}
-	}
-	return false
 }

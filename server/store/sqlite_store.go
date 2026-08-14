@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 
 	_ "modernc.org/sqlite"
@@ -240,18 +239,8 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	if err := part.Validate(); err != nil {
 		return ubom.PartNumber{}, err
 	}
-	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
+	if err := validatePartNumberReferences(s, part); err != nil {
 		return ubom.PartNumber{}, err
-	}
-	taxonomyDef, err := s.GetTaxonomyDef(part.TaxonomyDefID)
-	if err != nil {
-		return ubom.PartNumber{}, err
-	}
-	if taxonomyDef.SeqDef != part.SeqDefID {
-		return ubom.PartNumber{}, fmt.Errorf("taxonomy definition does not belong to sequence definition")
-	}
-	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
-		return ubom.PartNumber{}, ErrNotFound
 	}
 	if _, err := s.GetPartNumber(part.Value); err == nil {
 		return ubom.PartNumber{}, ErrAlreadyExists
@@ -333,28 +322,12 @@ func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 	if err := revision.Validate(); err != nil {
 		return ubom.PartRevision{}, err
 	}
+	if err := validatePartRevisionReferences(s, revision); err != nil {
+		return ubom.PartRevision{}, err
+	}
 	partNumberID, err := strconv.ParseInt(string(revision.PartNumberID), 10, 64)
 	if err != nil {
 		return ubom.PartRevision{}, ErrNotFound
-	}
-	if _, err := s.getPartNumberByID(partNumberID); err != nil {
-		return ubom.PartRevision{}, err
-	}
-	for _, item := range revision.BOM {
-		childPartID, err := strconv.ParseInt(string(item.PartNumberID), 10, 64)
-		if err != nil {
-			return ubom.PartRevision{}, ErrNotFound
-		}
-		if _, err := s.getPartNumberByID(childPartID); err != nil {
-			return ubom.PartRevision{}, err
-		}
-		childRevision, err := s.GetPartRevision(item.PartRevisionID)
-		if err != nil {
-			return ubom.PartRevision{}, err
-		}
-		if childRevision.PartNumberID != item.PartNumberID {
-			return ubom.PartRevision{}, fmt.Errorf("line item revision does not belong to line item part number")
-		}
 	}
 
 	tx, err := s.db.Begin()

@@ -98,6 +98,9 @@ func TestMemoryStoreRoundTrip(t *testing.T) {
 
 func TestMemoryStoreRejectsDuplicatePartNumber(t *testing.T) {
 	store := NewMemoryStore()
+	if err := store.CreateSeqDef(ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn-v1")); err != nil {
+		t.Fatalf("CreateSeqDef() error = %v", err)
+	}
 	part := ubom.PartNumber{
 		Value:          "PN-1",
 		SeqDefID:       "pn-v1",

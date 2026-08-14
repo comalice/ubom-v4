@@ -122,6 +122,9 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err := def.Validate(); err != nil {
 		return err
 	}
+	if _, err := s.GetSeqDef(def.SeqDef); err != nil {
+		return err
+	}
 	if _, err := s.GetTaxonomyDef(def.ID); !errors.Is(err, ErrNotFound) {
 		return err
 	}
@@ -234,6 +237,9 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 
 func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	if err := part.Validate(); err != nil {
+		return ubom.PartNumber{}, err
+	}
+	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
 		return ubom.PartNumber{}, err
 	}
 	if _, err := s.GetPartNumber(part.Value); err == nil {

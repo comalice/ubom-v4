@@ -58,6 +58,9 @@ func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err := def.Validate(); err != nil {
 		return err
 	}
+	if _, err := s.GetSeqDef(def.SeqDef); err != nil {
+		return err
+	}
 	if _, ok := s.taxonomyDefs[def.ID]; ok {
 		return ErrAlreadyExists
 	}
@@ -75,6 +78,9 @@ func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 
 func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	if err := part.Validate(); err != nil {
+		return ubom.PartNumber{}, err
+	}
+	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
 		return ubom.PartNumber{}, err
 	}
 	if _, ok := s.partNumbers[part.Value]; ok {

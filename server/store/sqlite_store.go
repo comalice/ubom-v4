@@ -243,12 +243,15 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
 		return ubom.PartNumber{}, err
 	}
-	if _, err := s.GetTaxonomyDef(part.TaxonomyDefID); err != nil {
+	taxonomyDef, err := s.GetTaxonomyDef(part.TaxonomyDefID)
+	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	taxonomy, _ := s.GetTaxonomyDef(part.TaxonomyDefID)
-	if taxonomy.SeqDef != part.SeqDefID {
+	if taxonomyDef.SeqDef != part.SeqDefID {
 		return ubom.PartNumber{}, fmt.Errorf("taxonomy definition does not belong to sequence definition")
+	}
+	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
+		return ubom.PartNumber{}, ErrNotFound
 	}
 	if _, err := s.GetPartNumber(part.Value); err == nil {
 		return ubom.PartNumber{}, ErrAlreadyExists

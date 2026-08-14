@@ -84,12 +84,15 @@ func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
 		return ubom.PartNumber{}, err
 	}
-	if _, err := s.GetTaxonomyDef(part.TaxonomyDefID); err != nil {
+	taxonomyDef, err := s.GetTaxonomyDef(part.TaxonomyDefID)
+	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	taxonomy, _ := s.GetTaxonomyDef(part.TaxonomyDefID)
-	if taxonomy.SeqDef != part.SeqDefID {
+	if taxonomyDef.SeqDef != part.SeqDefID {
 		return ubom.PartNumber{}, fmt.Errorf("taxonomy definition does not belong to sequence definition")
+	}
+	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
+		return ubom.PartNumber{}, ErrNotFound
 	}
 	if _, ok := s.partNumbers[part.Value]; ok {
 		return ubom.PartNumber{}, ErrAlreadyExists
@@ -148,4 +151,16 @@ func (s *MemoryStore) partNumbersByID(id ubom.PartNumberID) (ubom.PartNumber, bo
 		}
 	}
 	return ubom.PartNumber{}, false
+}
+
+func taxonomyNodeExists(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) bool {
+	if node.ID == id {
+		return true
+	}
+	for _, child := range node.Children {
+		if taxonomyNodeExists(child, id) {
+			return true
+		}
+	}
+	return false
 }

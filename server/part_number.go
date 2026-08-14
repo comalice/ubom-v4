@@ -16,6 +16,17 @@ type LineItem struct {
 	PartRevisionID PartRevisionID
 }
 
+// Validate checks the identity fields required for a BOM line item.
+func (l LineItem) Validate() error {
+	if l.PartNumberID == "" {
+		return fmt.Errorf("line item has no part number ID")
+	}
+	if l.PartRevisionID == "" {
+		return fmt.Errorf("line item has no part revision ID")
+	}
+	return nil
+}
+
 type PartRevision struct {
 	ID           PartRevisionID
 	PartNumberID PartNumberID // Link to owning part number.

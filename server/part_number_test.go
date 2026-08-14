@@ -173,3 +173,26 @@ func TestPartNumberValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestLineItemValidate(t *testing.T) {
+	valid := LineItem{PartNumberID: "part-1", PartRevisionID: "revision-1"}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		item LineItem
+	}{
+		{name: "missing part number ID", item: LineItem{PartRevisionID: "revision-1"}},
+		{name: "missing part revision ID", item: LineItem{PartNumberID: "part-1"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.item.Validate(); err == nil {
+				t.Fatal("Validate() accepted invalid line item")
+			}
+		})
+	}
+}

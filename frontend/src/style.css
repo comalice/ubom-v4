@@ -46,6 +46,13 @@ ul { line-height: 1.8; }
 .part-row:last-child { border-bottom: 0; }
 .part-row:hover { background: var(--accent-light); text-decoration: none; }
 .part-value { color: var(--ink); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .85rem; font-weight: 500; }
+.identity-link { display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; }
+.identity-link a { color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .85rem; overflow-wrap: anywhere; }
+.identity-link a:hover { color: var(--ink); }
+.copy-button { display: inline-flex; flex: none; align-items: center; justify-content: center; padding: .2rem; color: var(--muted); background: transparent; border: 0; border-radius: .2rem; cursor: pointer; }
+.copy-button:hover, .copy-button:focus-visible { color: var(--ink); background: var(--ground); outline: none; }
+.copy-feedback { color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .65rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .empty-state { color: var(--muted); background: var(--surface); border: 1px dashed var(--hairline); border-radius: .35rem; padding: 1rem; }
 .table-frame { overflow-x: auto; background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; }
 .revision-table { width: 100%; border-collapse: collapse; text-align: left; }

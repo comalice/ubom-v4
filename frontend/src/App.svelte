@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import BomNode from './BomNode.svelte'
   import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
+  import IdentityLink from './IdentityLink.svelte'
   import Shell from './Shell.svelte'
   import { getPart, getRevision, getTaxonomyNodeByPath, type PartNumberView, type RevisionView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
@@ -85,10 +86,10 @@
       {#if taxonomy.partNumbers.length > 0}
         <div class="part-list">
           {#each taxonomy.partNumbers as item}
-            <a class="part-row" href={partPath(item.value)}>
-              <span class="part-value">{item.value}</span>
+            <div class="part-row">
+              <IdentityLink partNumber={item.value} />
               <span class="card-arrow" aria-hidden="true">→</span>
-            </a>
+            </div>
           {/each}
         </div>
       {:else}
@@ -119,7 +120,7 @@
           <tbody>
             {#each part.revisions as item}
               <tr>
-                <th scope="row"><a href={revisionPath(part.value, item.id)}>Revision {item.id}</a></th>
+                <th scope="row"><IdentityLink partNumber={part.value} revision={String(item.id)} /></th>
                 <td class="unsupported" aria-label="Status not supported">—</td>
                 <td class="unsupported" aria-label="ECO or ECR not supported">—</td>
                 <td class="unsupported" aria-label="Effectivity date not supported">—</td>
@@ -131,7 +132,7 @@
     {:else}<p class="muted">No revisions.</p>{/if}
   {:else if revision}
     <p class="eyebrow">Revision {revision.id}</p>
-    <h1><a href={partPath(revision.partNumber.value)}>{revision.partNumber.value}</a></h1>
+    <h1><IdentityLink partNumber={revision.partNumber.value} revision={String(revision.id)} /></h1>
     <h2>Bill of Materials</h2>
     {#if revision.bom.length > 0}<ul>{#each revision.bom as node (node.revisionId)}<BomNode node={node} />{/each}</ul>
     {:else}<p class="muted">No BOM entries.</p>{/if}

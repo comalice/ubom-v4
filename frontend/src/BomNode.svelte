@@ -1,16 +1,12 @@
 <script lang="ts">
+  import IdentityLink from './IdentityLink.svelte'
   import type { BomNode } from './api'
   export let node: BomNode
 </script>
 
 <li>
-  <a href={revisionPath(node.partNumber.value, node.revisionId)}>{node.partNumber.value}</a>
-  <span class="muted">(revision {node.revisionId})</span>
+  <IdentityLink partNumber={node.partNumber.value} revision={String(node.revisionId)} />
   {#if node.bom.length > 0}
     <ul>{#each node.bom as child (child.revisionId)}<svelte:self node={child} />{/each}</ul>
   {/if}
 </li>
-
-<script context="module" lang="ts">
-  import { revisionPath } from './routes'
-</script>

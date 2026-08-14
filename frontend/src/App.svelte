@@ -106,7 +106,28 @@
     </nav>
     <h2>Revisions</h2>
     {#if part.revisions.length > 0}
-      <ul>{#each part.revisions as item}<li><a href={revisionPath(part.value, item.id)}>Revision {item.id}</a></li>{/each}</ul>
+      <div class="table-frame">
+        <table class="revision-table">
+          <thead>
+            <tr>
+              <th scope="col">Rev</th>
+              <th scope="col">Status</th>
+              <th scope="col">ECO/ECR</th>
+              <th scope="col">Effectivity date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each part.revisions as item}
+              <tr>
+                <th scope="row"><a href={revisionPath(part.value, item.id)}>Revision {item.id}</a></th>
+                <td class="unsupported" aria-label="Status not supported">—</td>
+                <td class="unsupported" aria-label="ECO or ECR not supported">—</td>
+                <td class="unsupported" aria-label="Effectivity date not supported">—</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {:else}<p class="muted">No revisions.</p>{/if}
   {:else if revision}
     <p class="eyebrow">Revision {revision.id}</p>

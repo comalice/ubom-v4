@@ -37,6 +37,14 @@ ul { line-height: 1.8; }
 .part-row:hover { background: #faf7f3; text-decoration: none; }
 .part-value { font-weight: 600; color: #27231f; }
 .empty-state { color: #746d65; background: #fff; border: 1px dashed #cfc6bb; border-radius: .6rem; padding: 1rem; }
+.table-frame { overflow-x: auto; background: #fff; border: 1px solid #ded8cf; border-radius: .6rem; }
+.revision-table { width: 100%; border-collapse: collapse; text-align: left; }
+.revision-table th, .revision-table td { padding: .8rem 1rem; border-bottom: 1px solid #eee9e2; white-space: nowrap; }
+.revision-table thead th { color: #746d65; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; background: #faf7f3; }
+.revision-table tbody tr:last-child th, .revision-table tbody tr:last-child td { border-bottom: 0; }
+.revision-table tbody tr:hover { background: #faf7f3; }
+.revision-table tbody th { font-weight: 600; }
+.unsupported { color: #b5aca1; }
 
 @media (max-width: 640px) {
   .header-inner, .page-shell { padding-left: 1rem; padding-right: 1rem; }

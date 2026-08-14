@@ -8,7 +8,10 @@ import (
 func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 	seqDef := ubom.NewSeqDef(ubom.Concat(
 		ubom.Literal("PN-"),
-		ubom.Range(1, 2),
+		ubom.Bind("category", ubom.Choice(
+			ubom.Literal("A"),
+			ubom.Literal("B"),
+		)),
 	)).WithID("sample-pn-v1")
 	if err := s.CreateSeqDef(seqDef); err != nil {
 		return ubom.PartNumber{}, err
@@ -20,13 +23,17 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
 			ID:    "components",
 			Label: "Components",
+			Children: []ubom.TaxonomyNode{
+				{ID: "resistors", Label: "Resistors", Matches: map[string]string{"category": "A"}},
+				{ID: "capacitors", Label: "Capacitors", Matches: map[string]string{"category": "B"}},
+			},
 		}},
 	}
 	if err := s.CreateTaxonomyDef(taxonomyDef); err != nil {
 		return ubom.PartNumber{}, err
 	}
 
-	child, err := ubom.NewPartNumber("PN-2", seqDef, taxonomyDef)
+	child, err := ubom.NewPartNumber("PN-B", seqDef, taxonomyDef)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
@@ -39,7 +46,7 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 		return ubom.PartNumber{}, err
 	}
 
-	parent, err := ubom.NewPartNumber("PN-1", seqDef, taxonomyDef)
+	parent, err := ubom.NewPartNumber("PN-A", seqDef, taxonomyDef)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}

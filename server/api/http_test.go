@@ -29,11 +29,11 @@ func TestPartNumberView(t *testing.T) {
 	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if view.ID != parent.ID || view.Value != "PN-1" {
-		t.Fatalf("view identity = %#v, want ID %q and value %q", view, parent.ID, "PN-1")
+	if view.ID != parent.ID || view.Value != "PN-A" {
+		t.Fatalf("view identity = %#v, want ID %q and value %q", view, parent.ID, "PN-A")
 	}
-	if len(view.TaxonomyPath) != 1 || view.TaxonomyPath[0] != "Components" {
-		t.Fatalf("taxonomy path = %#v, want [Components]", view.TaxonomyPath)
+	if len(view.TaxonomyPath) != 2 || view.TaxonomyPath[0] != "Components" || view.TaxonomyPath[1] != "Resistors" {
+		t.Fatalf("taxonomy path = %#v, want [Components Resistors]", view.TaxonomyPath)
 	}
 	if len(view.Revisions) != 1 || len(view.Revisions[0].BOM) != 1 {
 		t.Fatalf("revisions = %#v, want one revision with one BOM item", view.Revisions)
@@ -72,8 +72,11 @@ func TestTaxonomyNodeView(t *testing.T) {
 	if view.ID != "components" || view.Label != "Components" {
 		t.Fatalf("node identity = %#v, want components/Components", view)
 	}
-	if len(view.PartNumbers) != 2 || view.PartNumbers[0].Value != "PN-1" || view.PartNumbers[1].Value != "PN-2" {
-		t.Fatalf("part numbers = %#v, want PN-1 then PN-2", view.PartNumbers)
+	if len(view.Children) != 2 || view.Children[0].ID != "resistors" || view.Children[1].ID != "capacitors" {
+		t.Fatalf("children = %#v, want resistors then capacitors", view.Children)
+	}
+	if len(view.PartNumbers) != 0 {
+		t.Fatalf("part numbers = %#v, want no parts at taxonomy root", view.PartNumbers)
 	}
 }
 
@@ -111,11 +114,11 @@ func TestRevisionView(t *testing.T) {
 	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if view.PartNumber.Value != "PN-1" || len(view.BOM) != 1 {
-		t.Fatalf("revision view = %#v, want PN-1 with one BOM node", view)
+	if view.PartNumber.Value != "PN-A" || len(view.BOM) != 1 {
+		t.Fatalf("revision view = %#v, want PN-A with one BOM node", view)
 	}
-	if view.BOM[0].PartNumber.Value != "PN-2" || view.BOM[0].RevisionID == "" {
-		t.Fatalf("BOM node = %#v, want PN-2 with revision ID", view.BOM[0])
+	if view.BOM[0].PartNumber.Value != "PN-B" || view.BOM[0].RevisionID == "" {
+		t.Fatalf("BOM node = %#v, want PN-B with revision ID", view.BOM[0])
 	}
 }
 

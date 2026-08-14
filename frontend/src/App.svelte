@@ -68,23 +68,42 @@
     <p class="eyebrow">Parts</p>
     <h1>{taxonomy.label}</h1>
     {#if taxonomy.children.length > 0}
-      <h2>Categories</h2>
-      <div class="cards">
-        {#each taxonomy.children as child}
-          <a class="card" href={taxonomyPath([...taxonomy.path.map(item => item.label), child.label])}>{child.label}<span>→</span></a>
-        {/each}
-      </div>
+      <section aria-labelledby="categories-heading">
+        <h2 id="categories-heading">Categories</h2>
+        <div class="cards">
+          {#each taxonomy.children as child}
+            <a class="card" href={taxonomyPath([...taxonomy.path.map(item => item.label), child.label])}>
+              <span>{child.label}</span>
+              <span class="card-arrow" aria-hidden="true">→</span>
+            </a>
+          {/each}
+        </div>
+      </section>
     {/if}
-    {#if taxonomy.partNumbers.length > 0}
-      <h2>Parts</h2>
-      <ul>{#each taxonomy.partNumbers as item}<li><a href={partPath(item.value)}>{item.value}</a></li>{/each}</ul>
-    {:else}
-      <p class="muted">No parts at this level.</p>
-    {/if}
+    <section aria-labelledby="parts-heading">
+      <h2 id="parts-heading">Parts</h2>
+      {#if taxonomy.partNumbers.length > 0}
+        <div class="part-list">
+          {#each taxonomy.partNumbers as item}
+            <a class="part-row" href={partPath(item.value)}>
+              <span class="part-value">{item.value}</span>
+              <span class="card-arrow" aria-hidden="true">→</span>
+            </a>
+          {/each}
+        </div>
+      {:else}
+        <p class="empty-state">No parts at this level.</p>
+      {/if}
+    </section>
   {:else if part}
     <p class="eyebrow">Part number</p>
     <h1>{part.value}</h1>
-    <p class="muted">{part.taxonomyPath.join(' / ')}</p>
+    <nav class="taxonomy-path" aria-label="Part category">
+      {#each part.taxonomyPath as label, index}
+        {#if index > 0}<span class="breadcrumb-separator" aria-hidden="true">/</span>{/if}
+        <a href={taxonomyPath(part.taxonomyPath.slice(0, index + 1))}>{label}</a>
+      {/each}
+    </nav>
     <h2>Revisions</h2>
     {#if part.revisions.length > 0}
       <ul>{#each part.revisions as item}<li><a href={revisionPath(part.value, item.id)}>Revision {item.id}</a></li>{/each}</ul>

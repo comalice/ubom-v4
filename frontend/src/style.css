@@ -18,6 +18,9 @@ a:hover { text-decoration: underline; }
 .breadcrumbs a { color: #746d65; }
 .breadcrumbs a:hover { color: #27231f; }
 .breadcrumb-separator { color: #b5aca1; }
+.taxonomy-path { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .75rem 0 1.5rem; }
+.taxonomy-path a { color: #746d65; }
+.taxonomy-path a:hover { color: #27231f; }
 h1 { margin-top: .25rem; }
 h2 { margin-top: 2rem; font-size: 1.1rem; }
 ul { line-height: 1.8; }
@@ -27,6 +30,13 @@ ul { line-height: 1.8; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 .card { background: #fff; border: 1px solid #ded8cf; border-radius: .6rem; padding: 1.25rem; display: flex; justify-content: space-between; }
 .card:hover { border-color: #8a5a2b; text-decoration: none; }
+.card-arrow { color: #8a5a2b; }
+.part-list { background: #fff; border: 1px solid #ded8cf; border-radius: .6rem; overflow: hidden; }
+.part-row { display: flex; justify-content: space-between; align-items: center; padding: .85rem 1rem; border-bottom: 1px solid #eee9e2; }
+.part-row:last-child { border-bottom: 0; }
+.part-row:hover { background: #faf7f3; text-decoration: none; }
+.part-value { font-weight: 600; color: #27231f; }
+.empty-state { color: #746d65; background: #fff; border: 1px dashed #cfc6bb; border-radius: .6rem; padding: 1rem; }
 
 @media (max-width: 640px) {
   .header-inner, .page-shell { padding-left: 1rem; padding-right: 1rem; }

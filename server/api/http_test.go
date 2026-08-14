@@ -166,6 +166,9 @@ func TestRevisionView(t *testing.T) {
 	if view.PartNumber.Value != "PN-A" || len(view.BOM) != 1 {
 		t.Fatalf("revision view = %#v, want PN-A with one BOM node", view)
 	}
+	if len(view.TaxonomyPath) != 2 || view.TaxonomyPath[0] != "Components" || view.TaxonomyPath[1] != "Resistors" {
+		t.Fatalf("taxonomy path = %#v, want [Components Resistors]", view.TaxonomyPath)
+	}
 	if view.BOM[0].PartNumber.Value != "PN-B" || view.BOM[0].RevisionID == "" {
 		t.Fatalf("BOM node = %#v, want PN-B with revision ID", view.BOM[0])
 	}

@@ -56,9 +56,10 @@ type PartNumberSummary struct {
 }
 
 type RevisionDetailView struct {
-	ID         ubom.PartRevisionID `json:"id"`
-	PartNumber PartNumberSummary   `json:"partNumber"`
-	BOM        []BOMNodeView       `json:"bom"`
+	ID           ubom.PartRevisionID `json:"id"`
+	PartNumber   PartNumberSummary   `json:"partNumber"`
+	TaxonomyPath []string            `json:"taxonomyPath"`
+	BOM          []BOMNodeView       `json:"bom"`
 }
 
 type BOMNodeView struct {
@@ -175,13 +176,18 @@ func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.
 	if err != nil {
 		return RevisionDetailView{}, err
 	}
+	taxonomyPath, err := s.partTaxonomyPath(part)
+	if err != nil {
+		return RevisionDetailView{}, err
+	}
 	view := RevisionDetailView{
 		ID: revision.ID,
 		PartNumber: PartNumberSummary{
 			ID:    part.ID,
 			Value: part.Value,
 		},
-		BOM: make([]BOMNodeView, 0, len(revision.BOM)),
+		TaxonomyPath: taxonomyPath,
+		BOM:          make([]BOMNodeView, 0, len(revision.BOM)),
 	}
 	for _, item := range revision.BOM {
 		childRevision, err := s.store.GetPartRevision(item.PartRevisionID)
@@ -202,6 +208,22 @@ func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.
 		})
 	}
 	return view, nil
+}
+
+func (s *Service) partTaxonomyPath(part ubom.PartNumber) ([]string, error) {
+	seqDef, err := s.store.GetSeqDef(part.SeqDefID)
+	if err != nil {
+		return nil, err
+	}
+	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := seqDef.ParseValues(part.Value)
+	if err != nil {
+		return nil, err
+	}
+	return taxonomyDef.Taxonomy.Project(parsed), nil
 }
 
 func findTaxonomyPath(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) ([]TaxonomyPathItem, bool) {

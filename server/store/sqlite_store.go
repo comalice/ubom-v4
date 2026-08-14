@@ -73,6 +73,12 @@ func (s *SQLiteStore) init() error {
 			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id),
 			FOREIGN KEY (taxonomy_def_id, taxonomy_node_id)
 				REFERENCES taxonomy_nodes(taxonomy_def_id, id)
+		);
+		CREATE TABLE IF NOT EXISTS part_revisions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			part_number_id INTEGER NOT NULL,
+			FOREIGN KEY (part_number_id) REFERENCES part_numbers(id)
+		);
 		);`)
 	return err
 }
@@ -234,6 +240,117 @@ func (s *SQLiteStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	var id int64
 	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id
 		FROM part_numbers WHERE value = ?`, value).Scan(
+		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ubom.PartNumber{}, ErrNotFound
+		}
+		return ubom.PartNumber{}, err
+	}
+	part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
+	rows, err := s.db.Query("SELECT id FROM part_revisions WHERE part_number_id = ? ORDER BY id", id)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var revisionID int64
+		if err := rows.Scan(&revisionID); err != nil {
+			return ubom.PartNumber{}, err
+		}
+		part.PartRevisionID = append(part.PartRevisionID, ubom.PartRevisionID(strconv.FormatInt(revisionID, 10)))
+	}
+	if err := rows.Err(); err != nil {
+		return ubom.PartNumber{}, err
+	}
+	return part, nil
+}
+
+func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	partNumberID, err := strconv.ParseInt(string(revision.PartNumberID), 10, 64)
+	if err != nil {
+		return ubom.PartRevision{}, ErrNotFound
+	}
+	if _, err := s.getPartNumberByID(partNumberID); err != nil {
+		return ubom.PartRevision{}, err
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return ubom.PartRevision{}, err
+	}
+	result, err := tx.Exec("INSERT INTO part_revisions (part_number_id) VALUES (?)", partNumberID)
+	if err != nil {
+		tx.Rollback()
+		return ubom.PartRevision{}, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return ubom.PartRevision{}, err
+	}
+	for position, item := range revision.BOM {
+		childPartID, partErr := strconv.ParseInt(string(item.PartNumberID), 10, 64)
+		childRevisionID, revisionErr := strconv.ParseInt(string(item.PartRevisionID), 10, 64)
+		if partErr != nil || revisionErr != nil {
+			tx.Rollback()
+			return ubom.PartRevision{}, ErrNotFound
+		}
+		if _, err := tx.Exec(`INSERT INTO bom_line_items
+			(parent_revision_id, position, child_part_number_id, child_revision_id)
+			VALUES (?, ?, ?, ?)`, id, position, childPartID, childRevisionID); err != nil {
+			tx.Rollback()
+			return ubom.PartRevision{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return ubom.PartRevision{}, err
+	}
+	revision.ID = ubom.PartRevisionID(strconv.FormatInt(id, 10))
+	return revision, nil
+}
+
+func (s *SQLiteStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision, error) {
+	revisionID, err := strconv.ParseInt(string(id), 10, 64)
+	if err != nil {
+		return ubom.PartRevision{}, ErrNotFound
+	}
+	var partNumberID int64
+	if err := s.db.QueryRow("SELECT part_number_id FROM part_revisions WHERE id = ?", revisionID).Scan(&partNumberID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ubom.PartRevision{}, ErrNotFound
+		}
+		return ubom.PartRevision{}, err
+	}
+	revision := ubom.PartRevision{
+		ID:           id,
+		PartNumberID: ubom.PartNumberID(strconv.FormatInt(partNumberID, 10)),
+	}
+	rows, err := s.db.Query(`SELECT child_part_number_id, child_revision_id
+		FROM bom_line_items WHERE parent_revision_id = ? ORDER BY position`, revisionID)
+	if err != nil {
+		return ubom.PartRevision{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var childPartID, childRevisionID int64
+		if err := rows.Scan(&childPartID, &childRevisionID); err != nil {
+			return ubom.PartRevision{}, err
+		}
+		revision.BOM = append(revision.BOM, ubom.LineItem{
+			PartNumberID:   ubom.PartNumberID(strconv.FormatInt(childPartID, 10)),
+			PartRevisionID: ubom.PartRevisionID(strconv.FormatInt(childRevisionID, 10)),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return ubom.PartRevision{}, err
+	}
+	return revision, nil
+}
+
+func (s *SQLiteStore) getPartNumberByID(id int64) (ubom.PartNumber, error) {
+	var part ubom.PartNumber
+	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id
+		FROM part_numbers WHERE id = ?`, id).Scan(
 		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartNumber{}, ErrNotFound

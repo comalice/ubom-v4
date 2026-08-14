@@ -17,9 +17,10 @@ type LineItem struct {
 }
 
 type PartRevision struct {
-	ID   PartRevisionID
-	BOM  []LineItem
-	Part Part
+	ID           PartRevisionID
+	PartNumberID PartNumberID // Link to owning part number.
+	BOM          []LineItem
+	Part         Part
 }
 
 // PartNumber, a unique value, taxonomy, and schema used to identify a given part. May be a
@@ -27,8 +28,8 @@ type PartRevision struct {
 // for every level of the related taxonomy definition.
 type PartNumber struct {
 	ID             PartNumberID     // unique part number ID
-	Value          string           // SeqDef parseable canonical part number
-	PartRevision   []PartRevisionID // Part revision.
+	Value          string           // SeqDef parseable canonical part number, globally unique.
+	PartRevisionID []PartRevisionID // Part revisions.
 	SeqDefID       SeqDefID         // SeqDef version used to generate this part number.
 	TaxonomyDefID  TaxonomyDefID    // Taxonomy applied to this part number.
 	TaxonomyNodeID TaxonomyNodeID   // Taxonomy node containing this part number.

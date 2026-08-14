@@ -75,4 +75,23 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(gotPart, part) {
 		t.Fatalf("GetPartNumber() = %#v, want %#v", gotPart, part)
 	}
+
+	revision, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: part.ID})
+	if err != nil {
+		t.Fatalf("CreatePartRevision() error = %v", err)
+	}
+	gotRevision, err := store.GetPartRevision(revision.ID)
+	if err != nil {
+		t.Fatalf("GetPartRevision() error = %v", err)
+	}
+	if !reflect.DeepEqual(gotRevision, revision) {
+		t.Fatalf("GetPartRevision() = %#v, want %#v", gotRevision, revision)
+	}
+	gotPart, err = store.GetPartNumber(part.Value)
+	if err != nil {
+		t.Fatalf("GetPartNumber() after revision error = %v", err)
+	}
+	if !reflect.DeepEqual(gotPart.PartRevisionID, []ubom.PartRevisionID{revision.ID}) {
+		t.Fatalf("PartRevisionID = %#v, want %#v", gotPart.PartRevisionID, []ubom.PartRevisionID{revision.ID})
+	}
 }

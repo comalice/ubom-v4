@@ -13,10 +13,12 @@ var (
 )
 
 type MemoryStore struct {
-	seqDefs      map[ubom.SeqDefID]ubom.SeqDef
-	taxonomyDefs map[ubom.TaxonomyDefID]ubom.TaxonomyDef
-	partNumbers  map[string]ubom.PartNumber
-	nextPartID   int64
+	seqDefs        map[ubom.SeqDefID]ubom.SeqDef
+	taxonomyDefs   map[ubom.TaxonomyDefID]ubom.TaxonomyDef
+	partNumbers    map[string]ubom.PartNumber
+	partRevisions  map[ubom.PartRevisionID]ubom.PartRevision
+	nextPartID     int64
+	nextRevisionID int64
 }
 
 // compile time interface check
@@ -24,10 +26,12 @@ var _ Store = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		seqDefs:      map[ubom.SeqDefID]ubom.SeqDef{},
-		taxonomyDefs: map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
-		partNumbers:  map[string]ubom.PartNumber{},
-		nextPartID:   1,
+		seqDefs:        map[ubom.SeqDefID]ubom.SeqDef{},
+		taxonomyDefs:   map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
+		partNumbers:    map[string]ubom.PartNumber{},
+		partRevisions:  map[ubom.PartRevisionID]ubom.PartRevision{},
+		nextPartID:     1,
+		nextRevisionID: 1,
 	}
 }
 
@@ -79,4 +83,35 @@ func (s *MemoryStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 		return ubom.PartNumber{}, ErrNotFound
 	}
 	return part, nil
+}
+
+func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	part, ok := s.partNumbersByID(revision.PartNumberID)
+	if !ok {
+		return ubom.PartRevision{}, ErrNotFound
+	}
+
+	revision.ID = ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))
+	s.nextRevisionID++
+	s.partRevisions[revision.ID] = revision
+	part.PartRevisionID = append(part.PartRevisionID, revision.ID)
+	s.partNumbers[part.Value] = part
+	return revision, nil
+}
+
+func (s *MemoryStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision, error) {
+	revision, ok := s.partRevisions[id]
+	if !ok {
+		return ubom.PartRevision{}, ErrNotFound
+	}
+	return revision, nil
+}
+
+func (s *MemoryStore) partNumbersByID(id ubom.PartNumberID) (ubom.PartNumber, bool) {
+	for _, part := range s.partNumbers {
+		if part.ID == id {
+			return part, true
+		}
+	}
+	return ubom.PartNumber{}, false
 }

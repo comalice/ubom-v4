@@ -64,6 +64,19 @@ ul { line-height: 1.8; }
 .revision-table tbody tr:hover { background: var(--accent-light); }
 .revision-table tbody th { font-family: ui-monospace, SFMono-Regular, monospace; font-size: .85rem; font-weight: 500; }
 .unsupported { color: var(--muted); }
+.bom-table-frame { margin-top: 1rem; }
+.bom-table { width: 100%; border-collapse: collapse; text-align: left; }
+.bom-table th, .bom-table td { padding: .65rem 1rem; border-bottom: 1px solid var(--hairline-light); white-space: nowrap; }
+.bom-table thead th { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; border-bottom-color: var(--hairline); }
+.bom-table tbody th { color: var(--ink); font-family: inherit; font-size: inherit; font-weight: 400; text-transform: none; letter-spacing: normal; text-align: left; }
+.bom-table tbody td { color: var(--ink); font-size: .85rem; }
+.bom-row:hover { background: var(--accent-light); }
+.bom-identity { display: flex; align-items: center; gap: .35rem; min-height: 1.75rem; }
+.bom-toggle { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 1.1rem; height: 1.1rem; padding: 0; color: var(--muted); background: transparent; border: 0; border-radius: .2rem; font-size: 1rem; line-height: 1; cursor: pointer; }
+.bom-toggle.has-children:hover, .bom-toggle.has-children:focus-visible { color: var(--accent); background: var(--ground); outline: none; }
+.bom-toggle:disabled { cursor: default; }
+.bom-unsupported { color: var(--muted) !important; }
+.bom-number { text-align: right; }
 
 @media (max-width: 640px) {
   .header-inner, .page-shell { padding-left: 1rem; padding-right: 1rem; }

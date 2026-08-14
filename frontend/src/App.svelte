@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import BomNode from './BomNode.svelte'
+  import BomTable from './BomTable.svelte'
   import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
   import IdentityLink from './IdentityLink.svelte'
   import PartIdentity from './PartIdentity.svelte'
@@ -129,7 +129,7 @@
     <p class="eyebrow">Revision {revision.id}</p>
     <PartIdentity partNumber={revision.partNumber.value} revision={String(revision.id)} taxonomy={revision.taxonomyPath} />
     <h2>Bill of Materials</h2>
-    {#if revision.bom.length > 0}<ul>{#each revision.bom as node (node.revisionId)}<BomNode node={node} />{/each}</ul>
+    {#if revision.bom.length > 0}<BomTable nodes={revision.bom} />
     {:else}<p class="muted">No BOM entries.</p>{/if}
   {/if}
 </Shell>

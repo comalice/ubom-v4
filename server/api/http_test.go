@@ -19,7 +19,7 @@ func TestPartNumberView(t *testing.T) {
 
 	server := NewServer(app.NewService(persistence))
 	recording := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/api/part-numbers/"+string(parent.ID), nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/parts/"+string(parent.ID), nil)
 	server.Handler().ServeHTTP(recording, request)
 
 	if recording.Code != http.StatusOK {
@@ -43,7 +43,7 @@ func TestPartNumberView(t *testing.T) {
 func TestPartNumberViewNotFound(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/api/part-numbers/missing", nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/parts/missing", nil)
 	server.Handler().ServeHTTP(recording, request)
 
 	if recording.Code != http.StatusNotFound {
@@ -59,7 +59,7 @@ func TestTaxonomyNodeView(t *testing.T) {
 
 	server := NewServer(app.NewService(persistence))
 	recording := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/api/taxonomy-definitions/sample-taxonomy-v1/nodes/components", nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/taxonomies/sample-taxonomy-v1/nodes/components", nil)
 	server.Handler().ServeHTTP(recording, request)
 
 	if recording.Code != http.StatusOK {
@@ -83,7 +83,7 @@ func TestTaxonomyNodeView(t *testing.T) {
 func TestTaxonomyNodeViewNotFound(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/api/taxonomy-definitions/missing/nodes/missing", nil)
+	request := httptest.NewRequest(http.MethodGet, "/api/taxonomies/missing/nodes/missing", nil)
 	server.Handler().ServeHTTP(recording, request)
 
 	if recording.Code != http.StatusNotFound {

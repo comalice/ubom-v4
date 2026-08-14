@@ -21,8 +21,8 @@ func NewServer(service *app.Service) *Server {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/part-numbers/", s.handlePartNumber)
-	mux.HandleFunc("/api/taxonomy-definitions/", s.handleTaxonomyNode)
+	mux.HandleFunc("/api/parts/", s.handlePartNumber)
+	mux.HandleFunc("/api/taxonomies/", s.handleTaxonomyNode)
 	mux.HandleFunc("/api/revisions/", s.handleRevision)
 	return mux
 }
@@ -32,7 +32,7 @@ func (s *Server) handlePartNumber(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/api/part-numbers/")
+	id := strings.TrimPrefix(r.URL.Path, "/api/parts/")
 	if id == "" || strings.Contains(id, "/") {
 		writeError(w, http.StatusBadRequest, "invalid part number ID")
 		return
@@ -57,7 +57,7 @@ func (s *Server) handleTaxonomyNode(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	path := strings.TrimPrefix(r.URL.Path, "/api/taxonomy-definitions/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/taxonomies/")
 	parts := strings.Split(path, "/")
 	if len(parts) != 3 || parts[0] == "" || parts[1] != "nodes" || parts[2] == "" {
 		writeError(w, http.StatusBadRequest, "invalid taxonomy node path")

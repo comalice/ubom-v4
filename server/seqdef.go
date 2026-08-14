@@ -14,6 +14,65 @@ type SeqDef struct {
 
 func NewSeqDef(root SeqDefNode) SeqDef { return SeqDef{root: root} }
 
+// Validate checks SeqDefNodes for well formed definitions.
+func (d SeqDef) Validate() error {
+	if d.ID == "" {
+		return fmt.Errorf("sequence definition has no ID")
+	}
+	if err := validateSeqDefNode(d.root); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateSeqDefNode(node SeqDefNode) error {
+	if node == nil {
+		return fmt.Errorf("sequence definition has no root")
+	}
+
+	validateChildren := func(children []SeqDefNode) error {
+		for _, child := range children {
+			if err := validateSeqDefNode(child); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	switch n := node.(type) {
+	case LiteralNode:
+		// TODO check to see if the literal node contains nothing? Do we care about spaces?
+		return nil
+	case ConcatNode:
+		return validateChildren(n.Children)
+	case ChoiceNode:
+		return validateChildren(n.Children)
+	case BranchNode:
+		return validateChildren(n.Children)
+	case RangeRadixNode:
+		return validateChildren(n.Children)
+	case BindNode:
+		if n.Name == "" {
+			return fmt.Errorf("bind node has no name")
+		}
+		return validateSeqDefNode(n.Child)
+	case PlaceSequenceNode:
+		for _, alphabet := range n.Alphabets {
+			if alphabet == "" {
+				return fmt.Errorf("place has an empty alphabet")
+			}
+		}
+		return nil
+	case RangeNode:
+		if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
+			return fmt.Errorf("invalid range definition")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown sequence node type %T", node)
+	}
+}
+
 func (d SeqDef) Root() SeqDefNode { return d.root }
 
 func (d SeqDef) WithID(id SeqDefID) SeqDef {

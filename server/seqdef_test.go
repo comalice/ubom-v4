@@ -109,6 +109,56 @@ func TestSeqDefRejectsMissingRoot(t *testing.T) {
 	}
 }
 
+func TestSeqDefValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		def  SeqDef
+		want bool
+	}{
+		{
+			name: "valid",
+			def:  NewSeqDef(Bind("number", Range(0, 9))).WithID("pn-v1"),
+			want: true,
+		},
+		{
+			name: "missing ID",
+			def:  NewSeqDef(Literal("PN-1")),
+		},
+		{
+			name: "missing root",
+			def:  SeqDef{ID: "pn-v1"},
+		},
+		{
+			name: "bind missing name",
+			def:  NewSeqDef(Bind("", Literal("PN-1"))).WithID("pn-v1"),
+		},
+		{
+			name: "bind missing child",
+			def:  NewSeqDef(Bind("value", nil)).WithID("pn-v1"),
+		},
+		{
+			name: "place empty alphabet",
+			def:  NewSeqDef(PlaceSequence("ABC", "")).WithID("pn-v1"),
+		},
+		{
+			name: "invalid range",
+			def:  NewSeqDef(RangeNode{Min: 10, Max: 1, WidthValue: 1}).WithID("pn-v1"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.def.Validate()
+			if test.want && err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+			if !test.want && err == nil {
+				t.Fatal("Validate() accepted invalid definition")
+			}
+		})
+	}
+}
+
 func TestSeqDefRange(t *testing.T) {
 	definition := NewSeqDef(Concat(
 		Literal("PN-"),

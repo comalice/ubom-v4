@@ -36,6 +36,9 @@ func NewMemoryStore() *MemoryStore {
 }
 
 func (s *MemoryStore) CreateSeqDef(def ubom.SeqDef) error {
+	if err := def.Validate(); err != nil {
+		return err
+	}
 	if _, ok := s.seqDefs[def.ID]; ok {
 		return ErrAlreadyExists
 	}

@@ -93,6 +93,9 @@ func (s *SQLiteStore) init() error {
 }
 
 func (s *SQLiteStore) CreateSeqDef(def ubom.SeqDef) error {
+	if err := def.Validate(); err != nil {
+		return err
+	}
 	if _, err := s.GetSeqDef(def.ID); !errors.Is(err, ErrNotFound) {
 		return err
 	}

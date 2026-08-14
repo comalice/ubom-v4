@@ -79,6 +79,15 @@ func (s *SQLiteStore) init() error {
 			part_number_id INTEGER NOT NULL,
 			FOREIGN KEY (part_number_id) REFERENCES part_numbers(id)
 		);
+		CREATE TABLE IF NOT EXISTS bom_line_items (
+			parent_revision_id INTEGER NOT NULL,
+			position INTEGER NOT NULL,
+			child_part_number_id INTEGER NOT NULL,
+			child_revision_id INTEGER NOT NULL,
+			PRIMARY KEY (parent_revision_id, position),
+			FOREIGN KEY (parent_revision_id) REFERENCES part_revisions(id),
+			FOREIGN KEY (child_part_number_id) REFERENCES part_numbers(id),
+			FOREIGN KEY (child_revision_id) REFERENCES part_revisions(id)
 		);`)
 	return err
 }

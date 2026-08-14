@@ -60,6 +60,24 @@ func TestMemoryStoreRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(got.PartRevisionID, []ubom.PartRevisionID{revision.ID}) {
 		t.Fatalf("PartRevisionID = %#v, want %#v", got.PartRevisionID, []ubom.PartRevisionID{revision.ID})
 	}
+
+	parent, err := store.CreatePartRevision(ubom.PartRevision{
+		PartNumberID: part.ID,
+		BOM: []ubom.LineItem{{
+			PartNumberID:   part.ID,
+			PartRevisionID: revision.ID,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("CreatePartRevision() with BOM error = %v", err)
+	}
+	gotParent, err := store.GetPartRevision(parent.ID)
+	if err != nil {
+		t.Fatalf("GetPartRevision() with BOM error = %v", err)
+	}
+	if !reflect.DeepEqual(gotParent, parent) {
+		t.Fatalf("GetPartRevision() with BOM = %#v, want %#v", gotParent, parent)
+	}
 }
 
 func TestMemoryStoreRejectsDuplicatePartNumber(t *testing.T) {

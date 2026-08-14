@@ -12,6 +12,7 @@ type Store interface {
 	CreatePartNumber(ubom.PartNumber) (ubom.PartNumber, error)
 	GetPartNumber(string) (ubom.PartNumber, error)
 	GetPartNumberByID(ubom.PartNumberID) (ubom.PartNumber, error)
+	ListPartNumbersByTaxonomyNode(ubom.TaxonomyDefID, ubom.TaxonomyNodeID) ([]ubom.PartNumber, error)
 
 	CreatePartRevision(ubom.PartRevision) (ubom.PartRevision, error)
 	GetPartRevision(ubom.PartRevisionID) (ubom.PartRevision, error)

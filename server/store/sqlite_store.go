@@ -318,6 +318,38 @@ func (s *SQLiteStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 	return part, nil
 }
 
+func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
+	taxonomy, err := s.GetTaxonomyDef(taxonomyID)
+	if err != nil {
+		return nil, err
+	}
+	if !taxonomyNodeExists(taxonomy.Taxonomy.Root, nodeID) {
+		return nil, ErrNotFound
+	}
+	rows, err := s.db.Query(`SELECT value FROM part_numbers
+		WHERE taxonomy_def_id = ? AND taxonomy_node_id = ? ORDER BY value`, taxonomyID, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	parts := []ubom.PartNumber{}
+	for rows.Next() {
+		var value string
+		if err := rows.Scan(&value); err != nil {
+			return nil, err
+		}
+		part, err := s.GetPartNumber(value)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, part)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return parts, nil
+}
+
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
 	if err := revision.Validate(); err != nil {
 		return ubom.PartRevision{}, err

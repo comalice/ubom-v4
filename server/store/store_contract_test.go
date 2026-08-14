@@ -193,6 +193,22 @@ func runStoreContract(t *testing.T, store Store) {
 	if err != nil {
 		t.Fatalf("CreatePartRevision(other) error = %v", err)
 	}
+
+	// List taxonomy nodes.
+	parts, err := store.ListPartNumbersByTaxonomyNode(taxonomyDef.ID, "root")
+	if err != nil {
+		t.Fatalf("ListPartNumbersByTaxonomyNode() error = %v", err)
+	}
+	if len(parts) != 2 || parts[0].Value != "PN-1" || parts[1].Value != "PN-2" {
+		t.Fatalf("ListPartNumbersByTaxonomyNode() = %#v, want PN-1 then PN-2", parts)
+	}
+	if _, err := store.ListPartNumbersByTaxonomyNode("missing-taxonomy", "root"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing taxonomy list error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.ListPartNumbersByTaxonomyNode(taxonomyDef.ID, "missing-node"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing taxonomy node list error = %v, want ErrNotFound", err)
+	}
+
 	if _, err := store.CreatePartRevision(ubom.PartRevision{
 		PartNumberID: part.ID,
 		BOM: []ubom.LineItem{{

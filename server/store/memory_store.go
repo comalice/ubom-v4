@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"sort"
 	"strconv"
 
 	ubom "ubom-v4"
@@ -106,6 +107,24 @@ func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 		return ubom.PartNumber{}, ErrNotFound
 	}
 	return part, nil
+}
+
+func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
+	taxonomy, err := s.GetTaxonomyDef(taxonomyID)
+	if err != nil {
+		return nil, err
+	}
+	if !taxonomyNodeExists(taxonomy.Taxonomy.Root, nodeID) {
+		return nil, ErrNotFound
+	}
+	parts := []ubom.PartNumber{}
+	for _, part := range s.partNumbers {
+		if part.TaxonomyDefID == taxonomyID && part.TaxonomyNodeID == nodeID {
+			parts = append(parts, part)
+		}
+	}
+	sort.Slice(parts, func(i, j int) bool { return parts[i].Value < parts[j].Value })
+	return parts, nil
 }
 
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {

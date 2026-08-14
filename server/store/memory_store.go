@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	ubom "ubom-v4"
@@ -85,6 +86,10 @@ func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	}
 	if _, err := s.GetTaxonomyDef(part.TaxonomyDefID); err != nil {
 		return ubom.PartNumber{}, err
+	}
+	taxonomy, _ := s.GetTaxonomyDef(part.TaxonomyDefID)
+	if taxonomy.SeqDef != part.SeqDefID {
+		return ubom.PartNumber{}, fmt.Errorf("taxonomy definition does not belong to sequence definition")
 	}
 	if _, ok := s.partNumbers[part.Value]; ok {
 		return ubom.PartNumber{}, ErrAlreadyExists

@@ -69,6 +69,20 @@ func runStoreContract(t *testing.T, store Store) {
 	if err := store.CreateTaxonomyDef(taxonomyDef); err != nil {
 		t.Fatalf("CreateTaxonomyDef() error = %v", err)
 	}
+	otherSeqDef := ubom.NewSeqDef(ubom.Literal("OTHER-1")).WithID("other-pn-v1")
+	if err := store.CreateSeqDef(otherSeqDef); err != nil {
+		t.Fatalf("CreateSeqDef(other) error = %v", err)
+	}
+	otherTaxonomyDef := ubom.TaxonomyDef{
+		ID:     "other-taxonomy-v1",
+		SeqDef: otherSeqDef.ID,
+		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+			ID: "other-root",
+		}},
+	}
+	if err := store.CreateTaxonomyDef(otherTaxonomyDef); err != nil {
+		t.Fatalf("CreateTaxonomyDef(other) error = %v", err)
+	}
 	if err := store.CreateTaxonomyDef(ubom.TaxonomyDef{
 		ID:     "missing-seq-taxonomy",
 		SeqDef: "missing-seq-def",
@@ -105,6 +119,14 @@ func runStoreContract(t *testing.T, store Store) {
 		TaxonomyNodeID: "root",
 	}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("CreatePartNumber() with missing taxonomy definition error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.CreatePartNumber(ubom.PartNumber{
+		Value:          "PN-MISMATCHED-TAXONOMY",
+		SeqDefID:       seqDef.ID,
+		TaxonomyDefID:  otherTaxonomyDef.ID,
+		TaxonomyNodeID: "other-root",
+	}); err == nil {
+		t.Fatal("CreatePartNumber() accepted taxonomy from another sequence definition")
 	}
 	if createdPart.ID == "" {
 		t.Fatal("CreatePartNumber() returned an empty ID")

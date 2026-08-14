@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 
 	_ "modernc.org/sqlite"
@@ -244,6 +245,10 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	}
 	if _, err := s.GetTaxonomyDef(part.TaxonomyDefID); err != nil {
 		return ubom.PartNumber{}, err
+	}
+	taxonomy, _ := s.GetTaxonomyDef(part.TaxonomyDefID)
+	if taxonomy.SeqDef != part.SeqDefID {
+		return ubom.PartNumber{}, fmt.Errorf("taxonomy definition does not belong to sequence definition")
 	}
 	if _, err := s.GetPartNumber(part.Value); err == nil {
 		return ubom.PartNumber{}, ErrAlreadyExists

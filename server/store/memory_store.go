@@ -85,6 +85,14 @@ func (s *MemoryStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	return part, nil
 }
 
+func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, error) {
+	part, ok := s.partNumbersByID(id)
+	if !ok {
+		return ubom.PartNumber{}, ErrNotFound
+	}
+	return part, nil
+}
+
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
 	part, ok := s.partNumbersByID(revision.PartNumberID)
 	if !ok {

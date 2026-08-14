@@ -274,6 +274,33 @@ func (s *SQLiteStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	return part, nil
 }
 
+func (s *SQLiteStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, error) {
+	partID, err := strconv.ParseInt(string(id), 10, 64)
+	if err != nil {
+		return ubom.PartNumber{}, ErrNotFound
+	}
+	part, err := s.getPartNumberByID(partID)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	rows, err := s.db.Query("SELECT id FROM part_revisions WHERE part_number_id = ? ORDER BY id", partID)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var revisionID int64
+		if err := rows.Scan(&revisionID); err != nil {
+			return ubom.PartNumber{}, err
+		}
+		part.PartRevisionID = append(part.PartRevisionID, ubom.PartRevisionID(strconv.FormatInt(revisionID, 10)))
+	}
+	if err := rows.Err(); err != nil {
+		return ubom.PartNumber{}, err
+	}
+	return part, nil
+}
+
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
 	partNumberID, err := strconv.ParseInt(string(revision.PartNumberID), 10, 64)
 	if err != nil {

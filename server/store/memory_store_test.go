@@ -41,6 +41,16 @@ func TestMemoryStoreRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(got, part) {
 		t.Fatalf("GetPartNumber() = %#v, want %#v", got, part)
 	}
+	got, err = store.GetPartNumberByID(part.ID)
+	if err != nil {
+		t.Fatalf("GetPartNumberByID() error = %v", err)
+	}
+	if !reflect.DeepEqual(got, part) {
+		t.Fatalf("GetPartNumberByID() = %#v, want %#v", got, part)
+	}
+	if _, err := store.GetPartNumberByID("missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetPartNumberByID(missing) error = %v, want ErrNotFound", err)
+	}
 
 	revision, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: part.ID})
 	if err != nil {

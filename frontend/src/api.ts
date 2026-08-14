@@ -1,3 +1,5 @@
+import { taxonomySlug } from './routes'
+
 export type TaxonomyChild = { id: string; label: string }
 export type TaxonomyPathItem = { id: string; label: string }
 export type PartSummary = { id: string; value: string }
@@ -38,6 +40,17 @@ async function get<T>(path: string): Promise<T> {
 export const getTaxonomyNode = (taxonomyID: string, nodeID: string) =>
   get<TaxonomyNodeView>(`/api/taxonomies/${encodeURIComponent(taxonomyID)}/nodes/${encodeURIComponent(nodeID)}`)
 
-export const getPart = (id: string) => get<PartNumberView>(`/api/parts/${encodeURIComponent(id)}`)
+export async function getTaxonomyNodeByPath(segments: string[]): Promise<TaxonomyNodeView> {
+  const taxonomyID = 'sample-taxonomy-v1'
+  let node = await getTaxonomyNode(taxonomyID, segments[0])
+  for (const segment of segments.slice(1)) {
+    const child = node.children.find(item => taxonomySlug(item.label) === segment)
+    if (!child) throw new Error('404 Not Found')
+    node = await getTaxonomyNode(taxonomyID, child.id)
+  }
+  return node
+}
+
+export const getPart = (value: string) => get<PartNumberView>(`/api/parts/by-value/${encodeURIComponent(value)}`)
 
 export const getRevision = (id: string) => get<RevisionView>(`/api/revisions/${encodeURIComponent(id)}`)

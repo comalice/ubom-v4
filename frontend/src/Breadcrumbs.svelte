@@ -10,7 +10,7 @@
 </script>
 
 <nav class="breadcrumbs" aria-label="Breadcrumb">
-  <a href="/taxonomies/sample-taxonomy-v1/nodes/components">Home</a>
+  <a href="/parts/components">Home</a>
   {#each items as item, index}
     <span class="breadcrumb-separator" aria-hidden="true">/</span>
     {#if item.href && index < items.length - 1}

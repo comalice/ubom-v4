@@ -227,7 +227,9 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 }
 
 func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
-	if _, err := s.GetPartNumber(part.Value); !errors.Is(err, ErrNotFound) {
+	if _, err := s.GetPartNumber(part.Value); err == nil {
+		return ubom.PartNumber{}, ErrAlreadyExists
+	} else if !errors.Is(err, ErrNotFound) {
 		return ubom.PartNumber{}, err
 	}
 	result, err := s.db.Exec(`INSERT INTO part_numbers

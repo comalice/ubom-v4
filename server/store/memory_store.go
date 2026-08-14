@@ -74,6 +74,9 @@ func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 }
 
 func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
+	if err := part.Validate(); err != nil {
+		return ubom.PartNumber{}, err
+	}
 	if _, ok := s.partNumbers[part.Value]; ok {
 		return ubom.PartNumber{}, ErrAlreadyExists
 	}

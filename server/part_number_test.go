@@ -131,3 +131,45 @@ func TestNewPartNumberRejectsInvalidDefinitionLinks(t *testing.T) {
 		})
 	}
 }
+
+func TestPartNumberValidate(t *testing.T) {
+	valid := PartNumber{
+		Value:          "PN-1",
+		SeqDefID:       "pn-v1",
+		TaxonomyDefID:  "taxonomy-v1",
+		TaxonomyNodeID: "root",
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		part PartNumber
+		want bool
+	}{
+		{name: "missing ID", part: PartNumber{
+			SeqDefID: "v1", TaxonomyDefID: "v1", TaxonomyNodeID: "root",
+		}},
+		{name: "missing value", part: PartNumber{
+			ID: "1", SeqDefID: "pn-v1", TaxonomyDefID: "taxonomy-v1", TaxonomyNodeID: "root",
+		}, want: true},
+		{name: "missing sequence definition ID", part: PartNumber{
+			ID: "1", Value: "PN-1", TaxonomyDefID: "taxonomy-v1", TaxonomyNodeID: "root",
+		}, want: true},
+		{name: "missing taxonomy definition ID", part: PartNumber{
+			ID: "1", Value: "PN-1", SeqDefID: "pn-v1", TaxonomyNodeID: "root",
+		}, want: true},
+		{name: "missing taxonomy node ID", part: PartNumber{
+			ID: "1", Value: "PN-1", SeqDefID: "pn-v1", TaxonomyDefID: "taxonomy-v1",
+		}, want: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.part.Validate(); err == nil {
+				t.Fatal("Validate() accepted invalid part number")
+			}
+		})
+	}
+}

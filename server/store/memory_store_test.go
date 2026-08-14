@@ -98,7 +98,12 @@ func TestMemoryStoreRoundTrip(t *testing.T) {
 
 func TestMemoryStoreRejectsDuplicatePartNumber(t *testing.T) {
 	store := NewMemoryStore()
-	part := ubom.PartNumber{Value: "PN-1"}
+	part := ubom.PartNumber{
+		Value:          "PN-1",
+		SeqDefID:       "pn-v1",
+		TaxonomyDefID:  "taxonomy-v1",
+		TaxonomyNodeID: "root",
+	}
 
 	if _, err := store.CreatePartNumber(part); err != nil {
 		t.Fatalf("first CreatePartNumber() error = %v", err)

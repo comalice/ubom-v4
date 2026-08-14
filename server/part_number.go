@@ -27,7 +27,7 @@ type PartRevision struct {
 // partial construction or fully qualified -- where a fully qualified part number possesses values
 // for every level of the related taxonomy definition.
 type PartNumber struct {
-	ID             PartNumberID     // unique part number ID
+	ID             PartNumberID     // unique part number ID, created by durable store
 	Value          string           // SeqDef parseable canonical part number, globally unique.
 	PartRevisionID []PartRevisionID // Part revisions.
 	SeqDefID       SeqDefID         // SeqDef version used to generate this part number.
@@ -35,6 +35,24 @@ type PartNumber struct {
 	TaxonomyNodeID TaxonomyNodeID   // Taxonomy node containing this part number.
 	// TODO, post MVP, sort out attributes and their types.
 	// AttributeSchemas []AttributeSchemaID // Attribute schema attached to this part number.
+}
+
+// Validate checks the fields required to persist a part number.
+func (p PartNumber) Validate() error {
+	// No ID validation occurs here, durable stores populate this value.
+	if p.Value == "" {
+		return fmt.Errorf("part number has no value")
+	}
+	if p.SeqDefID == "" {
+		return fmt.Errorf("part number has no sequence definition ID")
+	}
+	if p.TaxonomyDefID == "" {
+		return fmt.Errorf("part number has no taxonomy definition ID")
+	}
+	if p.TaxonomyNodeID == "" {
+		return fmt.Errorf("part number has no taxonomy node ID")
+	}
+	return nil
 }
 
 // NewPartNumber validates value against seqDef and permanently links the

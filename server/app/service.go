@@ -35,8 +35,14 @@ type LineItemView struct {
 type TaxonomyNodeView struct {
 	ID          ubom.TaxonomyNodeID `json:"id"`
 	Label       string              `json:"label"`
+	Path        []TaxonomyPathItem  `json:"path"`
 	Children    []TaxonomyChildView `json:"children"`
 	PartNumbers []PartNumberSummary `json:"partNumbers"`
+}
+
+type TaxonomyPathItem struct {
+	ID    ubom.TaxonomyNodeID `json:"id"`
+	Label string              `json:"label"`
 }
 
 type TaxonomyChildView struct {
@@ -117,6 +123,10 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	if !ok {
 		return TaxonomyNodeView{}, store.ErrNotFound
 	}
+	path, ok := findTaxonomyPath(taxonomyDef.Taxonomy.Root, nodeID)
+	if !ok {
+		return TaxonomyNodeView{}, store.ErrNotFound
+	}
 	parts, err := s.store.ListPartNumbersByTaxonomyNode(taxonomyID, nodeID)
 	if err != nil {
 		return TaxonomyNodeView{}, err
@@ -125,6 +135,7 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	view := TaxonomyNodeView{
 		ID:          node.ID,
 		Label:       node.Label,
+		Path:        path,
 		Children:    make([]TaxonomyChildView, 0, len(node.Children)),
 		PartNumbers: make([]PartNumberSummary, 0, len(parts)),
 	}
@@ -183,6 +194,23 @@ func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.
 		})
 	}
 	return view, nil
+}
+
+func findTaxonomyPath(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) ([]TaxonomyPathItem, bool) {
+	path := []TaxonomyPathItem{}
+	if node.Label != "" {
+		path = append(path, TaxonomyPathItem{ID: node.ID, Label: node.Label})
+	}
+	if node.ID == id {
+		return path, true
+	}
+	for _, child := range node.Children {
+		childPath, ok := findTaxonomyPath(child, id)
+		if ok {
+			return append(path, childPath...), true
+		}
+	}
+	return nil, false
 }
 
 func findTaxonomyNode(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) (ubom.TaxonomyNode, bool) {

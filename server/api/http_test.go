@@ -72,11 +72,37 @@ func TestTaxonomyNodeView(t *testing.T) {
 	if view.ID != "components" || view.Label != "Components" {
 		t.Fatalf("node identity = %#v, want components/Components", view)
 	}
+	if len(view.Path) != 1 || view.Path[0].ID != "components" || view.Path[0].Label != "Components" {
+		t.Fatalf("path = %#v, want Components", view.Path)
+	}
 	if len(view.Children) != 2 || view.Children[0].ID != "resistors" || view.Children[1].ID != "capacitors" {
 		t.Fatalf("children = %#v, want resistors then capacitors", view.Children)
 	}
 	if len(view.PartNumbers) != 0 {
 		t.Fatalf("part numbers = %#v, want no parts at taxonomy root", view.PartNumbers)
+	}
+}
+
+func TestTaxonomyNodeViewIncludesAncestorPath(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/taxonomies/sample-taxonomy-v1/nodes/capacitors", nil)
+	server.Handler().ServeHTTP(recording, request)
+
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", recording.Code, http.StatusOK, recording.Body)
+	}
+	var view app.TaxonomyNodeView
+	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(view.Path) != 2 || view.Path[0].ID != "components" || view.Path[0].Label != "Components" || view.Path[1].ID != "capacitors" || view.Path[1].Label != "Capacitors" {
+		t.Fatalf("path = %#v, want Components / Capacitors", view.Path)
 	}
 }
 

@@ -242,6 +242,9 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
 		return ubom.PartNumber{}, err
 	}
+	if _, err := s.GetTaxonomyDef(part.TaxonomyDefID); err != nil {
+		return ubom.PartNumber{}, err
+	}
 	if _, err := s.GetPartNumber(part.Value); err == nil {
 		return ubom.PartNumber{}, ErrAlreadyExists
 	} else if !errors.Is(err, ErrNotFound) {

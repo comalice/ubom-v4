@@ -98,6 +98,14 @@ func runStoreContract(t *testing.T, store Store) {
 	}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("CreatePartNumber() with missing sequence definition error = %v, want ErrNotFound", err)
 	}
+	if _, err := store.CreatePartNumber(ubom.PartNumber{
+		Value:          "PN-MISSING-TAXONOMY",
+		SeqDefID:       seqDef.ID,
+		TaxonomyDefID:  "missing-taxonomy",
+		TaxonomyNodeID: "root",
+	}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("CreatePartNumber() with missing taxonomy definition error = %v, want ErrNotFound", err)
+	}
 	if createdPart.ID == "" {
 		t.Fatal("CreatePartNumber() returned an empty ID")
 	}

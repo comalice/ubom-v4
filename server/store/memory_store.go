@@ -83,6 +83,9 @@ func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	if _, err := s.GetSeqDef(part.SeqDefID); err != nil {
 		return ubom.PartNumber{}, err
 	}
+	if _, err := s.GetTaxonomyDef(part.TaxonomyDefID); err != nil {
+		return ubom.PartNumber{}, err
+	}
 	if _, ok := s.partNumbers[part.Value]; ok {
 		return ubom.PartNumber{}, ErrAlreadyExists
 	}

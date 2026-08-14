@@ -101,6 +101,15 @@ func TestMemoryStoreRejectsDuplicatePartNumber(t *testing.T) {
 	if err := store.CreateSeqDef(ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn-v1")); err != nil {
 		t.Fatalf("CreateSeqDef() error = %v", err)
 	}
+	if err := store.CreateTaxonomyDef(ubom.TaxonomyDef{
+		ID:     "taxonomy-v1",
+		SeqDef: "pn-v1",
+		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+			ID: "root",
+		}},
+	}); err != nil {
+		t.Fatalf("CreateTaxonomyDef() error = %v", err)
+	}
 	part := ubom.PartNumber{
 		Value:          "PN-1",
 		SeqDefID:       "pn-v1",

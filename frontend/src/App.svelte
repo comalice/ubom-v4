@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import BomNode from './BomNode.svelte'
+  import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
+  import Shell from './Shell.svelte'
   import { getPart, getRevision, getTaxonomyNode, type PartNumberView, type RevisionView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
@@ -10,6 +12,20 @@
   let revision: RevisionView | null = null
   let error = ''
   let loading = true
+
+  $: breadcrumbs = getBreadcrumbs()
+
+  function getBreadcrumbs(): Breadcrumb[] {
+    if (route.kind === 'taxonomy' && taxonomy) return [{ label: taxonomy.label }]
+    if (route.kind === 'part' && part) return [{ label: 'Part numbers' }, { label: part.value }]
+    if (route.kind === 'revision' && revision) {
+      return [
+        { label: revision.partNumber.value, href: partPath(revision.partNumber.id) },
+        { label: `Revision ${revision.id}` },
+      ]
+    }
+    return []
+  }
 
   async function load() {
     route = parseRoute()
@@ -38,13 +54,8 @@
   })
 </script>
 
-<svelte:head><title>UBOM</title></svelte:head>
-
-<header>
-  <a class="brand" href="/taxonomies/sample-taxonomy-v1/nodes/components">UBOM</a>
-</header>
-
-<main>
+<Shell>
+  <Breadcrumbs items={breadcrumbs} />
   {#if loading}
     <p class="muted">Loading...</p>
   {:else if error}
@@ -81,4 +92,4 @@
     {#if revision.bom.length > 0}<ul>{#each revision.bom as node (node.revisionId)}<BomNode node={node} />{/each}</ul>
     {:else}<p class="muted">No BOM entries.</p>{/if}
   {/if}
-</main>
+</Shell>

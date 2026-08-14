@@ -134,6 +134,10 @@ func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 		if _, ok := s.partRevisions[item.PartRevisionID]; !ok {
 			return ubom.PartRevision{}, ErrNotFound
 		}
+		childRevision := s.partRevisions[item.PartRevisionID]
+		if childRevision.PartNumberID != item.PartNumberID {
+			return ubom.PartRevision{}, fmt.Errorf("line item revision does not belong to line item part number")
+		}
 	}
 
 	revision.ID = ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))

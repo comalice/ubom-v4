@@ -348,8 +348,12 @@ func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 		if _, err := s.getPartNumberByID(childPartID); err != nil {
 			return ubom.PartRevision{}, err
 		}
-		if _, err := s.GetPartRevision(item.PartRevisionID); err != nil {
+		childRevision, err := s.GetPartRevision(item.PartRevisionID)
+		if err != nil {
 			return ubom.PartRevision{}, err
+		}
+		if childRevision.PartNumberID != item.PartNumberID {
+			return ubom.PartRevision{}, fmt.Errorf("line item revision does not belong to line item part number")
 		}
 	}
 

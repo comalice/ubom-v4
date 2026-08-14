@@ -180,6 +180,19 @@ func runStoreContract(t *testing.T, store Store) {
 	if err != nil {
 		t.Fatalf("CreatePartRevision() error = %v", err)
 	}
+	otherPart, err := store.CreatePartNumber(ubom.PartNumber{
+		Value:          "PN-2",
+		SeqDefID:       seqDef.ID,
+		TaxonomyDefID:  taxonomyDef.ID,
+		TaxonomyNodeID: "root",
+	})
+	if err != nil {
+		t.Fatalf("CreatePartNumber(other) error = %v", err)
+	}
+	otherChild, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: otherPart.ID})
+	if err != nil {
+		t.Fatalf("CreatePartRevision(other) error = %v", err)
+	}
 	if _, err := store.CreatePartRevision(ubom.PartRevision{
 		PartNumberID: part.ID,
 		BOM: []ubom.LineItem{{
@@ -197,6 +210,15 @@ func runStoreContract(t *testing.T, store Store) {
 		}},
 	}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("CreatePartRevision() with missing child revision error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.CreatePartRevision(ubom.PartRevision{
+		PartNumberID: part.ID,
+		BOM: []ubom.LineItem{{
+			PartNumberID:   part.ID,
+			PartRevisionID: otherChild.ID,
+		}},
+	}); err == nil {
+		t.Fatal("CreatePartRevision() accepted a revision owned by another part number")
 	}
 	parent, err := store.CreatePartRevision(ubom.PartRevision{
 		PartNumberID: part.ID,

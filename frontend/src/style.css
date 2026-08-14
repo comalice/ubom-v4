@@ -1,0 +1,22 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #27231f;
+  background: #f5f1eb;
+  font-synthesis: none;
+}
+
+body { margin: 0; }
+a { color: #0645ad; text-decoration: none; }
+a:hover { text-decoration: underline; }
+header { background: #fff; border-bottom: 1px solid #ded8cf; padding: 1rem 2rem; }
+.brand { color: #27231f; font-weight: 700; letter-spacing: .08em; }
+main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+h1 { margin-top: .25rem; }
+h2 { margin-top: 2rem; font-size: 1.1rem; }
+ul { line-height: 1.8; }
+.eyebrow { color: #8a5a2b; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
+.muted { color: #746d65; }
+.error { color: #a22b2b; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.card { background: #fff; border: 1px solid #ded8cf; border-radius: .6rem; padding: 1.25rem; display: flex; justify-content: space-between; }
+.card:hover { border-color: #8a5a2b; text-decoration: none; }

@@ -313,17 +313,15 @@ func (s *SQLiteStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 }
 
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	if err := revision.Validate(); err != nil {
+		return ubom.PartRevision{}, err
+	}
 	partNumberID, err := strconv.ParseInt(string(revision.PartNumberID), 10, 64)
 	if err != nil {
 		return ubom.PartRevision{}, ErrNotFound
 	}
 	if _, err := s.getPartNumberByID(partNumberID); err != nil {
 		return ubom.PartRevision{}, err
-	}
-	for _, item := range revision.BOM {
-		if err := item.Validate(); err != nil {
-			return ubom.PartRevision{}, err
-		}
 	}
 
 	tx, err := s.db.Begin()

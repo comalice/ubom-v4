@@ -103,14 +103,12 @@ func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 }
 
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	if err := revision.Validate(); err != nil {
+		return ubom.PartRevision{}, err
+	}
 	part, ok := s.partNumbersByID(revision.PartNumberID)
 	if !ok {
 		return ubom.PartRevision{}, ErrNotFound
-	}
-	for _, item := range revision.BOM {
-		if err := item.Validate(); err != nil {
-			return ubom.PartRevision{}, err
-		}
 	}
 
 	revision.ID = ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))

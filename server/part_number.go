@@ -34,6 +34,20 @@ type PartRevision struct {
 	Part         Part
 }
 
+// Validate checks the structure of a part revision and its BOM.
+// It does not verify that referenced records exist in a store.
+func (r PartRevision) Validate() error {
+	if r.PartNumberID == "" {
+		return fmt.Errorf("part revision has no part number ID")
+	}
+	for _, item := range r.BOM {
+		if err := item.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // PartNumber, a unique value, taxonomy, and schema used to identify a given part. May be a
 // partial construction or fully qualified -- where a fully qualified part number possesses values
 // for every level of the related taxonomy definition.

@@ -196,3 +196,35 @@ func TestLineItemValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestPartRevisionValidate(t *testing.T) {
+	valid := PartRevision{
+		PartNumberID: "part-1",
+		BOM: []LineItem{{
+			PartNumberID:   "child-part-1",
+			PartRevisionID: "child-revision-1",
+		}},
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		revision PartRevision
+	}{
+		{name: "missing part number ID", revision: PartRevision{}},
+		{name: "invalid BOM line item", revision: PartRevision{
+			PartNumberID: "part-1",
+			BOM:          []LineItem{{PartNumberID: "child-part-1"}},
+		}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.revision.Validate(); err == nil {
+				t.Fatal("Validate() accepted invalid part revision")
+			}
+		})
+	}
+}

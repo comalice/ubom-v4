@@ -32,6 +32,23 @@ type LineItemView struct {
 	PartRevisionID ubom.PartRevisionID `json:"partRevisionId"`
 }
 
+type TaxonomyNodeView struct {
+	ID          ubom.TaxonomyNodeID `json:"id"`
+	Label       string              `json:"label"`
+	Children    []TaxonomyChildView `json:"children"`
+	PartNumbers []PartNumberSummary `json:"partNumbers"`
+}
+
+type TaxonomyChildView struct {
+	ID    ubom.TaxonomyNodeID `json:"id"`
+	Label string              `json:"label"`
+}
+
+type PartNumberSummary struct {
+	ID    ubom.PartNumberID `json:"id"`
+	Value string            `json:"value"`
+}
+
 func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error) {
 	part, err := s.store.GetPartNumberByID(id)
 	if err != nil {
@@ -77,4 +94,45 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 		view.Revisions = append(view.Revisions, revisionView)
 	}
 	return view, nil
+}
+
+func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) (TaxonomyNodeView, error) {
+	taxonomyDef, err := s.store.GetTaxonomyDef(taxonomyID)
+	if err != nil {
+		return TaxonomyNodeView{}, err
+	}
+	node, ok := findTaxonomyNode(taxonomyDef.Taxonomy.Root, nodeID)
+	if !ok {
+		return TaxonomyNodeView{}, store.ErrNotFound
+	}
+	parts, err := s.store.ListPartNumbersByTaxonomyNode(taxonomyID, nodeID)
+	if err != nil {
+		return TaxonomyNodeView{}, err
+	}
+
+	view := TaxonomyNodeView{
+		ID:          node.ID,
+		Label:       node.Label,
+		Children:    make([]TaxonomyChildView, 0, len(node.Children)),
+		PartNumbers: make([]PartNumberSummary, 0, len(parts)),
+	}
+	for _, child := range node.Children {
+		view.Children = append(view.Children, TaxonomyChildView{ID: child.ID, Label: child.Label})
+	}
+	for _, part := range parts {
+		view.PartNumbers = append(view.PartNumbers, PartNumberSummary{ID: part.ID, Value: part.Value})
+	}
+	return view, nil
+}
+
+func findTaxonomyNode(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) (ubom.TaxonomyNode, bool) {
+	if node.ID == id {
+		return node, true
+	}
+	for _, child := range node.Children {
+		if found, ok := findTaxonomyNode(child, id); ok {
+			return found, true
+		}
+	}
+	return ubom.TaxonomyNode{}, false
 }

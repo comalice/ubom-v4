@@ -22,6 +22,7 @@ func NewServer(service *app.Service) *Server {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/part-numbers/", s.handlePartNumber)
+	mux.HandleFunc("/api/taxonomy-definitions/", s.handleTaxonomyNode)
 	return mux
 }
 
@@ -42,6 +43,32 @@ func (s *Server) handlePartNumber(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "could not load part number")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(view); err != nil {
+		return
+	}
+}
+
+func (s *Server) handleTaxonomyNode(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/api/taxonomy-definitions/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 3 || parts[0] == "" || parts[1] != "nodes" || parts[2] == "" {
+		writeError(w, http.StatusBadRequest, "invalid taxonomy node path")
+		return
+	}
+	view, err := s.service.GetTaxonomyNodeView(ubom.TaxonomyDefID(parts[0]), ubom.TaxonomyNodeID(parts[2]))
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "taxonomy node not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "could not load taxonomy node")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -189,6 +189,15 @@ func runStoreContract(t *testing.T, store Store) {
 	}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("CreatePartRevision() with missing child part number error = %v, want ErrNotFound", err)
 	}
+	if _, err := store.CreatePartRevision(ubom.PartRevision{
+		PartNumberID: part.ID,
+		BOM: []ubom.LineItem{{
+			PartNumberID:   part.ID,
+			PartRevisionID: "missing-child-revision",
+		}},
+	}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("CreatePartRevision() with missing child revision error = %v, want ErrNotFound", err)
+	}
 	parent, err := store.CreatePartRevision(ubom.PartRevision{
 		PartNumberID: part.ID,
 		BOM: []ubom.LineItem{{

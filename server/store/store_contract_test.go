@@ -172,6 +172,9 @@ func runStoreContract(t *testing.T, store Store) {
 	if _, err := store.GetPartNumberByID("missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing ID lookup error = %v, want ErrNotFound", err)
 	}
+	if _, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: "missing-part"}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("CreatePartRevision() with missing owner error = %v, want ErrNotFound", err)
+	}
 
 	child, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: part.ID})
 	if err != nil {

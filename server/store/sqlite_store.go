@@ -340,6 +340,15 @@ func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 	if _, err := s.getPartNumberByID(partNumberID); err != nil {
 		return ubom.PartRevision{}, err
 	}
+	for _, item := range revision.BOM {
+		childPartID, err := strconv.ParseInt(string(item.PartNumberID), 10, 64)
+		if err != nil {
+			return ubom.PartRevision{}, ErrNotFound
+		}
+		if _, err := s.getPartNumberByID(childPartID); err != nil {
+			return ubom.PartRevision{}, err
+		}
+	}
 
 	tx, err := s.db.Begin()
 	if err != nil {

@@ -13,18 +13,22 @@
   let error = ''
   let loading = true
 
-  $: breadcrumbs = getBreadcrumbs()
+  $: breadcrumbs = route.kind === 'taxonomy' && taxonomy
+    ? taxonomyBreadcrumbs(taxonomy, route.taxonomyID)
+    : route.kind === 'part' && part
+      ? [{ label: 'Part numbers' }, { label: part.value }]
+      : route.kind === 'revision' && revision
+        ? [
+            { label: revision.partNumber.value, href: partPath(revision.partNumber.id) },
+            { label: `Revision ${revision.id}` },
+          ]
+        : []
 
-  function getBreadcrumbs(): Breadcrumb[] {
-    if (route.kind === 'taxonomy' && taxonomy) return [{ label: taxonomy.label }]
-    if (route.kind === 'part' && part) return [{ label: 'Part numbers' }, { label: part.value }]
-    if (route.kind === 'revision' && revision) {
-      return [
-        { label: revision.partNumber.value, href: partPath(revision.partNumber.id) },
-        { label: `Revision ${revision.id}` },
-      ]
-    }
-    return []
+  function taxonomyBreadcrumbs(view: TaxonomyNodeView, taxonomyID: string): Breadcrumb[] {
+    return view.path.map((item, index) => ({
+      label: item.label,
+      href: index < view.path.length - 1 ? taxonomyPath(taxonomyID, item.id) : undefined,
+    }))
   }
 
   async function load() {

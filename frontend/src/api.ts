@@ -1,9 +1,11 @@
 export type TaxonomyChild = { id: string; label: string }
+export type TaxonomyPathItem = { id: string; label: string }
 export type PartSummary = { id: string; value: string }
 
 export type TaxonomyNodeView = {
   id: string
   label: string
+  path: TaxonomyPathItem[]
   children: TaxonomyChild[]
   partNumbers: PartSummary[]
 }

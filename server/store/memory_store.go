@@ -55,6 +55,9 @@ func (s *MemoryStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
 }
 
 func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
+	if err := def.Validate(); err != nil {
+		return err
+	}
 	if _, ok := s.taxonomyDefs[def.ID]; ok {
 		return ErrAlreadyExists
 	}

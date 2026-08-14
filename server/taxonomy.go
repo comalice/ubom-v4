@@ -2,9 +2,13 @@ package ubom
 
 import "fmt"
 
-/* Taxonomy: a tree/DAG of catgories, where 'PartNumber' inhabits the leaves.
+/* # Taxonomy: a tree/DAG of catgories, where 'PartNumber' inhabits the leaves.
 
- */
+## Implementation notes:
+
+Presently, we do not allow taxonomy nodes within a tree to be duplicates.
+
+*/
 
 type TaxonomyDefID string
 
@@ -26,6 +30,37 @@ type TaxonomyNode struct {
 	Label    string
 	Matches  map[string]string
 	Children []TaxonomyNode
+}
+
+// Validate checks that taxonomy nodes are well formed.
+func (d TaxonomyDef) Validate() error {
+	if d.ID == "" {
+		return fmt.Errorf("taxonomy definition has no ID")
+	}
+	if d.SeqDef == "" {
+		return fmt.Errorf("taxonomy definition has no sequence definition ID")
+	}
+	seen := map[TaxonomyNodeID]bool{}
+	if err := validateTaxonomyNode(d.Taxonomy.Root, seen); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool) error {
+	if node.ID == "" {
+		return fmt.Errorf("taxonomy node has no ID")
+	}
+	if seen[node.ID] {
+		return fmt.Errorf("duplicate taxonomy node ID %q", node.ID)
+	}
+	seen[node.ID] = true
+	for _, child := range node.Children {
+		if err := validateTaxonomyNode(child, seen); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Project returns the labels along the first matching path from Root.

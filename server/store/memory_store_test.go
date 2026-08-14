@@ -11,7 +11,13 @@ import (
 func TestMemoryStoreRoundTrip(t *testing.T) {
 	store := NewMemoryStore()
 	seqDef := ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn-v1")
-	taxonomyDef := ubom.TaxonomyDef{ID: "taxonomy-v1", SeqDef: seqDef.ID}
+	taxonomyDef := ubom.TaxonomyDef{
+		ID:     "taxonomy-v1",
+		SeqDef: seqDef.ID,
+		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+			ID: "root",
+		}},
+	}
 	part := ubom.PartNumber{
 		Value:          "PN-1",
 		SeqDefID:       seqDef.ID,

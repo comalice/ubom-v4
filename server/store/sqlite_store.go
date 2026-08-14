@@ -119,6 +119,9 @@ func (s *SQLiteStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
 }
 
 func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
+	if err := def.Validate(); err != nil {
+		return err
+	}
 	if _, err := s.GetTaxonomyDef(def.ID); !errors.Is(err, ErrNotFound) {
 		return err
 	}

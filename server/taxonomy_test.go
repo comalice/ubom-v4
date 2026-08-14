@@ -54,3 +54,79 @@ func TestTaxonomyProjectStopsAtUnknownValue(t *testing.T) {
 		t.Fatalf("Project() = %#v, want %#v", got, want)
 	}
 }
+
+func TestTaxonomyDefValidate(t *testing.T) {
+	tests := []struct {
+		name string
+		def  TaxonomyDef
+		want bool
+	}{
+		{
+			name: "valid",
+			def: TaxonomyDef{
+				ID:     "taxonomy-v1",
+				SeqDef: "pn-v1",
+				Taxonomy: Taxonomy{Root: TaxonomyNode{
+					ID:       "root",
+					Children: []TaxonomyNode{{ID: "resistors"}},
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "missing ID",
+			def: TaxonomyDef{
+				SeqDef:   "pn-v1",
+				Taxonomy: Taxonomy{Root: TaxonomyNode{ID: "root"}},
+			},
+		},
+		{
+			name: "missing sequence definition ID",
+			def: TaxonomyDef{
+				ID:       "taxonomy-v1",
+				Taxonomy: Taxonomy{Root: TaxonomyNode{ID: "root"}},
+			},
+		},
+		{
+			name: "missing root ID",
+			def: TaxonomyDef{
+				ID:     "taxonomy-v1",
+				SeqDef: "pn-v1",
+			},
+		},
+		{
+			name: "missing child ID",
+			def: TaxonomyDef{
+				ID:     "taxonomy-v1",
+				SeqDef: "pn-v1",
+				Taxonomy: Taxonomy{Root: TaxonomyNode{
+					ID:       "root",
+					Children: []TaxonomyNode{{}},
+				}},
+			},
+		},
+		{
+			name: "duplicate node ID",
+			def: TaxonomyDef{
+				ID:     "taxonomy-v1",
+				SeqDef: "pn-v1",
+				Taxonomy: Taxonomy{Root: TaxonomyNode{
+					ID:       "root",
+					Children: []TaxonomyNode{{ID: "root"}},
+				}},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.def.Validate()
+			if test.want && err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+			if !test.want && err == nil {
+				t.Fatal("Validate() accepted invalid definition")
+			}
+		})
+	}
+}

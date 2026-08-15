@@ -37,8 +37,18 @@ type TaxonomyNodeView struct {
 	ID          ubom.TaxonomyNodeID  `json:"id"`
 	Label       string               `json:"label"`
 	Path        []TaxonomyPathItem   `json:"path"`
+	Attributes  []AttributeView      `json:"attributes"`
 	Children    []TaxonomyChildView  `json:"children"`
 	PartNumbers []PartNumberListItem `json:"partNumbers"`
+}
+
+type AttributeView struct {
+	ID         ubom.AttributeDefID     `json:"id"`
+	Label      string                  `json:"label"`
+	ValueType  ubom.AttributeValueType `json:"valueType"`
+	Unit       string                  `json:"unit,omitempty"`
+	EnumValues []string                `json:"enumValues,omitempty"`
+	Required   bool                    `json:"required"`
 }
 
 type TaxonomyPathItem struct {
@@ -172,11 +182,31 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	if err != nil {
 		return TaxonomyNodeView{}, err
 	}
+	effectiveAttributes, err := taxonomyDef.Taxonomy.EffectiveAttributes(nodeID)
+	if err != nil {
+		return TaxonomyNodeView{}, err
+	}
+	attributeDefs := make(map[ubom.AttributeDefID]ubom.AttributeDef, len(taxonomyDef.AttributeDefs))
+	for _, definition := range taxonomyDef.AttributeDefs {
+		attributeDefs[definition.ID] = definition
+	}
+	attributes := make([]AttributeView, 0, len(effectiveAttributes))
+	for _, assignment := range effectiveAttributes {
+		definition, ok := attributeDefs[assignment.AttributeDefID]
+		if !ok {
+			return TaxonomyNodeView{}, errors.New("taxonomy attribute assignment references unknown definition")
+		}
+		attributes = append(attributes, AttributeView{
+			ID: definition.ID, Label: definition.Label, ValueType: definition.ValueType,
+			Unit: definition.Unit, EnumValues: definition.EnumValues, Required: assignment.Required,
+		})
+	}
 
 	view := TaxonomyNodeView{
 		ID:          node.ID,
 		Label:       node.Label,
 		Path:        path,
+		Attributes:  attributes,
 		Children:    make([]TaxonomyChildView, 0, len(node.Children)),
 		PartNumbers: make([]PartNumberListItem, 0, len(parts)),
 	}

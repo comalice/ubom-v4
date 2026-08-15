@@ -49,6 +49,7 @@ func (s *SQLiteStore) init() error {
 		CREATE TABLE IF NOT EXISTS taxonomy_defs (
 			id TEXT PRIMARY KEY,
 			seq_def_id TEXT NOT NULL,
+			attribute_defs TEXT NOT NULL DEFAULT '[]',
 			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id)
 		);
 		CREATE TABLE IF NOT EXISTS taxonomy_nodes (
@@ -57,6 +58,7 @@ func (s *SQLiteStore) init() error {
 			parent_id TEXT,
 			label TEXT NOT NULL,
 			matches TEXT NOT NULL,
+			attributes TEXT NOT NULL DEFAULT '[]',
 			position INTEGER NOT NULL,
 			PRIMARY KEY (taxonomy_def_id, id),
 			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id),
@@ -93,7 +95,10 @@ func (s *SQLiteStore) init() error {
 			FOREIGN KEY (child_part_number_id) REFERENCES part_numbers(id),
 			FOREIGN KEY (child_revision_id) REFERENCES part_revisions(id)
 		);`)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *SQLiteStore) CreateSeqDef(def ubom.SeqDef) error {
@@ -137,7 +142,12 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec("INSERT INTO taxonomy_defs (id, seq_def_id) VALUES (?, ?)", def.ID, def.SeqDef); err != nil {
+	attributeDefs, err := json.Marshal(def.AttributeDefs)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if _, err := tx.Exec("INSERT INTO taxonomy_defs (id, seq_def_id, attribute_defs) VALUES (?, ?, ?)", def.ID, def.SeqDef, attributeDefs); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -150,7 +160,8 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 
 func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	var seqDefID ubom.SeqDefID
-	if err := s.db.QueryRow("SELECT seq_def_id FROM taxonomy_defs WHERE id = ?", id).Scan(&seqDefID); err != nil {
+	var attributeData []byte
+	if err := s.db.QueryRow("SELECT seq_def_id, attribute_defs FROM taxonomy_defs WHERE id = ?", id).Scan(&seqDefID, &attributeData); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.TaxonomyDef{}, ErrNotFound
 		}
@@ -160,7 +171,11 @@ func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 	if err != nil {
 		return ubom.TaxonomyDef{}, err
 	}
-	return ubom.TaxonomyDef{ID: id, SeqDef: seqDefID, Taxonomy: taxonomy}, nil
+	attributeDefs := []ubom.AttributeDef{}
+	if err := json.Unmarshal(attributeData, &attributeDefs); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	return ubom.TaxonomyDef{ID: id, SeqDef: seqDefID, AttributeDefs: attributeDefs, Taxonomy: taxonomy}, nil
 }
 
 func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *string, node ubom.TaxonomyNode, position int) error {
@@ -168,9 +183,13 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 	if err != nil {
 		return err
 	}
+	attributes, err := json.Marshal(node.Attributes)
+	if err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`INSERT INTO taxonomy_nodes
-		(taxonomy_def_id, id, parent_id, label, matches, position)
-		VALUES (?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, matches, position); err != nil {
+		(taxonomy_def_id, id, parent_id, label, matches, attributes, position)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, matches, attributes, position); err != nil {
 		return err
 	}
 	parent := string(node.ID)
@@ -183,7 +202,7 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 }
 
 func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error) {
-	rows, err := s.db.Query(`SELECT id, parent_id, label, matches
+	rows, err := s.db.Query(`SELECT id, parent_id, label, matches, attributes
 		FROM taxonomy_nodes WHERE taxonomy_def_id = ?
 		ORDER BY parent_id, position`, id)
 	if err != nil {
@@ -202,14 +221,19 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		var parent sql.NullString
 		var label string
 		var data []byte
-		if err := rows.Scan(&id, &parent, &label, &data); err != nil {
+		var attributeData []byte
+		if err := rows.Scan(&id, &parent, &label, &data, &attributeData); err != nil {
 			return ubom.Taxonomy{}, err
 		}
 		matches := map[string]string{}
 		if err := json.Unmarshal(data, &matches); err != nil {
 			return ubom.Taxonomy{}, err
 		}
-		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Matches: matches}
+		attributes := []ubom.AttributeAssignment{}
+		if err := json.Unmarshal(attributeData, &attributes); err != nil {
+			return ubom.Taxonomy{}, err
+		}
+		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Matches: matches, Attributes: attributes}
 		nodes[node.ID] = node
 		relations = append(relations, relation{id: node.ID, parent: parent})
 	}

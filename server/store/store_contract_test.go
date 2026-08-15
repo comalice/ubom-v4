@@ -45,8 +45,15 @@ func runStoreContract(t *testing.T, store Store) {
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "taxonomy-v1",
 		SeqDef: seqDef.ID,
+		AttributeDefs: []ubom.AttributeDef{{
+			ID:         "footprint",
+			Label:      "Footprint",
+			ValueType:  ubom.AttributeValueEnum,
+			EnumValues: []string{"0603", "0805"},
+		}},
 		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
-			ID: "root",
+			ID:         "root",
+			Attributes: []ubom.AttributeAssignment{{AttributeDefID: "footprint", Required: true}},
 		}},
 	}
 	part := ubom.PartNumber{

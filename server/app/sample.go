@@ -27,11 +27,16 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "sample-taxonomy-v1",
 		SeqDef: seqDef.ID,
+		AttributeDefs: []ubom.AttributeDef{
+			{ID: "footprint", Label: "Footprint", ValueType: ubom.AttributeValueEnum, EnumValues: []string{"0603", "0805"}},
+			{ID: "resistance", Label: "Resistance", ValueType: ubom.AttributeValueDecimal, Unit: "ohm"},
+		},
 		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
-			ID:    "components",
-			Label: "Components",
+			ID:         "components",
+			Label:      "Components",
+			Attributes: []ubom.AttributeAssignment{{AttributeDefID: "footprint", Required: true}},
 			Children: []ubom.TaxonomyNode{
-				{ID: "resistors", Label: "Resistors", Matches: map[string]string{"category": "A"}},
+				{ID: "resistors", Label: "Resistors", Matches: map[string]string{"category": "A"}, Attributes: []ubom.AttributeAssignment{{AttributeDefID: "resistance", Required: true}}},
 				{ID: "capacitors", Label: "Capacitors", Matches: map[string]string{"category": "B"}},
 			},
 		}},

@@ -130,6 +130,9 @@ func TestTaxonomyNodeView(t *testing.T) {
 	if len(view.PartNumbers) != 0 {
 		t.Fatalf("part numbers = %#v, want no parts at taxonomy root", view.PartNumbers)
 	}
+	if len(view.Attributes) != 1 || view.Attributes[0].ID != "footprint" || !view.Attributes[0].Required {
+		t.Fatalf("attributes = %#v, want required footprint", view.Attributes)
+	}
 }
 
 func TestTaxonomyNodeViewIncludesAncestorPath(t *testing.T) {

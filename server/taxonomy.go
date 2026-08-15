@@ -15,9 +15,10 @@ type TaxonomyDefID string
 type TaxonomyNodeID string
 
 type TaxonomyDef struct {
-	ID       TaxonomyDefID // durable unique ID
-	SeqDef   SeqDefID      // sequence this taxonomy is applied to
-	Taxonomy Taxonomy
+	ID            TaxonomyDefID // durable unique ID
+	SeqDef        SeqDefID      // sequence this taxonomy is applied to
+	AttributeDefs []AttributeDef
+	Taxonomy      Taxonomy
 }
 
 // Taxonomy is a tree that projects parsed bindings into labels.
@@ -26,10 +27,11 @@ type Taxonomy struct {
 }
 
 type TaxonomyNode struct {
-	ID       TaxonomyNodeID
-	Label    string
-	Matches  map[string]string
-	Children []TaxonomyNode
+	ID         TaxonomyNodeID
+	Label      string
+	Matches    map[string]string
+	Attributes []AttributeAssignment
+	Children   []TaxonomyNode
 }
 
 // Validate checks that taxonomy nodes are well formed.
@@ -41,13 +43,23 @@ func (d TaxonomyDef) Validate() error {
 		return fmt.Errorf("taxonomy definition has no sequence definition ID")
 	}
 	seen := map[TaxonomyNodeID]bool{}
-	if err := validateTaxonomyNode(d.Taxonomy.Root, seen); err != nil {
+	attributeDefs := map[AttributeDefID]bool{}
+	for _, attribute := range d.AttributeDefs {
+		if err := attribute.Validate(); err != nil {
+			return err
+		}
+		if attributeDefs[attribute.ID] {
+			return fmt.Errorf("duplicate attribute definition ID %q", attribute.ID)
+		}
+		attributeDefs[attribute.ID] = true
+	}
+	if err := validateTaxonomyNode(d.Taxonomy.Root, seen, attributeDefs); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool) error {
+func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attributeDefs map[AttributeDefID]bool) error {
 	if node.ID == "" {
 		return fmt.Errorf("taxonomy node has no ID")
 	}
@@ -55,12 +67,55 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool) error
 		return fmt.Errorf("duplicate taxonomy node ID %q", node.ID)
 	}
 	seen[node.ID] = true
+	for _, assignment := range node.Attributes {
+		if assignment.AttributeDefID == "" {
+			return fmt.Errorf("taxonomy node %q has attribute assignment with no definition ID", node.ID)
+		}
+		if !attributeDefs[assignment.AttributeDefID] {
+			return fmt.Errorf("taxonomy node %q references unknown attribute definition %q", node.ID, assignment.AttributeDefID)
+		}
+	}
 	for _, child := range node.Children {
-		if err := validateTaxonomyNode(child, seen); err != nil {
+		if err := validateTaxonomyNode(child, seen, attributeDefs); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// EffectiveAttributes returns assignments from root to node. A child replaces
+// an ancestor assignment with the same definition ID, like an overlay file.
+func (t Taxonomy) EffectiveAttributes(nodeID TaxonomyNodeID) ([]AttributeAssignment, error) {
+	path, ok := taxonomyNodePath(t.Root, nodeID)
+	if !ok {
+		return nil, fmt.Errorf("taxonomy node %q not found", nodeID)
+	}
+	result := []AttributeAssignment{}
+	positions := map[AttributeDefID]int{}
+	for _, node := range path {
+		for _, assignment := range node.Attributes {
+			if position, exists := positions[assignment.AttributeDefID]; exists {
+				result[position] = assignment
+				continue
+			}
+			positions[assignment.AttributeDefID] = len(result)
+			result = append(result, assignment)
+		}
+	}
+	return result, nil
+}
+
+func taxonomyNodePath(node TaxonomyNode, id TaxonomyNodeID) ([]TaxonomyNode, bool) {
+	if node.ID == id {
+		return []TaxonomyNode{node}, true
+	}
+	for _, child := range node.Children {
+		path, ok := taxonomyNodePath(child, id)
+		if ok {
+			return append([]TaxonomyNode{node}, path...), true
+		}
+	}
+	return nil, false
 }
 
 // Project returns the labels along the first matching path from Root.

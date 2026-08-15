@@ -130,3 +130,33 @@ func TestTaxonomyDefValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestTaxonomyEffectiveAttributesChildOverridesAncestor(t *testing.T) {
+	taxonomy := Taxonomy{Root: TaxonomyNode{
+		ID: "root",
+		Attributes: []AttributeAssignment{
+			{AttributeDefID: "footprint", Required: false},
+			{AttributeDefID: "material", Required: true},
+		},
+		Children: []TaxonomyNode{{
+			ID: "resistors",
+			Attributes: []AttributeAssignment{
+				{AttributeDefID: "footprint", Required: true},
+				{AttributeDefID: "resistance", Required: true},
+			},
+		}},
+	}}
+
+	got, err := taxonomy.EffectiveAttributes("resistors")
+	if err != nil {
+		t.Fatalf("EffectiveAttributes() error = %v", err)
+	}
+	want := []AttributeAssignment{
+		{AttributeDefID: "footprint", Required: true},
+		{AttributeDefID: "material", Required: true},
+		{AttributeDefID: "resistance", Required: true},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("EffectiveAttributes() = %#v, want %#v", got, want)
+	}
+}

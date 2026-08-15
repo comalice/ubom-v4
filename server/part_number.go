@@ -66,8 +66,7 @@ type PartNumber struct {
 	SeqDefID       SeqDefID         // SeqDef version used to generate this part number.
 	TaxonomyDefID  TaxonomyDefID    // Taxonomy applied to this part number.
 	TaxonomyNodeID TaxonomyNodeID   // Taxonomy node containing this part number.
-	// TODO, post MVP, sort out attributes and their types.
-	// AttributeSchemas []AttributeSchemaID // Attribute schema attached to this part number.
+	Attributes     []PartNumberAttribute
 }
 
 // Validate checks the fields required to persist a part number.

@@ -158,6 +158,32 @@ func TestTaxonomyNodeViewIncludesAncestorPath(t *testing.T) {
 	}
 }
 
+func TestTaxonomyNodeViewIncludesRicherResistorAttributes(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/taxonomies/sample-taxonomy-v1/nodes/resistors", nil)
+	server.Handler().ServeHTTP(recording, request)
+
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", recording.Code, http.StatusOK, recording.Body)
+	}
+	var view app.TaxonomyNodeView
+	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(view.Attributes) != 4 {
+		t.Fatalf("attributes = %#v, want inherited footprint plus three resistor attributes", view.Attributes)
+	}
+	if view.Attributes[0].ID != "footprint" || view.Attributes[1].ID != "resistance" || view.Attributes[2].ID != "tolerance" || view.Attributes[3].ID != "power_rating" {
+		t.Fatalf("attribute order = %#v, want footprint, resistance, tolerance, power_rating", view.Attributes)
+	}
+}
+
 func TestTaxonomyNodeViewNotFound(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()

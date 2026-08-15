@@ -16,17 +16,19 @@ export type PartNumberView = {
   id: string
   value: string
   taxonomyPath: string[]
-  revisions: { id: string; bom: { partNumberId: string; partRevisionId: string }[] }[]
+  revisions: { id: string; revision: string; bom: { partNumberId: string; partRevisionId: string }[] }[]
 }
 
 export type BomNode = {
   partNumber: PartSummary
   revisionId: string
+  revision: string
   bom: BomNode[]
 }
 
 export type RevisionView = {
   id: string
+  revision: string
   partNumber: PartSummary
   taxonomyPath: string[]
   bom: BomNode[]

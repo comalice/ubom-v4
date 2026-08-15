@@ -22,7 +22,7 @@
       : route.kind === 'revision' && revision
         ? [
             { label: revision.partNumber.value, href: partPath(revision.partNumber.value) },
-            { label: `Revision ${revision.id}` },
+            { label: `Revision ${revision.revision}` },
           ]
         : []
 
@@ -115,7 +115,7 @@
           <tbody>
             {#each part.revisions as item}
               <tr>
-                <th scope="row"><IdentityLink partNumber={part.value} revision={String(item.id)} /></th>
+                <th scope="row"><IdentityLink partNumber={part.value} revision={item.revision} revisionID={item.id} /></th>
                 <td class="unsupported" aria-label="Status not supported">—</td>
                 <td class="unsupported" aria-label="ECO or ECR not supported">—</td>
                 <td class="unsupported" aria-label="Effectivity date not supported">—</td>
@@ -126,8 +126,8 @@
       </div>
     {:else}<p class="muted">No revisions.</p>{/if}
   {:else if revision}
-    <p class="eyebrow">Revision {revision.id}</p>
-    <PartIdentity partNumber={revision.partNumber.value} revision={String(revision.id)} taxonomy={revision.taxonomyPath} />
+    <p class="eyebrow">Revision {revision.revision}</p>
+    <PartIdentity partNumber={revision.partNumber.value} revision={revision.revision} revisionID={revision.id} taxonomy={revision.taxonomyPath} />
     <h2>Bill of Materials</h2>
     {#if revision.bom.length > 0}<BomTable nodes={revision.bom} />
     {:else}<p class="muted">No BOM entries.</p>{/if}

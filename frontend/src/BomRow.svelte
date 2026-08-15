@@ -25,7 +25,7 @@
           <span aria-hidden="true">{expanded ? '⌄' : '›'}</span>
         {/if}
       </button>
-      <IdentityLink partNumber={node.partNumber.value} revision={String(node.revisionId)} />
+      <IdentityLink partNumber={node.partNumber.value} revision={node.revision || String(node.revisionId)} revisionID={String(node.revisionId)} />
     </div>
   </th>
   <td class="bom-unsupported" aria-label="Part number description not supported">—</td>

@@ -3,11 +3,12 @@
 
   export let partNumber: string
   export let revision: string | undefined = undefined
+  export let revisionID: string | undefined = undefined
 
   let feedback: 'idle' | 'copied' | 'failed' = 'idle'
 
   $: label = revision ? `${partNumber} @ ${revision}` : partNumber
-  $: href = revision ? revisionPath(partNumber, revision) : partPath(partNumber)
+  $: href = revision ? revisionPath(partNumber, revisionID ?? revision) : partPath(partNumber)
 
   async function copyIdentity() {
     try {

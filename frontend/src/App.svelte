@@ -1,21 +1,25 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import PartTable from './PartTable.svelte'
   import BomTable from './BomTable.svelte'
   import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
   import IdentityLink from './IdentityLink.svelte'
   import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
-  import { getPart, getRevision, getTaxonomyNodeByPath, type PartNumberView, type RevisionView, type TaxonomyNodeView } from './api'
+  import { getPart, getParts, getRevision, getTaxonomyNodeByPath, type PartListItem, type PartNumberView, type RevisionView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
   let route: Route = parseRoute()
   let taxonomy: TaxonomyNodeView | null = null
+  let partsList: PartListItem[] = []
   let part: PartNumberView | null = null
   let revision: RevisionView | null = null
   let error = ''
   let loading = true
 
-  $: breadcrumbs = route.kind === 'taxonomy' && taxonomy
+  $: breadcrumbs = route.kind === 'parts'
+    ? [{ label: 'Parts' }]
+    : route.kind === 'taxonomy' && taxonomy
     ? taxonomyBreadcrumbs(taxonomy)
     : route.kind === 'part' && part
       ? [{ label: 'Parts' }, { label: part.value }]
@@ -36,12 +40,14 @@
   async function load() {
     route = parseRoute()
     taxonomy = null
+    partsList = []
     part = null
     revision = null
     error = ''
     loading = true
     try {
-      if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
+      if (route.kind === 'parts') partsList = await getParts()
+      else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
       else error = 'Page not found'
@@ -60,12 +66,16 @@
   })
 </script>
 
-<Shell>
+<Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy'}>
   <Breadcrumbs items={breadcrumbs} />
   {#if loading}
     <p class="muted">Loading...</p>
   {:else if error}
     <p class="error">{error}</p>
+  {:else if route.kind === 'parts'}
+    <p class="eyebrow">Parts</p>
+    <h1>All parts</h1>
+    {#if partsList.length > 0}<PartTable parts={partsList} />{:else}<p class="empty-state">No parts.</p>{/if}
   {:else if taxonomy && route.kind === 'taxonomy'}
     <p class="eyebrow">Parts</p>
     <h1>{taxonomy.label}</h1>
@@ -85,14 +95,7 @@
     <section aria-labelledby="parts-heading">
       <h2 id="parts-heading">Parts</h2>
       {#if taxonomy.partNumbers.length > 0}
-        <div class="part-list">
-          {#each taxonomy.partNumbers as item}
-            <div class="part-row">
-              <IdentityLink partNumber={item.value} />
-              <span class="card-arrow" aria-hidden="true">→</span>
-            </div>
-          {/each}
-        </div>
+        <PartTable parts={taxonomy.partNumbers} />
       {:else}
         <p class="empty-state">No parts at this level.</p>
       {/if}

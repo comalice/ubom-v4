@@ -24,6 +24,7 @@ a:hover { color: var(--ink); text-decoration: underline; }
 .brand:hover { color: var(--accent); text-decoration: none; }
 .header-caption { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .7rem; }
 .page-shell { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+.page-shell.full-width { max-width: none; }
 .breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; color: var(--muted); font-size: .75rem; margin-bottom: 2.25rem; }
 .breadcrumbs a { color: var(--muted); }
 .breadcrumbs a:hover { color: var(--accent); }
@@ -77,6 +78,14 @@ ul { line-height: 1.8; }
 .bom-toggle:disabled { cursor: default; }
 .bom-unsupported { color: var(--muted) !important; }
 .bom-number { text-align: right; }
+.part-table-frame { width: 100%; margin-top: 1rem; }
+.part-table { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
+.part-table th, .part-table td { padding: .7rem 1rem; border-bottom: 1px solid var(--hairline-light); white-space: nowrap; }
+.part-table thead th { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; border-bottom-color: var(--hairline); }
+.part-table tbody th { font-weight: 400; }
+.part-table tbody tr:hover { background: var(--accent-light); }
+.part-taxonomy { color: var(--muted); font-size: .8rem; }
+.part-revisions { display: flex; flex-wrap: wrap; gap: .6rem; }
 
 @media (max-width: 640px) {
   .header-inner, .page-shell { padding-left: 1rem; padding-right: 1rem; }

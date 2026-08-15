@@ -3,13 +3,20 @@ import { taxonomySlug } from './routes'
 export type TaxonomyChild = { id: string; label: string }
 export type TaxonomyPathItem = { id: string; label: string }
 export type PartSummary = { id: string; value: string }
+export type RevisionSummary = { id: string; revision: string }
+export type PartListItem = {
+  id: string
+  value: string
+  taxonomyPath: string[]
+  revisions: RevisionSummary[]
+}
 
 export type TaxonomyNodeView = {
   id: string
   label: string
   path: TaxonomyPathItem[]
   children: TaxonomyChild[]
-  partNumbers: PartSummary[]
+  partNumbers: PartListItem[]
 }
 
 export type PartNumberView = {
@@ -55,5 +62,7 @@ export async function getTaxonomyNodeByPath(segments: string[]): Promise<Taxonom
 }
 
 export const getPart = (value: string) => get<PartNumberView>(`/api/parts/by-value/${encodeURIComponent(value)}`)
+
+export const getParts = () => get<PartListItem[]>('/api/parts')
 
 export const getRevision = (id: string) => get<RevisionView>(`/api/revisions/${encodeURIComponent(id)}`)

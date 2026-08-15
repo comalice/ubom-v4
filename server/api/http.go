@@ -21,11 +21,28 @@ func NewServer(service *app.Service) *Server {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/parts", s.handlePartNumbers)
 	mux.HandleFunc("/api/parts/by-value/", s.handlePartNumberByValue)
 	mux.HandleFunc("/api/parts/", s.handlePartNumber)
 	mux.HandleFunc("/api/taxonomies/", s.handleTaxonomyNode)
 	mux.HandleFunc("/api/revisions/", s.handleRevision)
 	return mux
+}
+
+func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	views, err := s.service.ListPartNumberViews()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load part numbers")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(views); err != nil {
+		return
+	}
 }
 
 func (s *Server) handlePartNumberByValue(w http.ResponseWriter, r *http.Request) {

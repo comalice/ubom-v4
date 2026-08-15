@@ -40,6 +40,32 @@ func TestPartNumberView(t *testing.T) {
 	}
 }
 
+func TestPartNumberList(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/parts", nil)
+	server.Handler().ServeHTTP(recording, request)
+
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body = %s", recording.Code, http.StatusOK, recording.Body)
+	}
+	var views []app.PartNumberListItem
+	if err := json.NewDecoder(recording.Body).Decode(&views); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(views) != 2 || views[0].Value != "PN-A" || views[1].Value != "PN-B" {
+		t.Fatalf("views = %#v, want PN-A then PN-B", views)
+	}
+	if len(views[0].Revisions) != 1 || views[0].Revisions[0].Revision != "1" {
+		t.Fatalf("revisions = %#v, want revision 1", views[0].Revisions)
+	}
+}
+
 func TestPartNumberViewNotFound(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()

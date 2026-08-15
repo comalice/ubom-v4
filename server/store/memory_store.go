@@ -109,6 +109,15 @@ func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 	return part, nil
 }
 
+func (s *MemoryStore) ListPartNumbers() ([]ubom.PartNumber, error) {
+	parts := make([]ubom.PartNumber, 0, len(s.partNumbers))
+	for _, part := range s.partNumbers {
+		parts = append(parts, part)
+	}
+	sort.Slice(parts, func(i, j int) bool { return parts[i].Value < parts[j].Value })
+	return parts, nil
+}
+
 func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
 	taxonomy, err := s.GetTaxonomyDef(taxonomyID)
 	if err != nil {

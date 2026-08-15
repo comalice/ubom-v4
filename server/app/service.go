@@ -34,11 +34,11 @@ type LineItemView struct {
 }
 
 type TaxonomyNodeView struct {
-	ID          ubom.TaxonomyNodeID `json:"id"`
-	Label       string              `json:"label"`
-	Path        []TaxonomyPathItem  `json:"path"`
-	Children    []TaxonomyChildView `json:"children"`
-	PartNumbers []PartNumberSummary `json:"partNumbers"`
+	ID          ubom.TaxonomyNodeID  `json:"id"`
+	Label       string               `json:"label"`
+	Path        []TaxonomyPathItem   `json:"path"`
+	Children    []TaxonomyChildView  `json:"children"`
+	PartNumbers []PartNumberListItem `json:"partNumbers"`
 }
 
 type TaxonomyPathItem struct {
@@ -54,6 +54,18 @@ type TaxonomyChildView struct {
 type PartNumberSummary struct {
 	ID    ubom.PartNumberID `json:"id"`
 	Value string            `json:"value"`
+}
+
+type RevisionSummary struct {
+	ID       ubom.PartRevisionID `json:"id"`
+	Revision string              `json:"revision"`
+}
+
+type PartNumberListItem struct {
+	ID           ubom.PartNumberID `json:"id"`
+	Value        string            `json:"value"`
+	TaxonomyPath []string          `json:"taxonomyPath"`
+	Revisions    []RevisionSummary `json:"revisions"`
 }
 
 type RevisionDetailView struct {
@@ -119,6 +131,22 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 	return view, nil
 }
 
+func (s *Service) ListPartNumberViews() ([]PartNumberListItem, error) {
+	parts, err := s.store.ListPartNumbers()
+	if err != nil {
+		return nil, err
+	}
+	items := make([]PartNumberListItem, 0, len(parts))
+	for _, part := range parts {
+		item, err := s.partNumberListItem(part)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 func (s *Service) GetPartNumberViewByValue(value string) (PartNumberView, error) {
 	part, err := s.store.GetPartNumber(value)
 	if err != nil {
@@ -150,15 +178,40 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 		Label:       node.Label,
 		Path:        path,
 		Children:    make([]TaxonomyChildView, 0, len(node.Children)),
-		PartNumbers: make([]PartNumberSummary, 0, len(parts)),
+		PartNumbers: make([]PartNumberListItem, 0, len(parts)),
 	}
 	for _, child := range node.Children {
 		view.Children = append(view.Children, TaxonomyChildView{ID: child.ID, Label: child.Label})
 	}
 	for _, part := range parts {
-		view.PartNumbers = append(view.PartNumbers, PartNumberSummary{ID: part.ID, Value: part.Value})
+		item, err := s.partNumberListItem(part)
+		if err != nil {
+			return TaxonomyNodeView{}, err
+		}
+		view.PartNumbers = append(view.PartNumbers, item)
 	}
 	return view, nil
+}
+
+func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, error) {
+	taxonomyPath, err := s.partTaxonomyPath(part)
+	if err != nil {
+		return PartNumberListItem{}, err
+	}
+	item := PartNumberListItem{
+		ID:           part.ID,
+		Value:        part.Value,
+		TaxonomyPath: taxonomyPath,
+		Revisions:    make([]RevisionSummary, 0, len(part.PartRevisionID)),
+	}
+	for _, revisionID := range part.PartRevisionID {
+		revision, err := s.store.GetPartRevision(revisionID)
+		if err != nil {
+			return PartNumberListItem{}, err
+		}
+		item.Revisions = append(item.Revisions, RevisionSummary{ID: revision.ID, Revision: revision.Revision})
+	}
+	return item, nil
 }
 
 func (s *Service) GetRevisionView(id ubom.PartRevisionID) (RevisionDetailView, error) {

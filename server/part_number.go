@@ -28,10 +28,12 @@ func (l LineItem) Validate() error {
 }
 
 type PartRevision struct {
-	ID           PartRevisionID
-	PartNumberID PartNumberID // Link to owning part number.
-	BOM          []LineItem
-	Part         Part
+	ID               PartRevisionID
+	PartNumberID     PartNumberID // Link to owning part number.
+	Revision         string       // Human-facing revision value.
+	RevisionSeqDefID SeqDefID     // Sequence definition used by Revision.
+	BOM              []LineItem
+	Part             Part
 }
 
 // Validate checks the structure of a part revision and its BOM.
@@ -39,6 +41,12 @@ type PartRevision struct {
 func (r PartRevision) Validate() error {
 	if r.PartNumberID == "" {
 		return fmt.Errorf("part revision has no part number ID")
+	}
+	if r.Revision == "" {
+		return fmt.Errorf("part revision has no revision value")
+	}
+	if r.RevisionSeqDefID == "" {
+		return fmt.Errorf("part revision has no revision sequence definition ID")
 	}
 	for _, item := range r.BOM {
 		if err := item.Validate(); err != nil {

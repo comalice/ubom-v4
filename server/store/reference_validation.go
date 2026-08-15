@@ -27,6 +27,13 @@ func validatePartRevisionReferences(s Store, revision ubom.PartRevision) error {
 	if _, err := s.GetPartNumberByID(revision.PartNumberID); err != nil {
 		return err
 	}
+	revisionSeqDef, err := s.GetSeqDef(revision.RevisionSeqDefID)
+	if err != nil {
+		return err
+	}
+	if _, err := revisionSeqDef.Parse(revision.Revision); err != nil {
+		return fmt.Errorf("invalid revision value: %w", err)
+	}
 	for _, item := range revision.BOM {
 		if _, err := s.GetPartNumberByID(item.PartNumberID); err != nil {
 			return err

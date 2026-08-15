@@ -199,7 +199,9 @@ func TestLineItemValidate(t *testing.T) {
 
 func TestPartRevisionValidate(t *testing.T) {
 	valid := PartRevision{
-		PartNumberID: "part-1",
+		PartNumberID:     "part-1",
+		Revision:         "1",
+		RevisionSeqDefID: "revision-v1",
 		BOM: []LineItem{{
 			PartNumberID:   "child-part-1",
 			PartRevisionID: "child-revision-1",

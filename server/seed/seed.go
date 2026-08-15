@@ -37,6 +37,10 @@ func Populate(s store.Store, options Options) (Result, error) {
 	if err := s.CreateSeqDef(seqDef); err != nil {
 		return Result{}, err
 	}
+	revisionSeqDef := ubom.NewSeqDef(ubom.Range(1, 9999).Width(4)).WithID("sample-revision-v1")
+	if err := s.CreateSeqDef(revisionSeqDef); err != nil {
+		return Result{}, err
+	}
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "sample-taxonomy-v1",
 		SeqDef: seqDef.ID,
@@ -83,7 +87,11 @@ func Populate(s store.Store, options Options) (Result, error) {
 			revisionCount = 1 + rng.Intn(options.MaxRevisions)
 		}
 		for range revisionCount {
-			revision := ubom.PartRevision{PartNumberID: part.ID}
+			revision := ubom.PartRevision{
+				PartNumberID:     part.ID,
+				Revision:         fmt.Sprintf("%04d", len(createdRevisions[i])+1),
+				RevisionSeqDefID: revisionSeqDef.ID,
+			}
 			if depths[i] > 0 && i > 0 {
 				candidateCount := rng.Intn(3)
 				for j := 0; j < candidateCount; j++ {

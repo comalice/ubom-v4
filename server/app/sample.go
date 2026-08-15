@@ -16,6 +16,13 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 	if err := s.CreateSeqDef(seqDef); err != nil {
 		return ubom.PartNumber{}, err
 	}
+	revisionSeqDef := ubom.NewSeqDef(ubom.Choice(
+		ubom.Literal("1"),
+		ubom.Literal("2"),
+	)).WithID("sample-revision-v1")
+	if err := s.CreateSeqDef(revisionSeqDef); err != nil {
+		return ubom.PartNumber{}, err
+	}
 
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "sample-taxonomy-v1",
@@ -41,7 +48,11 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	childRevision, err := s.CreatePartRevision(ubom.PartRevision{PartNumberID: child.ID})
+	childRevision, err := s.CreatePartRevision(ubom.PartRevision{
+		PartNumberID:     child.ID,
+		Revision:         "1",
+		RevisionSeqDefID: revisionSeqDef.ID,
+	})
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
@@ -55,7 +66,9 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 		return ubom.PartNumber{}, err
 	}
 	if _, err := s.CreatePartRevision(ubom.PartRevision{
-		PartNumberID: parent.ID,
+		PartNumberID:     parent.ID,
+		Revision:         "1",
+		RevisionSeqDefID: revisionSeqDef.ID,
 		BOM: []ubom.LineItem{{
 			PartNumberID:   child.ID,
 			PartRevisionID: childRevision.ID,

@@ -23,8 +23,9 @@ type PartNumberView struct {
 }
 
 type RevisionView struct {
-	ID  ubom.PartRevisionID `json:"id"`
-	BOM []LineItemView      `json:"bom"`
+	ID       ubom.PartRevisionID `json:"id"`
+	Revision string              `json:"revision"`
+	BOM      []LineItemView      `json:"bom"`
 }
 
 type LineItemView struct {
@@ -57,6 +58,7 @@ type PartNumberSummary struct {
 
 type RevisionDetailView struct {
 	ID           ubom.PartRevisionID `json:"id"`
+	Revision     string              `json:"revision"`
 	PartNumber   PartNumberSummary   `json:"partNumber"`
 	TaxonomyPath []string            `json:"taxonomyPath"`
 	BOM          []BOMNodeView       `json:"bom"`
@@ -65,6 +67,7 @@ type RevisionDetailView struct {
 type BOMNodeView struct {
 	PartNumber PartNumberSummary   `json:"partNumber"`
 	RevisionID ubom.PartRevisionID `json:"revisionId"`
+	Revision   string              `json:"revision"`
 	BOM        []BOMNodeView       `json:"bom"`
 }
 
@@ -101,8 +104,9 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 			return PartNumberView{}, errors.New("part revision does not belong to part number")
 		}
 		revisionView := RevisionView{
-			ID:  revision.ID,
-			BOM: make([]LineItemView, 0, len(revision.BOM)),
+			ID:       revision.ID,
+			Revision: revision.Revision,
+			BOM:      make([]LineItemView, 0, len(revision.BOM)),
 		}
 		for _, item := range revision.BOM {
 			revisionView.BOM = append(revisionView.BOM, LineItemView{
@@ -181,7 +185,8 @@ func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.
 		return RevisionDetailView{}, err
 	}
 	view := RevisionDetailView{
-		ID: revision.ID,
+		ID:       revision.ID,
+		Revision: revision.Revision,
 		PartNumber: PartNumberSummary{
 			ID:    part.ID,
 			Value: part.Value,
@@ -204,6 +209,7 @@ func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.
 		view.BOM = append(view.BOM, BOMNodeView{
 			PartNumber: childView.PartNumber,
 			RevisionID: childView.ID,
+			Revision:   childView.Revision,
 			BOM:        childView.BOM,
 		})
 	}

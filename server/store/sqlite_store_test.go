@@ -20,6 +20,7 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 		ubom.Literal("-"),
 		ubom.Bind("id", ubom.Range(0, 99).Width(2)),
 	)).WithID("pn-v1")
+	revisionSeqDef := ubom.NewSeqDef(ubom.Range(1, 9).Width(1)).WithID("revision-v1")
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "taxonomy-v1",
 		SeqDef: seqDef.ID,
@@ -40,6 +41,9 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 
 	if err := store.CreateSeqDef(seqDef); err != nil {
 		t.Fatalf("CreateSeqDef() error = %v", err)
+	}
+	if err := store.CreateSeqDef(revisionSeqDef); err != nil {
+		t.Fatalf("CreateSeqDef(revision) error = %v", err)
 	}
 	if err := store.CreateTaxonomyDef(taxonomyDef); err != nil {
 		t.Fatalf("CreateTaxonomyDef() error = %v", err)
@@ -87,7 +91,7 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 		t.Fatalf("GetPartNumberByID(missing) error = %v, want ErrNotFound", err)
 	}
 
-	revision, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: part.ID})
+	revision, err := store.CreatePartRevision(ubom.PartRevision{PartNumberID: part.ID, Revision: "1", RevisionSeqDefID: revisionSeqDef.ID})
 	if err != nil {
 		t.Fatalf("CreatePartRevision() error = %v", err)
 	}
@@ -107,7 +111,7 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	}
 
 	parent, err := store.CreatePartRevision(ubom.PartRevision{
-		PartNumberID: part.ID,
+		PartNumberID: part.ID, Revision: "2", RevisionSeqDefID: revisionSeqDef.ID,
 		BOM: []ubom.LineItem{{
 			PartNumberID:   part.ID,
 			PartRevisionID: revision.ID,

@@ -77,6 +77,10 @@ func (s *SQLiteStore) init() error {
 		CREATE TABLE IF NOT EXISTS part_revisions (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			part_number_id INTEGER NOT NULL,
+			revision TEXT NOT NULL,
+			revision_seq_def_id TEXT NOT NULL,
+			UNIQUE (part_number_id, revision),
+			FOREIGN KEY (revision_seq_def_id) REFERENCES seq_defs(id),
 			FOREIGN KEY (part_number_id) REFERENCES part_numbers(id)
 		);
 		CREATE TABLE IF NOT EXISTS bom_line_items (
@@ -366,7 +370,7 @@ func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 	if err != nil {
 		return ubom.PartRevision{}, err
 	}
-	result, err := tx.Exec("INSERT INTO part_revisions (part_number_id) VALUES (?)", partNumberID)
+	result, err := tx.Exec("INSERT INTO part_revisions (part_number_id, revision, revision_seq_def_id) VALUES (?, ?, ?)", partNumberID, revision.Revision, revision.RevisionSeqDefID)
 	if err != nil {
 		tx.Rollback()
 		return ubom.PartRevision{}, err
@@ -403,15 +407,19 @@ func (s *SQLiteStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision
 		return ubom.PartRevision{}, ErrNotFound
 	}
 	var partNumberID int64
-	if err := s.db.QueryRow("SELECT part_number_id FROM part_revisions WHERE id = ?", revisionID).Scan(&partNumberID); err != nil {
+	var revisionValue string
+	var revisionSeqDefID string
+	if err := s.db.QueryRow("SELECT part_number_id, revision, revision_seq_def_id FROM part_revisions WHERE id = ?", revisionID).Scan(&partNumberID, &revisionValue, &revisionSeqDefID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartRevision{}, ErrNotFound
 		}
 		return ubom.PartRevision{}, err
 	}
 	revision := ubom.PartRevision{
-		ID:           id,
-		PartNumberID: ubom.PartNumberID(strconv.FormatInt(partNumberID, 10)),
+		ID:               id,
+		PartNumberID:     ubom.PartNumberID(strconv.FormatInt(partNumberID, 10)),
+		Revision:         revisionValue,
+		RevisionSeqDefID: ubom.SeqDefID(revisionSeqDefID),
 	}
 	rows, err := s.db.Query(`SELECT child_part_number_id, child_revision_id
 		FROM bom_line_items WHERE parent_revision_id = ? ORDER BY position`, revisionID)

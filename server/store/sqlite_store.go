@@ -71,6 +71,7 @@ func (s *SQLiteStore) init() error {
 			seq_def_id TEXT NOT NULL,
 			taxonomy_def_id TEXT NOT NULL,
 			taxonomy_node_id TEXT NOT NULL,
+			attributes TEXT NOT NULL DEFAULT '[]',
 			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id),
 			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id),
 			FOREIGN KEY (taxonomy_def_id, taxonomy_node_id)
@@ -275,9 +276,13 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	} else if !errors.Is(err, ErrNotFound) {
 		return ubom.PartNumber{}, err
 	}
+	attributeData, err := json.Marshal(part.Attributes)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
 	result, err := s.db.Exec(`INSERT INTO part_numbers
-		(value, seq_def_id, taxonomy_def_id, taxonomy_node_id)
-		VALUES (?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID)
+		(value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes)
+		VALUES (?, ?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID, attributeData)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
@@ -292,15 +297,19 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 func (s *SQLiteStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	var part ubom.PartNumber
 	var id int64
-	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id
+	var attributeData []byte
+	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes
 		FROM part_numbers WHERE value = ?`, value).Scan(
-		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID); err != nil {
+		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartNumber{}, ErrNotFound
 		}
 		return ubom.PartNumber{}, err
 	}
 	part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
+	if err := json.Unmarshal(attributeData, &part.Attributes); err != nil {
+		return ubom.PartNumber{}, err
+	}
 	rows, err := s.db.Query("SELECT id FROM part_revisions WHERE part_number_id = ? ORDER BY id", id)
 	if err != nil {
 		return ubom.PartNumber{}, err
@@ -493,14 +502,18 @@ func (s *SQLiteStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision
 
 func (s *SQLiteStore) getPartNumberByID(id int64) (ubom.PartNumber, error) {
 	var part ubom.PartNumber
-	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id
+	var attributeData []byte
+	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes
 		FROM part_numbers WHERE id = ?`, id).Scan(
-		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID); err != nil {
+		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartNumber{}, ErrNotFound
 		}
 		return ubom.PartNumber{}, err
 	}
 	part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
+	if err := json.Unmarshal(attributeData, &part.Attributes); err != nil {
+		return ubom.PartNumber{}, err
+	}
 	return part, nil
 }

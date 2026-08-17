@@ -55,6 +55,7 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
+	child.Attributes = []ubom.PartNumberAttribute{{AttributeDefID: "footprint", Value: "0603"}}
 	child, err = s.CreatePartNumber(child)
 	if err != nil {
 		return ubom.PartNumber{}, err
@@ -71,6 +72,12 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 	parent, err := ubom.NewPartNumber("PN-A", seqDef, taxonomyDef)
 	if err != nil {
 		return ubom.PartNumber{}, err
+	}
+	parent.Attributes = []ubom.PartNumberAttribute{
+		{AttributeDefID: "footprint", Value: "0603"},
+		{AttributeDefID: "resistance", Value: "10000"},
+		{AttributeDefID: "tolerance", Value: "1"},
+		{AttributeDefID: "power_rating", Value: "0.1"},
 	}
 	parent, err = s.CreatePartNumber(parent)
 	if err != nil {

@@ -20,6 +20,13 @@ func validatePartNumberReferences(s Store, part ubom.PartNumber) error {
 	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
 		return ErrNotFound
 	}
+	assignments, err := taxonomyDef.Taxonomy.EffectiveAttributes(part.TaxonomyNodeID)
+	if err != nil {
+		return err
+	}
+	if err := ubom.ValidatePartNumberAttributes(part.Attributes, assignments, taxonomyDef.AttributeDefs); err != nil {
+		return err
+	}
 	return nil
 }
 

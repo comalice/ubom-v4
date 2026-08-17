@@ -61,6 +61,7 @@ func runStoreContract(t *testing.T, store Store) {
 		SeqDefID:       seqDef.ID,
 		TaxonomyDefID:  taxonomyDef.ID,
 		TaxonomyNodeID: "root",
+		Attributes:     []ubom.PartNumberAttribute{{AttributeDefID: "footprint", Value: "0603"}},
 	}
 
 	if err := store.CreateSeqDef(seqDef); err != nil {
@@ -196,6 +197,7 @@ func runStoreContract(t *testing.T, store Store) {
 		SeqDefID:       seqDef.ID,
 		TaxonomyDefID:  taxonomyDef.ID,
 		TaxonomyNodeID: "root",
+		Attributes:     []ubom.PartNumberAttribute{{AttributeDefID: "footprint", Value: "0805"}},
 	})
 	if err != nil {
 		t.Fatalf("CreatePartNumber(other) error = %v", err)

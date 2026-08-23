@@ -102,7 +102,7 @@
     </section>
   {:else if part}
     <p class="eyebrow">Part number</p>
-    <PartIdentity partNumber={part.value} taxonomy={part.taxonomyPath} />
+    <PartIdentity partNumber={part.value} taxonomy={part.taxonomyPath} attributes={part.attributes} />
     <h2>Revisions</h2>
     {#if part.revisions.length > 0}
       <div class="table-frame">

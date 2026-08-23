@@ -35,6 +35,9 @@ func TestPartNumberView(t *testing.T) {
 	if len(view.TaxonomyPath) != 2 || view.TaxonomyPath[0] != "Components" || view.TaxonomyPath[1] != "Resistors" {
 		t.Fatalf("taxonomy path = %#v, want [Components Resistors]", view.TaxonomyPath)
 	}
+	if len(view.Attributes) != 4 || view.Attributes[0].ID != "footprint" || view.Attributes[0].Value != "0603" || view.Attributes[1].ID != "resistance" || view.Attributes[1].Value != "10000" {
+		t.Fatalf("attributes = %#v, want sample resistor attributes", view.Attributes)
+	}
 	if len(view.Revisions) != 1 || len(view.Revisions[0].BOM) != 1 {
 		t.Fatalf("revisions = %#v, want one revision with one BOM item", view.Revisions)
 	}

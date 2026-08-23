@@ -16,10 +16,19 @@ func NewService(s store.Store) *Service {
 }
 
 type PartNumberView struct {
-	ID           ubom.PartNumberID `json:"id"`
-	Value        string            `json:"value"`
-	TaxonomyPath []string          `json:"taxonomyPath"`
-	Revisions    []RevisionView    `json:"revisions"`
+	ID           ubom.PartNumberID   `json:"id"`
+	Value        string              `json:"value"`
+	TaxonomyPath []string            `json:"taxonomyPath"`
+	Attributes   []PartAttributeView `json:"attributes"`
+	Revisions    []RevisionView      `json:"revisions"`
+}
+
+type PartAttributeView struct {
+	ID        ubom.AttributeDefID     `json:"id"`
+	Label     string                  `json:"label"`
+	Value     string                  `json:"value"`
+	ValueType ubom.AttributeValueType `json:"valueType"`
+	Unit      string                  `json:"unit,omitempty"`
 }
 
 type RevisionView struct {
@@ -110,11 +119,16 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 	if err != nil {
 		return PartNumberView{}, err
 	}
+	attributes, err := partAttributeViews(part, taxonomyDef)
+	if err != nil {
+		return PartNumberView{}, err
+	}
 
 	view := PartNumberView{
 		ID:           part.ID,
 		Value:        part.Value,
 		TaxonomyPath: taxonomyDef.Taxonomy.Project(parsed),
+		Attributes:   attributes,
 		Revisions:    make([]RevisionView, 0, len(part.PartRevisionID)),
 	}
 	for _, revisionID := range part.PartRevisionID {
@@ -139,6 +153,37 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 		view.Revisions = append(view.Revisions, revisionView)
 	}
 	return view, nil
+}
+
+func partAttributeViews(part ubom.PartNumber, taxonomyDef ubom.TaxonomyDef) ([]PartAttributeView, error) {
+	assignments, err := taxonomyDef.Taxonomy.EffectiveAttributes(part.TaxonomyNodeID)
+	if err != nil {
+		return nil, err
+	}
+	definitions := make(map[ubom.AttributeDefID]ubom.AttributeDef, len(taxonomyDef.AttributeDefs))
+	for _, definition := range taxonomyDef.AttributeDefs {
+		definitions[definition.ID] = definition
+	}
+	values := make(map[ubom.AttributeDefID]string, len(part.Attributes))
+	for _, attribute := range part.Attributes {
+		values[attribute.AttributeDefID] = attribute.Value
+	}
+	result := make([]PartAttributeView, 0, len(part.Attributes))
+	for _, assignment := range assignments {
+		definition, ok := definitions[assignment.AttributeDefID]
+		if !ok {
+			return nil, errors.New("taxonomy attribute assignment references unknown definition")
+		}
+		value, ok := values[definition.ID]
+		if !ok {
+			continue
+		}
+		result = append(result, PartAttributeView{
+			ID: definition.ID, Label: definition.Label, Value: value,
+			ValueType: definition.ValueType, Unit: definition.Unit,
+		})
+	}
+	return result, nil
 }
 
 func (s *Service) ListPartNumberViews() ([]PartNumberListItem, error) {

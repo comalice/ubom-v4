@@ -23,6 +23,7 @@ export type PartNumberView = {
   id: string
   value: string
   taxonomyPath: string[]
+  attributes: { id: string; label: string; value: string; valueType: string; unit?: string }[]
   revisions: { id: string; revision: string; bom: { partNumberId: string; partRevisionId: string }[] }[]
 }
 

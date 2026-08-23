@@ -6,6 +6,7 @@
   export let taxonomy: string[] = []
   export let revision: string | undefined = undefined
   export let revisionID: string | undefined = undefined
+  export let attributes: { id: string; label: string; value: string; unit?: string }[] = []
 </script>
 
 <div class="part-identity">
@@ -19,3 +20,17 @@
     </nav>
   {/if}
 </div>
+
+{#if attributes.length > 0}
+  <section class="attribute-summary" aria-labelledby="attributes-heading">
+    <h2 id="attributes-heading">Attributes</h2>
+    <dl>
+      {#each attributes as attribute}
+        <div>
+          <dt>{attribute.label}</dt>
+          <dd>{attribute.value}{#if attribute.unit} {attribute.unit}{/if}</dd>
+        </div>
+      {/each}
+    </dl>
+  </section>
+{/if}

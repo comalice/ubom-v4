@@ -4,10 +4,13 @@ export type TaxonomyChild = { id: string; label: string }
 export type TaxonomyPathItem = { id: string; label: string }
 export type PartSummary = { id: string; value: string }
 export type RevisionSummary = { id: string; revision: string }
+export type PartAttribute = { id: string; label: string; value: string; valueType: string; unit?: string }
+export type AttributeColumn = { id: string; label: string; unit?: string }
 export type PartListItem = {
   id: string
   value: string
   taxonomyPath: string[]
+  attributes: PartAttribute[]
   revisions: RevisionSummary[]
 }
 
@@ -15,6 +18,7 @@ export type TaxonomyNodeView = {
   id: string
   label: string
   path: TaxonomyPathItem[]
+  attributes: (AttributeColumn & { valueType: string; required: boolean })[]
   children: TaxonomyChild[]
   partNumbers: PartListItem[]
 }
@@ -23,6 +27,7 @@ export type PartNumberView = {
   id: string
   value: string
   taxonomyPath: string[]
+  attributes: { id: string; label: string; value: string; valueType: string; unit?: string }[]
   revisions: { id: string; revision: string; bom: { partNumberId: string; partRevisionId: string }[] }[]
 }
 

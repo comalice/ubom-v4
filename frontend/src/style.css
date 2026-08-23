@@ -53,6 +53,12 @@ ul { line-height: 1.8; }
 .identity-link a:hover { color: var(--ink); }
 .part-identity h1 .identity-link, .part-identity h1 .identity-link a { font-size: inherit; line-height: inherit; }
 .part-identity h1 .identity-link a { font-family: inherit; }
+.attribute-summary { margin-top: 1.5rem; }
+.attribute-summary h2 { margin-top: 0; }
+.attribute-summary dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .5rem 1.5rem; margin: 0; }
+.attribute-summary dl > div { padding: .7rem 0; border-top: 1px solid var(--hairline-light); }
+.attribute-summary dt { color: var(--muted); font-size: .72rem; }
+.attribute-summary dd { margin: .15rem 0 0; font-family: ui-monospace, SFMono-Regular, monospace; font-size: .85rem; }
 .copy-button { display: inline-flex; flex: none; align-items: center; justify-content: center; padding: .2rem; color: var(--muted); background: transparent; border: 0; border-radius: .2rem; cursor: pointer; }
 .copy-button:hover, .copy-button:focus-visible { color: var(--ink); background: var(--ground); outline: none; }
 .copy-feedback { color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .65rem; }

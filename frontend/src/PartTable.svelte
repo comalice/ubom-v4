@@ -1,9 +1,14 @@
 <script lang="ts">
   import IdentityLink from './IdentityLink.svelte'
   import { taxonomyPath } from './routes'
-  import type { PartListItem } from './api'
+  import type { AttributeColumn, PartAttribute, PartListItem } from './api'
 
   export let parts: PartListItem[] = []
+  export let columns: AttributeColumn[] = []
+
+  function attributeValue(part: PartListItem, id: string): PartAttribute | undefined {
+    return part.attributes.find(attribute => attribute.id === id)
+  }
 </script>
 
 <div class="table-frame part-table-frame">
@@ -14,6 +19,9 @@
         <th scope="col">PN</th>
         <th scope="col">Description</th>
         <th scope="col">Taxonomy path</th>
+        {#each columns as column}
+          <th scope="col">{column.label}{#if column.unit} ({column.unit}){/if}</th>
+        {/each}
         <th scope="col">Latest revision</th>
       </tr>
     </thead>
@@ -28,6 +36,10 @@
               <a href={taxonomyPath(part.taxonomyPath.slice(0, index + 1))}>{label}</a>
             {/each}
           </td>
+          {#each columns as column}
+            {@const attribute = attributeValue(part, column.id)}
+            <td>{attribute?.value ?? '—'}</td>
+          {/each}
           <td>
             {#if part.revisions.length > 0}
               {@const latest = part.revisions[part.revisions.length - 1]}

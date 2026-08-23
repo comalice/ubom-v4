@@ -39,6 +39,9 @@ func TestPartNumberView(t *testing.T) {
 	if len(view.TaxonomyPath) != 2 || view.TaxonomyPath[0] != "Components" || view.TaxonomyPath[1] != "Resistors" {
 		t.Fatalf("taxonomy path = %#v, want [Components Resistors]", view.TaxonomyPath)
 	}
+	if len(view.Attributes) != 4 || view.Attributes[0].ID != "footprint" || view.Attributes[0].Value != "0603" || view.Attributes[1].ID != "resistance" || view.Attributes[1].Label != "Resistance value" || view.Attributes[1].Value != "10000" {
+		t.Fatalf("attributes = %#v, want sample resistor attributes", view.Attributes)
+	}
 	if len(view.Revisions) != 1 || len(view.Revisions[0].BOM) != 1 {
 		t.Fatalf("revisions = %#v, want one revision with one BOM item", view.Revisions)
 	}
@@ -114,6 +117,9 @@ func TestPartNumberList(t *testing.T) {
 	}
 	if len(views[0].Revisions) != 1 || views[0].Revisions[0].Revision != "1" {
 		t.Fatalf("revisions = %#v, want revision 1", views[0].Revisions)
+	}
+	if len(views[0].Attributes) != 4 || views[0].Attributes[0].ID != "footprint" || views[0].Attributes[1].ID != "resistance" {
+		t.Fatalf("attributes = %#v, want sample resistor attributes", views[0].Attributes)
 	}
 }
 
@@ -232,6 +238,9 @@ func TestTaxonomyNodeViewIncludesRicherResistorAttributes(t *testing.T) {
 	}
 	if view.Attributes[0].ID != "footprint" || view.Attributes[1].ID != "resistance" || view.Attributes[2].ID != "tolerance" || view.Attributes[3].ID != "power_rating" {
 		t.Fatalf("attribute order = %#v, want footprint, resistance, tolerance, power_rating", view.Attributes)
+	}
+	if len(view.PartNumbers) != 1 || view.PartNumbers[0].Value != "PN-A" || len(view.PartNumbers[0].Attributes) != 4 || view.PartNumbers[0].Attributes[1].Value != "10000" || view.PartNumbers[0].Attributes[3].Value != "0.1" {
+		t.Fatalf("part numbers = %#v, want PN-A with resistor metadata", view.PartNumbers)
 	}
 }
 

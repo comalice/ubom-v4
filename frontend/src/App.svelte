@@ -123,14 +123,14 @@
     <section aria-labelledby="parts-heading">
       <h2 id="parts-heading">Parts</h2>
       {#if taxonomy.partNumbers.length > 0}
-        <PartTable parts={taxonomy.partNumbers} />
+        <PartTable parts={taxonomy.partNumbers} columns={taxonomy.attributes} />
       {:else}
         <p class="empty-state">No parts at this level.</p>
       {/if}
     </section>
   {:else if part}
     <p class="eyebrow">Part number</p>
-    <PartIdentity partNumber={part.value} taxonomy={part.taxonomyPath} />
+    <PartIdentity partNumber={part.value} taxonomy={part.taxonomyPath} attributes={part.attributes} />
     <h2>Revisions</h2>
     {#if part.revisions.length > 0}
       <div class="table-frame">

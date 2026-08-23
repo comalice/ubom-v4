@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	ubom "ubom-v4"
+	"ubom-v4/artifact"
 )
 
 var (
@@ -14,6 +15,9 @@ var (
 )
 
 type MemoryStore struct {
+	sources        map[artifact.SourceID]artifact.Source
+	artifacts      map[artifact.ID]artifact.Artifact
+	snapshots      map[artifact.SnapshotID]artifact.Snapshot
 	seqDefs        map[ubom.SeqDefID]ubom.SeqDef
 	taxonomyDefs   map[ubom.TaxonomyDefID]ubom.TaxonomyDef
 	partNumbers    map[string]ubom.PartNumber
@@ -27,6 +31,9 @@ var _ Store = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
+		sources:        map[artifact.SourceID]artifact.Source{},
+		artifacts:      map[artifact.ID]artifact.Artifact{},
+		snapshots:      map[artifact.SnapshotID]artifact.Snapshot{},
 		seqDefs:        map[ubom.SeqDefID]ubom.SeqDef{},
 		taxonomyDefs:   map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
 		partNumbers:    map[string]ubom.PartNumber{},
@@ -34,6 +41,101 @@ func NewMemoryStore() *MemoryStore {
 		nextPartID:     1,
 		nextRevisionID: 1,
 	}
+}
+
+func (s *MemoryStore) CreateSource(source artifact.Source) error {
+	if err := source.Validate(); err != nil {
+		return err
+	}
+	if _, ok := s.sources[source.ID]; ok {
+		return ErrAlreadyExists
+	}
+	s.sources[source.ID] = source
+	return nil
+}
+
+func (s *MemoryStore) GetSource(id artifact.SourceID) (artifact.Source, error) {
+	source, ok := s.sources[id]
+	if !ok {
+		return artifact.Source{}, ErrNotFound
+	}
+	return source, nil
+}
+
+func (s *MemoryStore) ListSources() ([]artifact.Source, error) {
+	items := make([]artifact.Source, 0, len(s.sources))
+	for _, source := range s.sources {
+		items = append(items, source)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items, nil
+}
+
+func (s *MemoryStore) CreateArtifact(item artifact.Artifact) error {
+	if err := item.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetSource(item.SourceID); err != nil {
+		return err
+	}
+	if _, ok := s.artifacts[item.ID]; ok {
+		return ErrAlreadyExists
+	}
+	s.artifacts[item.ID] = item
+	return nil
+}
+
+func (s *MemoryStore) GetArtifact(id artifact.ID) (artifact.Artifact, error) {
+	item, ok := s.artifacts[id]
+	if !ok {
+		return artifact.Artifact{}, ErrNotFound
+	}
+	return item, nil
+}
+
+func (s *MemoryStore) ListArtifacts() ([]artifact.Artifact, error) {
+	items := make([]artifact.Artifact, 0, len(s.artifacts))
+	for _, item := range s.artifacts {
+		items = append(items, item)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items, nil
+}
+
+func (s *MemoryStore) CreateSnapshot(snapshot artifact.Snapshot) error {
+	if err := snapshot.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetArtifact(snapshot.ArtifactID); err != nil {
+		return err
+	}
+	if _, ok := s.snapshots[snapshot.ID]; ok {
+		return ErrAlreadyExists
+	}
+	s.snapshots[snapshot.ID] = snapshot
+	return nil
+}
+
+func (s *MemoryStore) GetSnapshot(id artifact.SnapshotID) (artifact.Snapshot, error) {
+	snapshot, ok := s.snapshots[id]
+	if !ok {
+		return artifact.Snapshot{}, ErrNotFound
+	}
+	return snapshot, nil
+}
+
+func (s *MemoryStore) ListSnapshotsByArtifact(id artifact.ID) ([]artifact.Snapshot, error) {
+	if _, err := s.GetArtifact(id); err != nil {
+		return nil, err
+	}
+	items := []artifact.Snapshot{}
+	for _, snapshot := range s.snapshots {
+		if snapshot.ArtifactID == id {
+			items = append(items, snapshot)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items, nil
 }
 
 func (s *MemoryStore) CreateSeqDef(def ubom.SeqDef) error {

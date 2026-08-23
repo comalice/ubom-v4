@@ -8,6 +8,7 @@ import (
 
 	_ "modernc.org/sqlite"
 	ubom "ubom-v4"
+	"ubom-v4/artifact"
 )
 
 type SQLiteStore struct {
@@ -45,6 +46,30 @@ func (s *SQLiteStore) init() error {
 		CREATE TABLE IF NOT EXISTS seq_defs (
 			id TEXT PRIMARY KEY,
 			ast TEXT NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS artifact_sources (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS artifacts (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			source_id TEXT NOT NULL,
+			path TEXT NOT NULL,
+			FOREIGN KEY (source_id) REFERENCES artifact_sources(id)
+		);
+		CREATE TABLE IF NOT EXISTS artifact_snapshots (
+			id TEXT PRIMARY KEY,
+			artifact_id TEXT NOT NULL,
+			reference TEXT NOT NULL,
+			source_commit TEXT NOT NULL,
+			snapshot_key TEXT NOT NULL,
+			digest TEXT NOT NULL,
+			media_type TEXT NOT NULL,
+			size INTEGER NOT NULL,
+			FOREIGN KEY (artifact_id) REFERENCES artifacts(id)
 		);
 		CREATE TABLE IF NOT EXISTS taxonomy_defs (
 			id TEXT PRIMARY KEY,
@@ -100,6 +125,136 @@ func (s *SQLiteStore) init() error {
 		return err
 	}
 	return nil
+}
+
+func (s *SQLiteStore) CreateSource(source artifact.Source) error {
+	if err := source.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetSource(source.ID); !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	_, err := s.db.Exec("INSERT INTO artifact_sources (id, name, kind) VALUES (?, ?, ?)", source.ID, source.Name, source.Kind)
+	return err
+}
+
+func (s *SQLiteStore) GetSource(id artifact.SourceID) (artifact.Source, error) {
+	var source artifact.Source
+	if err := s.db.QueryRow("SELECT id, name, kind FROM artifact_sources WHERE id = ?", id).Scan(&source.ID, &source.Name, &source.Kind); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return artifact.Source{}, ErrNotFound
+		}
+		return artifact.Source{}, err
+	}
+	return source, nil
+}
+
+func (s *SQLiteStore) ListSources() ([]artifact.Source, error) {
+	rows, err := s.db.Query("SELECT id, name, kind FROM artifact_sources ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []artifact.Source{}
+	for rows.Next() {
+		var source artifact.Source
+		if err := rows.Scan(&source.ID, &source.Name, &source.Kind); err != nil {
+			return nil, err
+		}
+		items = append(items, source)
+	}
+	return items, rows.Err()
+}
+
+func (s *SQLiteStore) CreateArtifact(item artifact.Artifact) error {
+	if err := item.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetSource(item.SourceID); err != nil {
+		return err
+	}
+	if _, err := s.GetArtifact(item.ID); !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	_, err := s.db.Exec("INSERT INTO artifacts (id, name, kind, source_id, path) VALUES (?, ?, ?, ?, ?)", item.ID, item.Name, item.Kind, item.SourceID, item.Path)
+	return err
+}
+
+func (s *SQLiteStore) GetArtifact(id artifact.ID) (artifact.Artifact, error) {
+	var item artifact.Artifact
+	if err := s.db.QueryRow("SELECT id, name, kind, source_id, path FROM artifacts WHERE id = ?", id).Scan(&item.ID, &item.Name, &item.Kind, &item.SourceID, &item.Path); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return artifact.Artifact{}, ErrNotFound
+		}
+		return artifact.Artifact{}, err
+	}
+	return item, nil
+}
+
+func (s *SQLiteStore) ListArtifacts() ([]artifact.Artifact, error) {
+	rows, err := s.db.Query("SELECT id, name, kind, source_id, path FROM artifacts ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []artifact.Artifact{}
+	for rows.Next() {
+		var item artifact.Artifact
+		if err := rows.Scan(&item.ID, &item.Name, &item.Kind, &item.SourceID, &item.Path); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *SQLiteStore) CreateSnapshot(snapshot artifact.Snapshot) error {
+	if err := snapshot.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetArtifact(snapshot.ArtifactID); err != nil {
+		return err
+	}
+	if _, err := s.GetSnapshot(snapshot.ID); !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	_, err := s.db.Exec(`INSERT INTO artifact_snapshots
+		(id, artifact_id, reference, source_commit, snapshot_key, digest, media_type, size)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, snapshot.ID, snapshot.ArtifactID, snapshot.Reference, snapshot.Commit, snapshot.SnapshotKey, snapshot.Digest, snapshot.MediaType, snapshot.Size)
+	return err
+}
+
+func (s *SQLiteStore) GetSnapshot(id artifact.SnapshotID) (artifact.Snapshot, error) {
+	var snapshot artifact.Snapshot
+	if err := s.db.QueryRow(`SELECT id, artifact_id, reference, source_commit, snapshot_key, digest, media_type, size
+		FROM artifact_snapshots WHERE id = ?`, id).Scan(&snapshot.ID, &snapshot.ArtifactID, &snapshot.Reference, &snapshot.Commit, &snapshot.SnapshotKey, &snapshot.Digest, &snapshot.MediaType, &snapshot.Size); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return artifact.Snapshot{}, ErrNotFound
+		}
+		return artifact.Snapshot{}, err
+	}
+	return snapshot, nil
+}
+
+func (s *SQLiteStore) ListSnapshotsByArtifact(id artifact.ID) ([]artifact.Snapshot, error) {
+	if _, err := s.GetArtifact(id); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Query(`SELECT id, artifact_id, reference, source_commit, snapshot_key, digest, media_type, size
+		FROM artifact_snapshots WHERE artifact_id = ? ORDER BY id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []artifact.Snapshot{}
+	for rows.Next() {
+		var snapshot artifact.Snapshot
+		if err := rows.Scan(&snapshot.ID, &snapshot.ArtifactID, &snapshot.Reference, &snapshot.Commit, &snapshot.SnapshotKey, &snapshot.Digest, &snapshot.MediaType, &snapshot.Size); err != nil {
+			return nil, err
+		}
+		items = append(items, snapshot)
+	}
+	return items, rows.Err()
 }
 
 func (s *SQLiteStore) CreateSeqDef(def ubom.SeqDef) error {

@@ -1,8 +1,19 @@
 package store
 
 import ubom "ubom-v4"
+import "ubom-v4/artifact"
 
 type Store interface {
+	CreateSource(artifact.Source) error
+	GetSource(artifact.SourceID) (artifact.Source, error)
+	ListSources() ([]artifact.Source, error)
+	CreateArtifact(artifact.Artifact) error
+	GetArtifact(artifact.ID) (artifact.Artifact, error)
+	ListArtifacts() ([]artifact.Artifact, error)
+	CreateSnapshot(artifact.Snapshot) error
+	GetSnapshot(artifact.SnapshotID) (artifact.Snapshot, error)
+	ListSnapshotsByArtifact(artifact.ID) ([]artifact.Snapshot, error)
+
 	CreateSeqDef(ubom.SeqDef) error
 	GetSeqDef(ubom.SeqDefID) (ubom.SeqDef, error)
 

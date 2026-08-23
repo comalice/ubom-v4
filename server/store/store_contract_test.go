@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	ubom "ubom-v4"
+	"ubom-v4/artifact"
 )
 
 func TestStoreContract(t *testing.T) {
@@ -40,6 +41,44 @@ func TestStoreContract(t *testing.T) {
 }
 
 func runStoreContract(t *testing.T, store Store) {
+	source := artifact.Source{ID: "local", Name: "Local files", Kind: "filesystem"}
+	item := artifact.Artifact{ID: "drawing", Name: "Widget drawing", Kind: "drawing", SourceID: source.ID, Path: "cad/widget.drw"}
+	snapshot := artifact.Snapshot{ID: "drawing-v1", ArtifactID: item.ID, Reference: "v1", Commit: "immutable-1", Digest: "sha256:abc", MediaType: "application/octet-stream", Size: 3}
+	if err := store.CreateSource(source); err != nil {
+		t.Fatalf("CreateSource() error = %v", err)
+	}
+	if err := store.CreateArtifact(item); err != nil {
+		t.Fatalf("CreateArtifact() error = %v", err)
+	}
+	if err := store.CreateSnapshot(snapshot); err != nil {
+		t.Fatalf("CreateSnapshot() error = %v", err)
+	}
+	gotSource, err := store.GetSource(source.ID)
+	if err != nil || !reflect.DeepEqual(gotSource, source) {
+		t.Fatalf("GetSource() = %#v, %v; want %#v", gotSource, err, source)
+	}
+	gotItem, err := store.GetArtifact(item.ID)
+	if err != nil || !reflect.DeepEqual(gotItem, item) {
+		t.Fatalf("GetArtifact() = %#v, %v; want %#v", gotItem, err, item)
+	}
+	gotSnapshot, err := store.GetSnapshot(snapshot.ID)
+	if err != nil || !reflect.DeepEqual(gotSnapshot, snapshot) {
+		t.Fatalf("GetSnapshot() = %#v, %v; want %#v", gotSnapshot, err, snapshot)
+	}
+	listed, err := store.ListSnapshotsByArtifact(item.ID)
+	if err != nil || !reflect.DeepEqual(listed, []artifact.Snapshot{snapshot}) {
+		t.Fatalf("ListSnapshotsByArtifact() = %#v, %v; want %#v", listed, err, []artifact.Snapshot{snapshot})
+	}
+	if err := store.CreateArtifact(artifact.Artifact{ID: "missing-source", Name: "x", Kind: "file", SourceID: "missing", Path: "x"}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("CreateArtifact() missing source error = %v, want ErrNotFound", err)
+	}
+	if err := store.CreateSnapshot(artifact.Snapshot{ID: "missing-artifact", ArtifactID: "missing", Digest: "sha256:x"}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("CreateSnapshot() missing artifact error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.GetSnapshot("missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetSnapshot() missing error = %v, want ErrNotFound", err)
+	}
+
 	seqDef := ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn-v1")
 	revisionSeqDef := ubom.NewSeqDef(ubom.Range(1, 9).Width(1)).WithID("revision-v1")
 	taxonomyDef := ubom.TaxonomyDef{

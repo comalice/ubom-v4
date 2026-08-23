@@ -17,14 +17,19 @@ type LocalFileAdapter struct {
 	root   string
 }
 
-func NewLocalFileAdapter(source artifact.Source, root string) (*LocalFileAdapter, error) {
-	if err := source.Validate(); err != nil {
+type LocalFileAdapterConfig struct {
+	Source artifact.Source
+	Root   string
+}
+
+func NewLocalFileAdapter(config LocalFileAdapterConfig) (*LocalFileAdapter, error) {
+	if err := config.Source.Validate(); err != nil {
 		return nil, err
 	}
-	if root == "" {
+	if config.Root == "" {
 		return nil, errors.New("local adapter root is empty")
 	}
-	absoluteRoot, err := filepath.Abs(root)
+	absoluteRoot, err := filepath.Abs(config.Root)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +37,7 @@ func NewLocalFileAdapter(source artifact.Source, root string) (*LocalFileAdapter
 	if err != nil {
 		return nil, err
 	}
-	return &LocalFileAdapter{source: source, root: realRoot}, nil
+	return &LocalFileAdapter{source: config.Source, root: realRoot}, nil
 }
 
 func (a *LocalFileAdapter) Source() artifact.Source { return a.source }

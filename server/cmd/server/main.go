@@ -11,19 +11,27 @@ import (
 )
 
 func main() {
-	dbPath := flag.String("db", "", "SQLite database path; empty uses the in-memory sample")
+	config := Config{
+		HTTP:     HTTPConfig{ListenAddress: "127.0.0.1:8080"},
+		Database: DatabaseConfig{},
+	}
+	flag.StringVar(&config.Database.Path, "db", "", "SQLite database path; empty uses the in-memory sample")
+	flag.StringVar(&config.HTTP.ListenAddress, "listen", config.HTTP.ListenAddress, "HTTP listen address")
+	flag.StringVar(&config.Artifacts.SnapshotRoot, "artifact-snapshot-root", "", "durable artifact snapshot content root")
+	flag.StringVar(&config.Artifacts.LocalSource.ID, "local-source-id", "", "existing local artifact source ID")
+	flag.StringVar(&config.Artifacts.LocalSource.Root, "local-source-root", "", "local artifact source root")
 	flag.Parse()
 
 	var persistence store.Store
 	var closeStore func() error
-	if *dbPath == "" {
+	if config.Database.Path == "" {
 		memory := store.NewMemoryStore()
 		if _, err := app.LoadSampleData(memory); err != nil {
 			log.Fatalf("load sample data: %v", err)
 		}
 		persistence = memory
 	} else {
-		sqlite, err := store.OpenSQLiteStore(*dbPath)
+		sqlite, err := store.OpenSQLiteStore(config.Database.Path)
 		if err != nil {
 			log.Fatalf("open database: %v", err)
 		}
@@ -35,14 +43,21 @@ func main() {
 	}
 
 	service := app.NewService(persistence)
+	snapshotService, err := config.Artifacts.snapshotService(persistence)
+	if err != nil {
+		log.Fatalf("configure artifacts: %v", err)
+	}
 	server := api.NewServer(service)
-	if *dbPath != "" {
-		log.Printf("using SQLite database %s", *dbPath)
+	if snapshotService != nil {
+		server = api.NewServerWithSnapshotService(service, snapshotService)
+	}
+	if config.Database.Path != "" {
+		log.Printf("using SQLite database %s", config.Database.Path)
 	} else {
 		log.Println("using in-memory sample data")
 	}
-	log.Println("listening on http://localhost:8080")
-	if err := http.ListenAndServe("127.0.0.1:8080", server.Handler()); err != nil {
+	log.Printf("listening on http://%s", config.HTTP.ListenAddress)
+	if err := http.ListenAndServe(config.HTTP.ListenAddress, server.Handler()); err != nil {
 		log.Fatal(err)
 	}
 }

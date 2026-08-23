@@ -58,7 +58,7 @@ func TestArtifactMetadataAndCaptureAPI(t *testing.T) {
 	if err := persistence.CreateArtifact(item); err != nil {
 		t.Fatal(err)
 	}
-	adapter, err := app.NewLocalFileAdapter(source, root)
+	adapter, err := app.NewLocalFileAdapter(app.LocalFileAdapterConfig{Source: source, Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}

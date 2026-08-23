@@ -37,7 +37,7 @@ func TestMemorySnapshotStorePutOpenAndDeduplicates(t *testing.T) {
 }
 
 func TestFileSnapshotStorePutOpen(t *testing.T) {
-	store, err := NewFileSnapshotStore(t.TempDir())
+	store, err := NewFileSnapshotStore(FileSnapshotStoreConfig{Root: t.TempDir()})
 	if err != nil {
 		t.Fatalf("NewFileSnapshotStore() error = %v", err)
 	}

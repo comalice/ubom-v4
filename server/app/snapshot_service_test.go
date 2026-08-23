@@ -25,7 +25,7 @@ func TestSnapshotServiceCapturesLocalFile(t *testing.T) {
 	if err := metadata.CreateArtifact(item); err != nil {
 		t.Fatal(err)
 	}
-	adapter, err := NewLocalFileAdapter(source, root)
+	adapter, err := NewLocalFileAdapter(LocalFileAdapterConfig{Source: source, Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestSnapshotServiceCapturesLocalFile(t *testing.T) {
 
 func TestLocalFileAdapterRejectsPathEscape(t *testing.T) {
 	source := artifact.Source{ID: "local", Name: "Local", Kind: "filesystem"}
-	adapter, err := NewLocalFileAdapter(source, t.TempDir())
+	adapter, err := NewLocalFileAdapter(LocalFileAdapterConfig{Source: source, Root: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestLocalFileAdapterRejectsSymlinkEscape(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 	source := artifact.Source{ID: "local", Name: "Local", Kind: "filesystem"}
-	adapter, err := NewLocalFileAdapter(source, root)
+	adapter, err := NewLocalFileAdapter(LocalFileAdapterConfig{Source: source, Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestSnapshotServiceRejectsEmptyReference(t *testing.T) {
 	if err := metadata.CreateArtifact(item); err != nil {
 		t.Fatal(err)
 	}
-	adapter, err := NewLocalFileAdapter(source, root)
+	adapter, err := NewLocalFileAdapter(LocalFileAdapterConfig{Source: source, Root: root})
 	if err != nil {
 		t.Fatal(err)
 	}

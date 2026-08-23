@@ -57,9 +57,17 @@ type FileSnapshotStore struct {
 	root string
 }
 
-func NewFileSnapshotStore(root string) (*FileSnapshotStore, error) {
-	if root == "" {
+type FileSnapshotStoreConfig struct {
+	Root string
+}
+
+func NewFileSnapshotStore(config FileSnapshotStoreConfig) (*FileSnapshotStore, error) {
+	if config.Root == "" {
 		return nil, errors.New("snapshot store root is empty")
+	}
+	root, err := filepath.Abs(config.Root)
+	if err != nil {
+		return nil, err
 	}
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err

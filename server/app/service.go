@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	ubom "ubom-v4"
+	"ubom-v4/artifact"
 	"ubom-v4/store"
 )
 
@@ -91,6 +92,79 @@ type BOMNodeView struct {
 	RevisionID ubom.PartRevisionID `json:"revisionId"`
 	Revision   string              `json:"revision"`
 	BOM        []BOMNodeView       `json:"bom"`
+}
+
+type SourceView struct {
+	ID   artifact.SourceID `json:"id"`
+	Name string            `json:"name"`
+	Kind string            `json:"kind"`
+}
+
+type ArtifactView struct {
+	ID       artifact.ID       `json:"id"`
+	Name     string            `json:"name"`
+	Kind     string            `json:"kind"`
+	SourceID artifact.SourceID `json:"sourceId"`
+	Path     string            `json:"path"`
+}
+
+type SnapshotView struct {
+	ID          artifact.SnapshotID `json:"id"`
+	ArtifactID  artifact.ID         `json:"artifactId"`
+	Reference   string              `json:"reference"`
+	Commit      string              `json:"commit,omitempty"`
+	SnapshotKey string              `json:"snapshotKey"`
+	Digest      string              `json:"digest"`
+	MediaType   string              `json:"mediaType"`
+	Size        int64               `json:"size"`
+}
+
+func (s *Service) ListSourceViews() ([]SourceView, error) {
+	sources, err := s.store.ListSources()
+	if err != nil {
+		return nil, err
+	}
+	views := make([]SourceView, 0, len(sources))
+	for _, source := range sources {
+		views = append(views, SourceView{ID: source.ID, Name: source.Name, Kind: source.Kind})
+	}
+	return views, nil
+}
+
+func (s *Service) ListArtifactViews() ([]ArtifactView, error) {
+	items, err := s.store.ListArtifacts()
+	if err != nil {
+		return nil, err
+	}
+	views := make([]ArtifactView, 0, len(items))
+	for _, item := range items {
+		views = append(views, ArtifactView{ID: item.ID, Name: item.Name, Kind: item.Kind, SourceID: item.SourceID, Path: item.Path})
+	}
+	return views, nil
+}
+
+func (s *Service) GetArtifactView(id artifact.ID) (ArtifactView, error) {
+	item, err := s.store.GetArtifact(id)
+	if err != nil {
+		return ArtifactView{}, err
+	}
+	return ArtifactView{ID: item.ID, Name: item.Name, Kind: item.Kind, SourceID: item.SourceID, Path: item.Path}, nil
+}
+
+func (s *Service) ListSnapshotViews(id artifact.ID) ([]SnapshotView, error) {
+	snapshots, err := s.store.ListSnapshotsByArtifact(id)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]SnapshotView, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		views = append(views, snapshotView(snapshot))
+	}
+	return views, nil
+}
+
+func snapshotView(snapshot artifact.Snapshot) SnapshotView {
+	return SnapshotView{ID: snapshot.ID, ArtifactID: snapshot.ArtifactID, Reference: snapshot.Reference, Commit: snapshot.Commit, SnapshotKey: snapshot.SnapshotKey, Digest: snapshot.Digest, MediaType: snapshot.MediaType, Size: snapshot.Size}
 }
 
 func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error) {

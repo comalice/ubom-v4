@@ -3,20 +3,27 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
 	ubom "ubom-v4"
 	"ubom-v4/app"
+	"ubom-v4/artifact"
 	"ubom-v4/store"
 )
 
 type Server struct {
-	service *app.Service
+	service         *app.Service
+	snapshotService *app.SnapshotService
 }
 
 func NewServer(service *app.Service) *Server {
 	return &Server{service: service}
+}
+
+func NewServerWithSnapshotService(service *app.Service, snapshotService *app.SnapshotService) *Server {
+	return &Server{service: service, snapshotService: snapshotService}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -26,7 +33,106 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/parts/", s.handlePartNumber)
 	mux.HandleFunc("/api/taxonomies/", s.handleTaxonomyNode)
 	mux.HandleFunc("/api/revisions/", s.handleRevision)
+	mux.HandleFunc("/api/artifact-sources", s.handleSources)
+	mux.HandleFunc("/api/artifacts", s.handleArtifacts)
+	mux.HandleFunc("/api/artifacts/", s.handleArtifact)
 	return mux
+}
+
+func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	views, err := s.service.ListSourceViews()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load artifact sources")
+		return
+	}
+	writeJSON(w, views)
+}
+
+func (s *Server) handleArtifacts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	views, err := s.service.ListArtifactViews()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load artifacts")
+		return
+	}
+	writeJSON(w, views)
+}
+
+func (s *Server) handleArtifact(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/artifacts/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 1 || parts[0] == "" || (len(parts) > 1 && parts[1] != "snapshots") || len(parts) > 2 {
+		writeError(w, http.StatusBadRequest, "invalid artifact path")
+		return
+	}
+	id := artifact.ID(parts[0])
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		view, err := s.service.GetArtifactView(id)
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "artifact not found")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not load artifact")
+			return
+		}
+		writeJSON(w, view)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "snapshots" {
+		if r.Method == http.MethodGet {
+			views, err := s.service.ListSnapshotViews(id)
+			if errors.Is(err, store.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "artifact not found")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "could not load snapshots")
+				return
+			}
+			writeJSON(w, views)
+			return
+		}
+		if r.Method == http.MethodPost {
+			if s.snapshotService == nil {
+				writeError(w, http.StatusNotImplemented, "snapshot capture is not configured")
+				return
+			}
+			var request struct {
+				Reference string `json:"reference"`
+			}
+			decoder := json.NewDecoder(r.Body)
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&request); err != nil && !errors.Is(err, io.EOF) {
+				writeError(w, http.StatusBadRequest, "invalid snapshot request")
+				return
+			}
+			snapshot, err := s.snapshotService.Capture(r.Context(), id, request.Reference)
+			if errors.Is(err, store.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "artifact not found")
+				return
+			}
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeJSON(w, app.SnapshotView{ID: snapshot.ID, ArtifactID: snapshot.ArtifactID, Reference: snapshot.Reference, Commit: snapshot.Commit, SnapshotKey: snapshot.SnapshotKey, Digest: snapshot.Digest, MediaType: snapshot.MediaType, Size: snapshot.Size})
+			return
+		}
+	}
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func writeJSON(w http.ResponseWriter, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(value)
 }
 
 func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {

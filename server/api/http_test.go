@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"ubom-v4/app"
+	"ubom-v4/artifact"
 	"ubom-v4/store"
 )
 
@@ -37,6 +41,53 @@ func TestPartNumberView(t *testing.T) {
 	}
 	if len(view.Revisions) != 1 || len(view.Revisions[0].BOM) != 1 {
 		t.Fatalf("revisions = %#v, want one revision with one BOM item", view.Revisions)
+	}
+}
+
+func TestArtifactMetadataAndCaptureAPI(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "widget.txt"), []byte("widget"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	persistence := store.NewMemoryStore()
+	source := artifact.Source{ID: "local", Name: "Local", Kind: "filesystem"}
+	item := artifact.Artifact{ID: "widget", Name: "Widget", Kind: "text", SourceID: source.ID, Path: "widget.txt"}
+	if err := persistence.CreateSource(source); err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.CreateArtifact(item); err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := app.NewLocalFileAdapter(source, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := app.NewService(persistence)
+	snapshots := app.NewSnapshotService(persistence, artifact.NewMemorySnapshotStore(), adapter)
+	server := NewServerWithSnapshotService(service, snapshots)
+
+	for _, path := range []string{"/api/artifact-sources", "/api/artifacts", "/api/artifacts/widget"} {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, path, nil))
+		if recording.Code != http.StatusOK {
+			t.Fatalf("GET %s status = %d; body = %s", path, recording.Code, recording.Body)
+		}
+	}
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/artifacts/widget/snapshots", strings.NewReader(`{"reference":"working"}`))
+	server.Handler().ServeHTTP(recording, request)
+	if recording.Code != http.StatusOK {
+		t.Fatalf("POST snapshot status = %d; body = %s", recording.Code, recording.Body)
+	}
+	var snapshot app.SnapshotView
+	if err := json.NewDecoder(recording.Body).Decode(&snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.ArtifactID != item.ID || snapshot.Digest == "" || snapshot.Size != 6 {
+		t.Fatalf("snapshot = %#v", snapshot)
+	}
+	if snapshot.SnapshotKey == filepath.Join(root, "widget.txt") {
+		t.Fatal("API returned a source filesystem path")
 	}
 }
 

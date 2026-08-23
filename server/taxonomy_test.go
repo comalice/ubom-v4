@@ -116,6 +116,11 @@ func TestTaxonomyDefValidate(t *testing.T) {
 				}},
 			},
 		},
+		{
+			name: "duplicate node attribute assignment",
+			def:  TaxonomyDef{ID: "taxonomy-v1", SeqDef: "pn-v1", AttributeDefs: []AttributeDef{{ID: "size", Label: "Size", ValueType: AttributeValueString}}, Taxonomy: Taxonomy{Root: TaxonomyNode{ID: "root", Attributes: []AttributeAssignment{{AttributeDefID: "size"}, {AttributeDefID: "size"}}}}},
+			want: false,
+		},
 	}
 
 	for _, test := range tests {

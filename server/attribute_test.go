@@ -2,6 +2,13 @@ package ubom
 
 import "testing"
 
+func TestAttributeDefRejectsDuplicateEnumValues(t *testing.T) {
+	definition := AttributeDef{ID: "finish", Label: "Finish", ValueType: AttributeValueEnum, EnumValues: []string{"matte", "matte"}}
+	if err := definition.Validate(); err == nil {
+		t.Fatal("AttributeDef.Validate() accepted duplicate enum values")
+	}
+}
+
 func TestValidatePartNumberAttributesResistor(t *testing.T) {
 	definitions := []AttributeDef{
 		{ID: "footprint", Label: "Footprint", ValueType: AttributeValueEnum, EnumValues: []string{"0603", "0805"}},

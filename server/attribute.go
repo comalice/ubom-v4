@@ -52,6 +52,13 @@ func (d AttributeDef) Validate() error {
 		if len(d.EnumValues) == 0 {
 			return fmt.Errorf("attribute definition %q has no enum values", d.ID)
 		}
+		seen := make(map[string]bool, len(d.EnumValues))
+		for _, value := range d.EnumValues {
+			if seen[value] {
+				return fmt.Errorf("attribute definition %q has duplicate enum value %q", d.ID, value)
+			}
+			seen[value] = true
+		}
 	default:
 		return fmt.Errorf("attribute definition %q has unsupported value type %q", d.ID, d.ValueType)
 	}

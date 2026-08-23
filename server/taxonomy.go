@@ -67,6 +67,7 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 		return fmt.Errorf("duplicate taxonomy node ID %q", node.ID)
 	}
 	seen[node.ID] = true
+	assignments := map[AttributeDefID]bool{}
 	for _, assignment := range node.Attributes {
 		if assignment.AttributeDefID == "" {
 			return fmt.Errorf("taxonomy node %q has attribute assignment with no definition ID", node.ID)
@@ -74,6 +75,10 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 		if !attributeDefs[assignment.AttributeDefID] {
 			return fmt.Errorf("taxonomy node %q references unknown attribute definition %q", node.ID, assignment.AttributeDefID)
 		}
+		if assignments[assignment.AttributeDefID] {
+			return fmt.Errorf("taxonomy node %q has duplicate attribute assignment %q", node.ID, assignment.AttributeDefID)
+		}
+		assignments[assignment.AttributeDefID] = true
 	}
 	for _, child := range node.Children {
 		if err := validateTaxonomyNode(child, seen, attributeDefs); err != nil {
@@ -118,13 +123,15 @@ func taxonomyNodePath(node TaxonomyNode, id TaxonomyNodeID) ([]TaxonomyNode, boo
 	return nil, false
 }
 
-// Project returns the labels along the first matching path from Root.
+// Project returns the labels along the first matching path from Root. When
+// sibling rules overlap, declaration order is the deterministic priority.
 // Unknown binding values are valid but stop projection at the last match.
 func (t Taxonomy) Project(parsed ParseResult) []string {
 	return projectTaxonomyNode(t.Root, parsed.Bindings)
 }
 
-// ProjectNode returns the deepest matching taxonomy node.
+// ProjectNode returns the deepest matching taxonomy node, using declaration
+// order as the priority when sibling rules overlap.
 func (t Taxonomy) ProjectNode(parsed ParseResult) (TaxonomyNodeID, error) {
 	node, ok := projectTaxonomyNodeID(t.Root, parsed.Bindings)
 	if !ok {

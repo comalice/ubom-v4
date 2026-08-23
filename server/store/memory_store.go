@@ -239,7 +239,11 @@ func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 }
 
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	prospectiveID := ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))
 	if err := revision.Validate(); err != nil {
+		return ubom.PartRevision{}, err
+	}
+	if err := validatePartRevisionCycles(s, revision, prospectiveID); err != nil {
 		return ubom.PartRevision{}, err
 	}
 	if err := validatePartRevisionReferences(s, revision); err != nil {
@@ -253,7 +257,7 @@ func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 		}
 	}
 
-	revision.ID = ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))
+	revision.ID = prospectiveID
 	s.nextRevisionID++
 	s.partRevisions[revision.ID] = revision
 	part.PartRevisionID = append(part.PartRevisionID, revision.ID)

@@ -280,6 +280,12 @@ func runStoreContract(t *testing.T, store Store) {
 	if err != nil {
 		t.Fatalf("CreatePartRevision() error = %v", err)
 	}
+	if _, err := store.CreatePartRevision(ubom.PartRevision{
+		PartNumberID: part.ID, Revision: "2", RevisionSeqDefID: revisionSeqDef.ID,
+		BOM: []ubom.LineItem{{PartNumberID: part.ID, PartRevisionID: "2"}},
+	}); err == nil {
+		t.Fatal("CreatePartRevision() accepted a self-cycle")
+	}
 	otherPart, err := store.CreatePartNumber(ubom.PartNumber{
 		Value:          "PN-2",
 		SeqDefID:       seqDef.ID,

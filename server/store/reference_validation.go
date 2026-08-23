@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 
 	ubom "ubom-v4"
@@ -66,6 +67,39 @@ func validatePartRevisionReferences(s Store, revision ubom.PartRevision) error {
 		}
 		if childRevision.PartNumberID != item.PartNumberID {
 			return fmt.Errorf("line item revision does not belong to line item part number")
+		}
+	}
+	return nil
+}
+
+func validatePartRevisionCycles(s Store, revision ubom.PartRevision, prospectiveID ubom.PartRevisionID) error {
+	visited := map[ubom.PartRevisionID]bool{}
+	var visit func(ubom.PartRevisionID) error
+	visit = func(id ubom.PartRevisionID) error {
+		if id == prospectiveID {
+			return fmt.Errorf("part revision BOM contains a cycle")
+		}
+		if visited[id] {
+			return nil
+		}
+		visited[id] = true
+		child, err := s.GetPartRevision(id)
+		if err != nil {
+			return err
+		}
+		for _, item := range child.BOM {
+			if err := visit(item.PartRevisionID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, item := range revision.BOM {
+		if err := visit(item.PartRevisionID); err != nil {
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			return err
 		}
 	}
 	return nil

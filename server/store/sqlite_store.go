@@ -567,7 +567,15 @@ func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 }
 
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	var nextID int64
+	if err := s.db.QueryRow("SELECT COALESCE(MAX(id), 0) + 1 FROM part_revisions").Scan(&nextID); err != nil {
+		return ubom.PartRevision{}, err
+	}
+	prospectiveID := ubom.PartRevisionID(strconv.FormatInt(nextID, 10))
 	if err := revision.Validate(); err != nil {
+		return ubom.PartRevision{}, err
+	}
+	if err := validatePartRevisionCycles(s, revision, prospectiveID); err != nil {
 		return ubom.PartRevision{}, err
 	}
 	if err := validatePartRevisionReferences(s, revision); err != nil {

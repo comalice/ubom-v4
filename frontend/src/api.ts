@@ -41,6 +41,19 @@ export type RevisionView = {
   bom: BomNode[]
 }
 
+export type SourceView = { id: string; name: string; kind: string }
+export type ArtifactView = { id: string; name: string; kind: string; sourceId: string; path: string }
+export type SnapshotView = {
+  id: string
+  artifactId: string
+  reference: string
+  commit?: string
+  snapshotKey: string
+  digest: string
+  mediaType: string
+  size: number
+}
+
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(path)
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
@@ -66,3 +79,8 @@ export const getPart = (value: string) => get<PartNumberView>(`/api/parts/by-val
 export const getParts = () => get<PartListItem[]>('/api/parts')
 
 export const getRevision = (id: string) => get<RevisionView>(`/api/revisions/${encodeURIComponent(id)}`)
+
+export const getSources = () => get<SourceView[]>('/api/artifact-sources')
+export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
+export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
+export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)

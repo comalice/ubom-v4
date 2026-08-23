@@ -23,6 +23,7 @@ a:hover { color: var(--ink); text-decoration: underline; }
 .brand { color: var(--ink); font-family: Georgia, serif; font-size: .95rem; font-weight: 600; letter-spacing: .02em; }
 .brand:hover { color: var(--accent); text-decoration: none; }
 .header-caption { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: .7rem; }
+.header-artifacts { margin-left: auto; font-size: .75rem; }
 .page-shell { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 .page-shell.full-width { max-width: none; }
 .breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; color: var(--muted); font-size: .75rem; margin-bottom: 2.25rem; }
@@ -86,9 +87,14 @@ ul { line-height: 1.8; }
 .part-table tbody tr:hover { background: var(--accent-light); }
 .part-taxonomy { color: var(--muted); font-size: .8rem; }
 .part-revisions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.artifact-table-frame { margin-top: 1rem; }
+.artifact-code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: .8rem; overflow-wrap: anywhere; }
+.artifact-meta { color: var(--muted); }
+.artifact-sources { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; color: var(--ink); font-size: .85rem; }
 
 @media (max-width: 640px) {
   .header-inner, .page-shell { padding-left: 1rem; padding-right: 1rem; }
   .header-inner { display: block; }
   .header-caption { display: block; margin-top: .25rem; }
+  .header-artifacts { display: block; margin: .25rem 0 0; }
 }

@@ -2,11 +2,12 @@
   import { onMount } from 'svelte'
   import PartTable from './PartTable.svelte'
   import BomTable from './BomTable.svelte'
+  import ArtifactTable from './ArtifactTable.svelte'
   import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
   import IdentityLink from './IdentityLink.svelte'
   import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
-  import { getPart, getParts, getRevision, getTaxonomyNodeByPath, type PartListItem, type PartNumberView, type RevisionView, type TaxonomyNodeView } from './api'
+  import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
   let route: Route = parseRoute()
@@ -14,11 +15,19 @@
   let partsList: PartListItem[] = []
   let part: PartNumberView | null = null
   let revision: RevisionView | null = null
+  let artifacts: ArtifactView[] = []
+  let sources: SourceView[] = []
+  let artifact: ArtifactView | null = null
+  let snapshots: SnapshotView[] = []
   let error = ''
   let loading = true
 
   $: breadcrumbs = route.kind === 'parts'
     ? [{ label: 'Parts' }]
+    : route.kind === 'artifacts'
+      ? [{ label: 'Artifacts' }]
+      : route.kind === 'artifact' && artifact
+        ? [{ label: 'Artifacts', href: '/artifacts' }, { label: artifact.name }]
     : route.kind === 'taxonomy' && taxonomy
     ? taxonomyBreadcrumbs(taxonomy)
     : route.kind === 'part' && part
@@ -43,10 +52,16 @@
     partsList = []
     part = null
     revision = null
+    artifacts = []
+    sources = []
+    artifact = null
+    snapshots = []
     error = ''
     loading = true
     try {
       if (route.kind === 'parts') partsList = await getParts()
+      else if (route.kind === 'artifacts') [artifacts, sources] = await Promise.all([getArtifacts(), getSources()])
+      else if (route.kind === 'artifact') [artifact, snapshots] = await Promise.all([getArtifact(route.id), getSnapshots(route.id)])
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
@@ -66,7 +81,7 @@
   })
 </script>
 
-<Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy'}>
+<Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts'}>
   <Breadcrumbs items={breadcrumbs} />
   {#if loading}
     <p class="muted">Loading...</p>
@@ -76,6 +91,19 @@
     <p class="eyebrow">Parts</p>
     <h1>All parts</h1>
     {#if partsList.length > 0}<PartTable parts={partsList} />{:else}<p class="empty-state">No parts.</p>{/if}
+  {:else if route.kind === 'artifacts'}
+    <p class="eyebrow">Artifact register</p>
+    <h1>Sources and artifacts</h1>
+    {#if sources.length > 0}<div class="artifact-sources">{#each sources as source}<span><strong>{source.name}</strong> <span class="muted">{source.kind}</span></span>{/each}</div>{/if}
+    {#if artifacts.length > 0}<ArtifactTable artifacts={artifacts} />{:else}<p class="empty-state">No artifacts.</p>{/if}
+  {:else if artifact}
+    <p class="eyebrow">Artifact provenance</p>
+    <h1>{artifact.name}</h1>
+    <p class="artifact-meta">{artifact.kind} from <span class="artifact-code">{artifact.sourceId}</span> at <span class="artifact-code">{artifact.path}</span></p>
+    <h2>Snapshots</h2>
+    {#if snapshots.length > 0}
+      <div class="table-frame"><table class="revision-table"><thead><tr><th>Reference</th><th>Digest</th><th>Size</th><th>Media type</th></tr></thead><tbody>{#each snapshots as snapshot}<tr><th scope="row">{snapshot.reference || 'Unspecified'}</th><td class="artifact-code">{snapshot.digest}</td><td>{snapshot.size} bytes</td><td>{snapshot.mediaType}</td></tr>{/each}</tbody></table></div>
+    {:else}<p class="empty-state">No snapshots captured.</p>{/if}
   {:else if taxonomy && route.kind === 'taxonomy'}
     <p class="eyebrow">Parts</p>
     <h1>{taxonomy.label}</h1>

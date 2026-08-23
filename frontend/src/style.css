@@ -97,6 +97,15 @@ ul { line-height: 1.8; }
 .artifact-code { font-family: ui-monospace, SFMono-Regular, monospace; font-size: .8rem; overflow-wrap: anywhere; }
 .artifact-meta { color: var(--muted); }
 .artifact-sources { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; color: var(--ink); font-size: .85rem; }
+.authoring-panel { max-width: 34rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; padding: 1.5rem; }
+.authoring-panel h1 { margin-bottom: .75rem; }
+.authoring-panel form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.authoring-panel label { display: grid; gap: .35rem; font-size: .8rem; color: var(--muted); }
+.authoring-panel input, .authoring-panel select { width: 100%; padding: .65rem .7rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; font: inherit; }
+.authoring-panel button { justify-self: start; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .25rem; cursor: pointer; font: inherit; }
+.authoring-panel button:disabled { opacity: .5; cursor: default; }
+.authoring-seq { margin: 0; font-size: .8rem; }
+.success { color: #3e7444; }
 
 @media (max-width: 640px) {
   .header-inner, .page-shell { padding-left: 1rem; padding-right: 1rem; }

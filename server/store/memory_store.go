@@ -157,6 +157,15 @@ func (s *MemoryStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
 	return def, nil
 }
 
+func (s *MemoryStore) ListSeqDefs() ([]ubom.SeqDef, error) {
+	items := make([]ubom.SeqDef, 0, len(s.seqDefs))
+	for _, def := range s.seqDefs {
+		items = append(items, def)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items, nil
+}
+
 func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err := def.Validate(); err != nil {
 		return err
@@ -177,6 +186,15 @@ func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 		return ubom.TaxonomyDef{}, ErrNotFound
 	}
 	return cloneTaxonomyDef(def), nil
+}
+
+func (s *MemoryStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
+	items := make([]ubom.TaxonomyDef, 0, len(s.taxonomyDefs))
+	for _, def := range s.taxonomyDefs {
+		items = append(items, cloneTaxonomyDef(def))
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items, nil
 }
 
 func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {

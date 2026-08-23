@@ -29,6 +29,9 @@ func NewServerWithSnapshotService(service *app.Service, snapshotService *app.Sna
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/parts", s.handlePartNumbers)
+	mux.HandleFunc("/api/seq-defs", s.handleSeqDefs)
+	mux.HandleFunc("/api/taxonomy-defs", s.handleTaxonomyDefs)
+	mux.HandleFunc("/api/revisions", s.handleCreateRevision)
 	mux.HandleFunc("/api/parts/by-value/", s.handlePartNumberByValue)
 	mux.HandleFunc("/api/parts/", s.handlePartNumber)
 	mux.HandleFunc("/api/taxonomies/", s.handleTaxonomyNode)
@@ -145,6 +148,10 @@ func writeJSON(w http.ResponseWriter, value any) {
 }
 
 func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		s.handleCreatePartNumber(w, r)
+		return
+	}
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return

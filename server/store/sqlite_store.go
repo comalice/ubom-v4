@@ -284,6 +284,27 @@ func (s *SQLiteStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
 	return unmarshalSeqDef(ast)
 }
 
+func (s *SQLiteStore) ListSeqDefs() ([]ubom.SeqDef, error) {
+	rows, err := s.db.Query("SELECT ast FROM seq_defs ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ubom.SeqDef{}
+	for rows.Next() {
+		var ast []byte
+		if err := rows.Scan(&ast); err != nil {
+			return nil, err
+		}
+		def, err := unmarshalSeqDef(ast)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, def)
+	}
+	return items, rows.Err()
+}
+
 func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err := def.Validate(); err != nil {
 		return err
@@ -333,6 +354,37 @@ func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 		return ubom.TaxonomyDef{}, err
 	}
 	return ubom.TaxonomyDef{ID: id, SeqDef: seqDefID, AttributeDefs: attributeDefs, Taxonomy: taxonomy}, nil
+}
+
+func (s *SQLiteStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
+	rows, err := s.db.Query("SELECT id FROM taxonomy_defs ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	ids := []ubom.TaxonomyDefID{}
+	for rows.Next() {
+		var id ubom.TaxonomyDefID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	items := make([]ubom.TaxonomyDef, 0, len(ids))
+	for _, id := range ids {
+		def, err := s.GetTaxonomyDef(id)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, def)
+	}
+	return items, nil
 }
 
 func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *string, node ubom.TaxonomyNode, position int) error {

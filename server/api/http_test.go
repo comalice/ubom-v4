@@ -134,6 +134,31 @@ func TestPartNumberViewNotFound(t *testing.T) {
 	}
 }
 
+func TestAuthoringFlow(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(path, body string, wantStatus int) string {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+		if recording.Code != wantStatus {
+			t.Fatalf("POST %s status = %d, want %d; body = %s", path, recording.Code, wantStatus, recording.Body)
+		}
+		return recording.Body.String()
+	}
+
+	post("/api/seq-defs", `{"id":"author-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"places","alphabets":["AB"]}]}}`, http.StatusCreated)
+	post("/api/seq-defs", `{"id":"author-rev-v1","root":{"kind":"range","min":1,"max":9,"width":1}}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"id":"author-taxonomy-v1","seqDef":"author-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
+	body := post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusCreated)
+	var part struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(body), &part); err != nil || part.ID == "" {
+		t.Fatalf("part response = %s", body)
+	}
+	post("/api/revisions", `{"partNumberId":"`+part.ID+`","revision":"1","revisionSeqDef":"author-rev-v1"}`, http.StatusCreated)
+	post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusConflict)
+}
+
 func TestPartNumberViewByValue(t *testing.T) {
 	persistence := store.NewMemoryStore()
 	if _, err := app.LoadSampleData(persistence); err != nil {

@@ -16,6 +16,53 @@ func NewService(s store.Store) *Service {
 	return &Service{store: s}
 }
 
+type SeqDefView struct {
+	ID ubom.SeqDefID `json:"id"`
+}
+type TaxonomyDefSummary struct {
+	ID     ubom.TaxonomyDefID `json:"id"`
+	SeqDef ubom.SeqDefID      `json:"seqDef"`
+}
+
+func (s *Service) CreateSeqDef(def ubom.SeqDef) error { return s.store.CreateSeqDef(def) }
+func (s *Service) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
+	return s.store.CreateTaxonomyDef(def)
+}
+func (s *Service) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
+	return s.store.CreatePartNumber(part)
+}
+func (s *Service) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	return s.store.CreatePartRevision(revision)
+}
+func (s *Service) GetSeqDefForAuthoring(id ubom.SeqDefID) (ubom.SeqDef, error) {
+	return s.store.GetSeqDef(id)
+}
+func (s *Service) GetTaxonomyDefForAuthoring(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
+	return s.store.GetTaxonomyDef(id)
+}
+func (s *Service) ListSeqDefViews() ([]SeqDefView, error) {
+	defs, err := s.store.ListSeqDefs()
+	if err != nil {
+		return nil, err
+	}
+	views := make([]SeqDefView, 0, len(defs))
+	for _, def := range defs {
+		views = append(views, SeqDefView{ID: def.ID})
+	}
+	return views, nil
+}
+func (s *Service) ListTaxonomyDefSummaries() ([]TaxonomyDefSummary, error) {
+	defs, err := s.store.ListTaxonomyDefs()
+	if err != nil {
+		return nil, err
+	}
+	views := make([]TaxonomyDefSummary, 0, len(defs))
+	for _, def := range defs {
+		views = append(views, TaxonomyDefSummary{ID: def.ID, SeqDef: def.SeqDef})
+	}
+	return views, nil
+}
+
 type PartNumberView struct {
 	ID           ubom.PartNumberID   `json:"id"`
 	Value        string              `json:"value"`

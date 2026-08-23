@@ -7,7 +7,8 @@
   import IdentityLink from './IdentityLink.svelte'
   import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
-  import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
+  import Authoring from './Authoring.svelte'
+  import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, getSeqDefs, getTaxonomyDefs, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView, type SeqDefView, type TaxonomyDefSummary } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
   let route: Route = parseRoute()
@@ -19,6 +20,8 @@
   let sources: SourceView[] = []
   let artifact: ArtifactView | null = null
   let snapshots: SnapshotView[] = []
+  let seqDefs: SeqDefView[] = []
+  let taxonomyDefs: TaxonomyDefSummary[] = []
   let error = ''
   let loading = true
 
@@ -56,10 +59,13 @@
     sources = []
     artifact = null
     snapshots = []
+    seqDefs = []
+    taxonomyDefs = []
     error = ''
     loading = true
     try {
       if (route.kind === 'parts') partsList = await getParts()
+      else if (route.kind === 'authoring') [seqDefs, taxonomyDefs] = await Promise.all([getSeqDefs(), getTaxonomyDefs()])
       else if (route.kind === 'artifacts') [artifacts, sources] = await Promise.all([getArtifacts(), getSources()])
       else if (route.kind === 'artifact') [artifact, snapshots] = await Promise.all([getArtifact(route.id), getSnapshots(route.id)])
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
@@ -91,6 +97,8 @@
     <p class="eyebrow">Parts</p>
     <h1>All parts</h1>
     {#if partsList.length > 0}<PartTable parts={partsList} />{:else}<p class="empty-state">No parts.</p>{/if}
+  {:else if route.kind === 'authoring'}
+    <Authoring {seqDefs} {taxonomyDefs} />
   {:else if route.kind === 'artifacts'}
     <p class="eyebrow">Artifact register</p>
     <h1>Sources and artifacts</h1>

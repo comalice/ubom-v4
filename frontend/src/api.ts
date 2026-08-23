@@ -58,10 +58,21 @@ export type SnapshotView = {
   mediaType: string
   size: number
 }
+export type SeqDefView = { id: string }
+export type TaxonomyDefSummary = { id: string; seqDef: string }
 
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(path)
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
+  return response.json() as Promise<T>
+}
+
+async function post<T>(path: string, value: unknown): Promise<T> {
+  const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null
+    throw new Error(body?.error ?? `${response.status} ${response.statusText}`)
+  }
   return response.json() as Promise<T>
 }
 
@@ -89,3 +100,7 @@ export const getSources = () => get<SourceView[]>('/api/artifact-sources')
 export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
 export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
+export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
+export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
+export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
+  post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })

@@ -16,9 +16,11 @@ type Store interface {
 
 	CreateSeqDef(ubom.SeqDef) error
 	GetSeqDef(ubom.SeqDefID) (ubom.SeqDef, error)
+	ListSeqDefs() ([]ubom.SeqDef, error)
 
 	CreateTaxonomyDef(ubom.TaxonomyDef) error
 	GetTaxonomyDef(ubom.TaxonomyDefID) (ubom.TaxonomyDef, error)
+	ListTaxonomyDefs() ([]ubom.TaxonomyDef, error)
 
 	CreatePartNumber(ubom.PartNumber) (ubom.PartNumber, error)
 	GetPartNumber(string) (ubom.PartNumber, error)

@@ -10,6 +10,45 @@ type Part struct {
 
 type PartNumberID string
 type PartRevisionID string
+type PartNumberDraftID string
+
+type DraftStatus string
+
+const (
+	DraftStatusDraft     DraftStatus = "draft"
+	DraftStatusReleased  DraftStatus = "released"
+	DraftStatusAbandoned DraftStatus = "abandoned"
+)
+
+type PartNumberDraft struct {
+	ID                   PartNumberDraftID
+	SeqDefID             SeqDefID
+	TaxonomyDefID        TaxonomyDefID
+	ContextNodeID        TaxonomyNodeID
+	Bindings             map[string]string
+	Attributes           []PartNumberAttribute
+	Status               DraftStatus
+	ReleasedPartNumberID PartNumberID
+}
+
+func (d PartNumberDraft) Validate() error {
+	if d.ID == "" {
+		return fmt.Errorf("part number draft has no ID")
+	}
+	if d.SeqDefID == "" {
+		return fmt.Errorf("part number draft has no sequence definition ID")
+	}
+	if d.TaxonomyDefID == "" {
+		return fmt.Errorf("part number draft has no taxonomy definition ID")
+	}
+	if d.ContextNodeID == "" {
+		return fmt.Errorf("part number draft has no context node ID")
+	}
+	if d.Status != DraftStatusDraft && d.Status != DraftStatusReleased && d.Status != DraftStatusAbandoned {
+		return fmt.Errorf("invalid part number draft status %q", d.Status)
+	}
+	return nil
+}
 
 type LineItem struct {
 	PartNumberID   PartNumberID

@@ -1,6 +1,5 @@
 export type Route =
   | { kind: 'parts' }
-  | { kind: 'authoring' }
   | { kind: 'artifacts' }
   | { kind: 'artifact'; id: string }
   | { kind: 'taxonomy'; segments: string[] }
@@ -11,7 +10,6 @@ export type Route =
 export function parseRoute(pathname = window.location.pathname): Route {
   const parts = pathname.split('/').filter(Boolean).map(decodeURIComponent)
   if (parts.length === 1 && parts[0] === 'parts') return { kind: 'parts' }
-  if (parts.length === 1 && parts[0] === 'author') return { kind: 'authoring' }
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
   if (parts.length === 2 && parts[0] === 'artifacts') return { kind: 'artifact', id: parts[1] }
   if (parts.length >= 2 && parts[0] === 'parts') {

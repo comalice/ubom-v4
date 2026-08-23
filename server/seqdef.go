@@ -12,6 +12,16 @@ type SeqDef struct {
 	root SeqDefNode
 }
 
+// BindableField describes a value supplied to a Bind node in a definition.
+// Fields are returned in definition order.
+type BindableField struct {
+	Name string
+	Node SeqDefNode
+}
+
+// SeqDefField is the descriptive name for a bindable sequence field.
+type SeqDefField = BindableField
+
 func NewSeqDef(root SeqDefNode) SeqDef { return SeqDef{root: root} }
 
 // Validate checks SeqDefNodes for well formed definitions.
@@ -74,6 +84,157 @@ func validateSeqDefNode(node SeqDefNode) error {
 }
 
 func (d SeqDef) Root() SeqDefNode { return d.root }
+
+// BindableFields returns the fields which may be supplied to Generate.
+// A field is listed once, even if a definition contains the same binding name
+// in more than one alternative.
+func (d SeqDef) BindableFields() []BindableField {
+	fields := make([]BindableField, 0)
+	seen := map[string]bool{}
+	var visit func(SeqDefNode)
+	visit = func(node SeqDefNode) {
+		switch n := node.(type) {
+		case BindNode:
+			if !seen[n.Name] {
+				seen[n.Name] = true
+				fields = append(fields, BindableField{Name: n.Name, Node: n.Child})
+			}
+			visit(n.Child)
+		case ConcatNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		case ChoiceNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		case BranchNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		case RangeRadixNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		}
+	}
+	visit(d.root)
+	return fields
+}
+
+// Fields is an alias for BindableFields.
+func (d SeqDef) Fields() []BindableField { return d.BindableFields() }
+
+// Generate renders the canonical value represented by bindings.
+func (d SeqDef) Generate(bindings map[string]string) (string, error) {
+	if d.root == nil {
+		return "", fmt.Errorf("sequence definition has no root")
+	}
+	known := map[string]bool{}
+	for _, field := range d.BindableFields() {
+		known[field.Name] = true
+	}
+	for name := range bindings {
+		if !known[name] {
+			return "", fmt.Errorf("unknown binding %q", name)
+		}
+	}
+	value, err := generateSeqDefNode(d.root, bindings)
+	if err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+func generateSeqDefNode(node SeqDefNode, bindings map[string]string) (string, error) {
+	switch n := node.(type) {
+	case LiteralNode:
+		return n.Text, nil
+	case ConcatNode:
+		return generateConcat(n.Children, bindings)
+	case RangeRadixNode:
+		return generateConcat(n.Children, bindings)
+	case ChoiceNode:
+		return generateAlternatives(n.Children, bindings)
+	case BranchNode:
+		return generateAlternatives(n.Children, bindings)
+	case BindNode:
+		value, ok := bindings[n.Name]
+		if !ok {
+			return "", fmt.Errorf("missing binding %q", n.Name)
+		}
+		trial := cloneBindings(bindings)
+		_, next, err := n.Child.parseAt(value, 0, trial)
+		if err != nil || next != len(value) {
+			if err == nil {
+				err = expected(next, "end of binding")
+			}
+			return "", fmt.Errorf("invalid binding %q: %w", n.Name, err)
+		}
+		// Parsing the child supplies bindings nested inside this binding. Run
+		// generation with those values so nested fields are not silently omitted.
+		if _, err := generateSeqDefNode(n.Child, trial); err != nil {
+			return "", fmt.Errorf("invalid binding %q: %w", n.Name, err)
+		}
+		return value, nil
+	case PlaceSequenceNode:
+		result := make([]byte, len(n.Alphabets))
+		for i, alphabet := range n.Alphabets {
+			if alphabet == "" {
+				return "", fmt.Errorf("place has an empty alphabet")
+			}
+			result[i] = alphabet[0]
+		}
+		return string(result), nil
+	case RangeNode:
+		if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
+			return "", fmt.Errorf("invalid range definition")
+		}
+		digits := strconv.Itoa(n.Min)
+		if len(digits) > n.WidthValue {
+			return "", fmt.Errorf("invalid range definition: minimum %d exceeds width %d", n.Min, n.WidthValue)
+		}
+		pad := n.Pad
+		if pad == 0 {
+			pad = '0'
+		}
+		result := make([]byte, n.WidthValue)
+		for i := range result {
+			result[i] = pad
+		}
+		copy(result[n.WidthValue-len(digits):], digits)
+		return string(result), nil
+	default:
+		return "", fmt.Errorf("unknown sequence node type %T", node)
+	}
+}
+
+func generateConcat(nodes []SeqDefNode, bindings map[string]string) (string, error) {
+	result := ""
+	for _, child := range nodes {
+		value, err := generateSeqDefNode(child, bindings)
+		if err != nil {
+			return "", err
+		}
+		result += value
+	}
+	return result, nil
+}
+
+func generateAlternatives(nodes []SeqDefNode, bindings map[string]string) (string, error) {
+	var lastErr error
+	for _, child := range nodes {
+		value, err := generateSeqDefNode(child, bindings)
+		if err == nil {
+			return value, nil
+		}
+		lastErr = err
+	}
+	if lastErr != nil {
+		return "", fmt.Errorf("no sequence alternative can be generated: %w", lastErr)
+	}
+	return "", fmt.Errorf("sequence has no alternatives")
+}
 
 func (d SeqDef) WithID(id SeqDefID) SeqDef {
 	d.ID = id

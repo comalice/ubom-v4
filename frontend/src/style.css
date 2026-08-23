@@ -104,6 +104,7 @@ ul { line-height: 1.8; }
 .authoring-panel input, .authoring-panel select { width: 100%; padding: .65rem .7rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; font: inherit; }
 .authoring-panel button { justify-self: start; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .25rem; cursor: pointer; font: inherit; }
 .authoring-panel button:disabled { opacity: .5; cursor: default; }
+.authoring-panel button + button { margin-top: .75rem; }
 .authoring-seq { margin: 0; font-size: .8rem; }
 .success { color: #3e7444; }
 

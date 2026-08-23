@@ -148,15 +148,40 @@ func TestAuthoringFlow(t *testing.T) {
 	post("/api/seq-defs", `{"id":"author-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"places","alphabets":["AB"]}]}}`, http.StatusCreated)
 	post("/api/seq-defs", `{"id":"author-rev-v1","root":{"kind":"range","min":1,"max":9,"width":1}}`, http.StatusCreated)
 	post("/api/taxonomy-defs", `{"id":"author-taxonomy-v1","seqDef":"author-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
-	body := post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusCreated)
-	var part struct {
-		ID string `json:"id"`
+	post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusMethodNotAllowed)
+}
+
+func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(path, body string, wantStatus int) string {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+		if recording.Code != wantStatus {
+			t.Fatalf("POST %s status = %d, want %d; body = %s", path, recording.Code, wantStatus, recording.Body)
+		}
+		return recording.Body.String()
 	}
-	if err := json.Unmarshal([]byte(body), &part); err != nil || part.ID == "" {
-		t.Fatalf("part response = %s", body)
+	post("/api/seq-defs", `{"id":"draft-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"bind","name":"category","child":{"kind":"places","alphabets":["AB"]}},{"kind":"range","min":1,"max":9,"width":1}]}}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"id":"draft-taxonomy-v1","seqDef":"draft-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
+	body := post("/api/part-drafts", `{"seqDef":"draft-pn-v1","taxonomyDef":"draft-taxonomy-v1","contextNodeId":"components"}`, http.StatusCreated)
+	var draft ubomDraftResponse
+	if err := json.Unmarshal([]byte(body), &draft); err != nil || draft.ID == "" {
+		t.Fatalf("draft response = %s", body)
 	}
-	post("/api/revisions", `{"partNumberId":"`+part.ID+`","revision":"1","revisionSeqDef":"author-rev-v1"}`, http.StatusCreated)
-	post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusConflict)
+	preview := post("/api/part-drafts/"+draft.ID+"/preview", `{}`, http.StatusOK)
+	if !strings.Contains(preview, `"complete":false`) {
+		t.Fatalf("empty preview = %s", preview)
+	}
+	patch := httptest.NewRecorder()
+	server.Handler().ServeHTTP(patch, httptest.NewRequest(http.MethodPatch, "/api/part-drafts/"+draft.ID, strings.NewReader(`{"bindings":{"category":"A"}}`)))
+	if patch.Code != http.StatusOK {
+		t.Fatalf("PATCH draft status = %d; body = %s", patch.Code, patch.Body)
+	}
+	post("/api/part-drafts/"+draft.ID+"/release", `{}`, http.StatusCreated)
+}
+
+type ubomDraftResponse struct {
+	ID string `json:"id"`
 }
 
 func TestPartNumberViewByValue(t *testing.T) {

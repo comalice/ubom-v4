@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	_ "modernc.org/sqlite"
 	ubom "ubom-v4"
@@ -102,6 +103,20 @@ func (s *SQLiteStore) init() error {
 			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id),
 			FOREIGN KEY (taxonomy_def_id, taxonomy_node_id)
 				REFERENCES taxonomy_nodes(taxonomy_def_id, id)
+		);
+		CREATE TABLE IF NOT EXISTS part_number_drafts (
+			id TEXT PRIMARY KEY,
+			seq_def_id TEXT NOT NULL,
+			taxonomy_def_id TEXT NOT NULL,
+			context_node_id TEXT NOT NULL,
+			bindings TEXT NOT NULL,
+			attributes TEXT NOT NULL,
+			status TEXT NOT NULL,
+			released_part_number_id INTEGER,
+			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id),
+			FOREIGN KEY (taxonomy_def_id, context_node_id)
+				REFERENCES taxonomy_nodes(taxonomy_def_id, id),
+			FOREIGN KEY (released_part_number_id) REFERENCES part_numbers(id)
 		);
 		CREATE TABLE IF NOT EXISTS part_revisions (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -633,6 +648,167 @@ func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 		parts = append(parts, part)
 	}
 	return parts, nil
+}
+
+func (s *SQLiteStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	if err := draft.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetSeqDef(draft.SeqDefID); err != nil {
+		return err
+	}
+	taxonomy, err := s.GetTaxonomyDef(draft.TaxonomyDefID)
+	if err != nil {
+		return err
+	}
+	if taxonomy.SeqDef != draft.SeqDefID || !taxonomyNodeExists(taxonomy.Taxonomy.Root, draft.ContextNodeID) {
+		return ErrNotFound
+	}
+	bindings, err := json.Marshal(draft.Bindings)
+	if err != nil {
+		return err
+	}
+	attributes, err := json.Marshal(draft.Attributes)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`INSERT INTO part_number_drafts
+		(id, seq_def_id, taxonomy_def_id, context_node_id, bindings, attributes, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, draft.ID, draft.SeqDefID, draft.TaxonomyDefID, draft.ContextNodeID, bindings, attributes, draft.Status)
+	return err
+}
+
+func (s *SQLiteStore) GetPartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumberDraft, error) {
+	var draft ubom.PartNumberDraft
+	var bindings, attributes []byte
+	var released sql.NullInt64
+	err := s.db.QueryRow(`SELECT id, seq_def_id, taxonomy_def_id, context_node_id, bindings, attributes, status, released_part_number_id
+		FROM part_number_drafts WHERE id = ?`, id).Scan(&draft.ID, &draft.SeqDefID, &draft.TaxonomyDefID, &draft.ContextNodeID, &bindings, &attributes, &draft.Status, &released)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ubom.PartNumberDraft{}, ErrNotFound
+	}
+	if err != nil {
+		return ubom.PartNumberDraft{}, err
+	}
+	if err := json.Unmarshal(bindings, &draft.Bindings); err != nil {
+		return ubom.PartNumberDraft{}, err
+	}
+	if err := json.Unmarshal(attributes, &draft.Attributes); err != nil {
+		return ubom.PartNumberDraft{}, err
+	}
+	if released.Valid {
+		draft.ReleasedPartNumberID = ubom.PartNumberID(strconv.FormatInt(released.Int64, 10))
+	}
+	return draft, nil
+}
+
+func (s *SQLiteStore) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	if err := draft.Validate(); err != nil {
+		return err
+	}
+	current, err := s.GetPartNumberDraft(draft.ID)
+	if err != nil {
+		return err
+	}
+	if current.Status != ubom.DraftStatusDraft {
+		return errors.New("part number draft is not editable")
+	}
+	bindings, err := json.Marshal(draft.Bindings)
+	if err != nil {
+		return err
+	}
+	attributes, err := json.Marshal(draft.Attributes)
+	if err != nil {
+		return err
+	}
+	result, err := s.db.Exec(`UPDATE part_number_drafts SET bindings = ?, attributes = ? WHERE id = ? AND status = ?`, bindings, attributes, draft.ID, ubom.DraftStatusDraft)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *SQLiteStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumber, error) {
+	draft, err := s.GetPartNumberDraft(id)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	if draft.Status != ubom.DraftStatusDraft {
+		return ubom.PartNumber{}, errors.New("part number draft is not releasable")
+	}
+	seqDef, err := s.GetSeqDef(draft.SeqDefID)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	taxonomy, err := s.GetTaxonomyDef(draft.TaxonomyDefID)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	value, err := seqDef.Generate(draft.Bindings)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	part, err := ubom.NewPartNumber(value, seqDef, taxonomy)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	if !taxonomyNodeIsAtOrBelow(taxonomy.Taxonomy.Root, draft.ContextNodeID, part.TaxonomyNodeID) {
+		return ubom.PartNumber{}, errors.New("part number does not match draft taxonomy context")
+	}
+	part.Attributes = draft.Attributes
+	if err := validatePartNumberReferences(s, part); err != nil {
+		return ubom.PartNumber{}, err
+	}
+	attributeData, err := json.Marshal(part.Attributes)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	result, err := tx.Exec(`INSERT INTO part_numbers (value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes) VALUES (?, ?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID, attributeData)
+	if err != nil {
+		tx.Rollback()
+		if isSQLiteConstraint(err) {
+			return ubom.PartNumber{}, ErrAlreadyExists
+		}
+		return ubom.PartNumber{}, err
+	}
+	partID, err := result.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return ubom.PartNumber{}, err
+	}
+	updated, err := tx.Exec(`UPDATE part_number_drafts SET status = ?, released_part_number_id = ? WHERE id = ? AND status = ?`, ubom.DraftStatusReleased, partID, id, ubom.DraftStatusDraft)
+	if err != nil {
+		tx.Rollback()
+		return ubom.PartNumber{}, err
+	}
+	count, err := updated.RowsAffected()
+	if err != nil || count != 1 {
+		tx.Rollback()
+		if err != nil {
+			return ubom.PartNumber{}, err
+		}
+		return ubom.PartNumber{}, errors.New("part number draft changed during release")
+	}
+	if err := tx.Commit(); err != nil {
+		return ubom.PartNumber{}, err
+	}
+	part.ID = ubom.PartNumberID(strconv.FormatInt(partID, 10))
+	return part, nil
+}
+
+func isSQLiteConstraint(err error) bool {
+	return strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {

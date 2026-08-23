@@ -288,6 +288,66 @@ func TestSeqDefBindDoesNotLeakFromFailedBranch(t *testing.T) {
 	}
 }
 
+func TestSeqDefBindableFields(t *testing.T) {
+	definition := NewSeqDef(Branch(
+		Concat(Bind("category", Literal("RES")), Bind("number", Range(0, 99).Width(2))),
+		Bind("category", Literal("CAP")),
+	))
+
+	fields := definition.BindableFields()
+	if len(fields) != 2 {
+		t.Fatalf("BindableFields() returned %d fields, want 2", len(fields))
+	}
+	if fields[0].Name != "category" || fields[1].Name != "number" {
+		t.Fatalf("BindableFields() names = %q, %q, want category, number", fields[0].Name, fields[1].Name)
+	}
+	if fields[0].Node == nil || fields[1].Node == nil {
+		t.Fatal("BindableFields() returned a nil field node")
+	}
+}
+
+func TestSeqDefGenerate(t *testing.T) {
+	definition := NewSeqDef(Concat(
+		Literal("PN-"),
+		Bind("category", Choice(Literal("A"), Literal("B"))),
+		RangeRadix(Bind("number", Range(0, 99).Width(2)), Literal("-")),
+		PlaceSequence("XYZ", digitsAlphabet),
+	))
+
+	value, err := definition.Generate(map[string]string{"category": "B", "number": "42"})
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+	if value != "PN-B42-X0" {
+		t.Fatalf("Generate() = %q, want %q", value, "PN-B42-X0")
+	}
+
+	value, err = definition.Generate(map[string]string{"category": "A", "number": "07"})
+	if err != nil || value != "PN-A07-X0" {
+		t.Fatalf("Generate() = %q, %v; want PN-A07-X0", value, err)
+	}
+}
+
+func TestSeqDefGenerateRejectsInvalidBindings(t *testing.T) {
+	definition := NewSeqDef(Concat(Bind("kind", Choice(Literal("A"), Literal("B"))), Bind("number", Range(0, 9))))
+	tests := []struct {
+		name     string
+		bindings map[string]string
+	}{
+		{name: "missing", bindings: map[string]string{"kind": "A"}},
+		{name: "invalid choice", bindings: map[string]string{"kind": "C", "number": "0"}},
+		{name: "invalid range", bindings: map[string]string{"kind": "A", "number": "x"}},
+		{name: "unknown", bindings: map[string]string{"kind": "A", "number": "0", "extra": "x"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := definition.Generate(test.bindings); err == nil {
+				t.Fatal("Generate() accepted invalid bindings")
+			}
+		})
+	}
+}
+
 func Places(count int, alphabet string) SeqDefNode {
 	places := make([]string, count)
 	for i := range places {

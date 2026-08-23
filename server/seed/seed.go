@@ -32,7 +32,7 @@ func Populate(s store.Store, options Options) (Result, error) {
 	seqDef := ubom.NewSeqDef(ubom.Concat(
 		ubom.Literal("PN-"),
 		ubom.Bind("category", ubom.Choice(ubom.Literal("A"), ubom.Literal("B"))),
-		ubom.Range(0, 9999).Width(4),
+		ubom.Bind("number", ubom.Range(0, 9999).Width(4)),
 	)).WithID("sample-pn-v1")
 	if err := s.CreateSeqDef(seqDef); err != nil {
 		return Result{}, err

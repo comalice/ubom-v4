@@ -22,6 +22,7 @@ type MemoryStore struct {
 	taxonomyDefs   map[ubom.TaxonomyDefID]ubom.TaxonomyDef
 	partNumbers    map[string]ubom.PartNumber
 	partRevisions  map[ubom.PartRevisionID]ubom.PartRevision
+	partDrafts     map[ubom.PartNumberDraftID]ubom.PartNumberDraft
 	nextPartID     int64
 	nextRevisionID int64
 }
@@ -38,6 +39,7 @@ func NewMemoryStore() *MemoryStore {
 		taxonomyDefs:   map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
 		partNumbers:    map[string]ubom.PartNumber{},
 		partRevisions:  map[ubom.PartRevisionID]ubom.PartRevision{},
+		partDrafts:     map[ubom.PartNumberDraftID]ubom.PartNumberDraft{},
 		nextPartID:     1,
 		nextRevisionID: 1,
 	}
@@ -256,6 +258,88 @@ func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 	return parts, nil
 }
 
+func (s *MemoryStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	if err := draft.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetSeqDef(draft.SeqDefID); err != nil {
+		return err
+	}
+	taxonomy, err := s.GetTaxonomyDef(draft.TaxonomyDefID)
+	if err != nil {
+		return err
+	}
+	if taxonomy.SeqDef != draft.SeqDefID || !taxonomyNodeExists(taxonomy.Taxonomy.Root, draft.ContextNodeID) {
+		return ErrNotFound
+	}
+	if _, ok := s.partDrafts[draft.ID]; ok {
+		return ErrAlreadyExists
+	}
+	s.partDrafts[draft.ID] = clonePartNumberDraft(draft)
+	return nil
+}
+
+func (s *MemoryStore) GetPartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumberDraft, error) {
+	draft, ok := s.partDrafts[id]
+	if !ok {
+		return ubom.PartNumberDraft{}, ErrNotFound
+	}
+	return clonePartNumberDraft(draft), nil
+}
+
+func (s *MemoryStore) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	if err := draft.Validate(); err != nil {
+		return err
+	}
+	current, err := s.GetPartNumberDraft(draft.ID)
+	if err != nil {
+		return err
+	}
+	if current.Status != ubom.DraftStatusDraft {
+		return errors.New("part number draft is not editable")
+	}
+	s.partDrafts[draft.ID] = clonePartNumberDraft(draft)
+	return nil
+}
+
+func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumber, error) {
+	draft, err := s.GetPartNumberDraft(id)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	if draft.Status != ubom.DraftStatusDraft {
+		return ubom.PartNumber{}, errors.New("part number draft is not releasable")
+	}
+	seqDef, err := s.GetSeqDef(draft.SeqDefID)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	taxonomy, err := s.GetTaxonomyDef(draft.TaxonomyDefID)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	value, err := seqDef.Generate(draft.Bindings)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	part, err := ubom.NewPartNumber(value, seqDef, taxonomy)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	if !taxonomyNodeIsAtOrBelow(taxonomy.Taxonomy.Root, draft.ContextNodeID, part.TaxonomyNodeID) {
+		return ubom.PartNumber{}, errors.New("part number does not match draft taxonomy context")
+	}
+	part.Attributes = draft.Attributes
+	created, err := s.CreatePartNumber(part)
+	if err != nil {
+		return ubom.PartNumber{}, err
+	}
+	draft.Status = ubom.DraftStatusReleased
+	draft.ReleasedPartNumberID = created.ID
+	s.partDrafts[id] = clonePartNumberDraft(draft)
+	return created, nil
+}
+
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
 	prospectiveID := ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))
 	if err := revision.Validate(); err != nil {
@@ -296,6 +380,28 @@ func clonePartNumber(part ubom.PartNumber) ubom.PartNumber {
 	part.PartRevisionID = append([]ubom.PartRevisionID(nil), part.PartRevisionID...)
 	part.Attributes = append([]ubom.PartNumberAttribute(nil), part.Attributes...)
 	return part
+}
+
+func clonePartNumberDraft(draft ubom.PartNumberDraft) ubom.PartNumberDraft {
+	clone := draft
+	clone.Bindings = map[string]string{}
+	for key, value := range draft.Bindings {
+		clone.Bindings[key] = value
+	}
+	clone.Attributes = append([]ubom.PartNumberAttribute(nil), draft.Attributes...)
+	return clone
+}
+
+func taxonomyNodeIsAtOrBelow(root ubom.TaxonomyNode, ancestor, target ubom.TaxonomyNodeID) bool {
+	if root.ID == ancestor {
+		return taxonomyNodeExists(root, target)
+	}
+	for _, child := range root.Children {
+		if taxonomyNodeIsAtOrBelow(child, ancestor, target) {
+			return true
+		}
+	}
+	return false
 }
 
 func clonePartRevision(revision ubom.PartRevision) ubom.PartRevision {

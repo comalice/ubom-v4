@@ -1,10 +1,13 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	ubom "ubom-v4"
 	"ubom-v4/store"
@@ -103,6 +106,17 @@ type partRevisionRequest struct {
 	BOM            []ubom.LineItem   `json:"bom,omitempty"`
 }
 
+type partNumberDraftRequest struct {
+	SeqDef        ubom.SeqDefID       `json:"seqDef"`
+	TaxonomyDef   ubom.TaxonomyDefID  `json:"taxonomyDef"`
+	ContextNodeID ubom.TaxonomyNodeID `json:"contextNodeId"`
+}
+
+type partNumberDraftUpdate struct {
+	Bindings   map[string]string          `json:"bindings"`
+	Attributes []ubom.PartNumberAttribute `json:"attributes,omitempty"`
+}
+
 func decodeBody(w http.ResponseWriter, r *http.Request, value any) bool {
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
 	decoder.DisallowUnknownFields()
@@ -147,6 +161,25 @@ func (s *Server) handleSeqDefs(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"id": request.ID})
+}
+
+func (s *Server) handleSeqDefFields(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/api/seq-defs/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 || parts[0] == "" || parts[1] != "fields" {
+		writeError(w, 400, "invalid sequence definition ID")
+		return
+	}
+	fields, err := s.service.SeqDefFieldViews(ubom.SeqDefID(parts[0]))
+	if err != nil {
+		writeCreateError(w, err)
+		return
+	}
+	writeJSON(w, fields)
 }
 
 func (s *Server) handleTaxonomyDefs(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +251,96 @@ func (s *Server) handleCreateRevision(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]any{"id": created.ID, "revision": created.Revision})
+}
+
+func (s *Server) handlePartDrafts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var request partNumberDraftRequest
+	if !decodeBody(w, r, &request) {
+		return
+	}
+	bytes := make([]byte, 12)
+	if _, err := rand.Read(bytes); err != nil {
+		writeError(w, 500, "could not create draft ID")
+		return
+	}
+	draft := ubom.PartNumberDraft{ID: ubom.PartNumberDraftID("draft-" + hex.EncodeToString(bytes)), SeqDefID: request.SeqDef, TaxonomyDefID: request.TaxonomyDef, ContextNodeID: request.ContextNodeID, Bindings: map[string]string{}, Status: ubom.DraftStatusDraft}
+	if err := s.service.CreatePartNumberDraft(draft); err != nil {
+		writeCreateError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, draft)
+}
+
+func (s *Server) handlePartDraft(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/part-drafts/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 1 || parts[0] == "" || len(parts) > 2 {
+		writeError(w, 400, "invalid part draft path")
+		return
+	}
+	id := ubom.PartNumberDraftID(parts[0])
+	if len(parts) == 2 && parts[1] == "preview" && r.Method == http.MethodPost {
+		preview, err := s.service.PreviewPartNumberDraft(id)
+		if err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		writeJSON(w, preview)
+		return
+	}
+	if len(parts) != 1 {
+		writeError(w, 400, "invalid part draft path")
+		return
+	}
+	if r.Method == http.MethodGet {
+		draft, err := s.service.GetPartNumberDraft(id)
+		if err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		writeJSON(w, draft)
+		return
+	}
+	if r.Method == http.MethodPatch {
+		var request partNumberDraftUpdate
+		if !decodeBody(w, r, &request) {
+			return
+		}
+		draft, err := s.service.GetPartNumberDraft(id)
+		if err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		draft.Bindings, draft.Attributes = request.Bindings, request.Attributes
+		if err := s.service.UpdatePartNumberDraft(draft); err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		writeJSON(w, draft)
+		return
+	}
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
+func (s *Server) handleReleasePartDraft(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/part-drafts/")
+	path = strings.TrimSuffix(path, "/release")
+	if r.Method != http.MethodPost || path == "" || strings.Contains(path, "/") {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	part, err := s.service.ReleasePartNumberDraft(ubom.PartNumberDraftID(path))
+	if err != nil {
+		writeCreateError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, map[string]any{"id": part.ID, "value": part.Value})
 }
 
 func writeCreateError(w http.ResponseWriter, err error) {

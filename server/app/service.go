@@ -2,6 +2,8 @@ package app
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 
 	ubom "ubom-v4"
 	"ubom-v4/artifact"
@@ -18,6 +20,15 @@ func NewService(s store.Store) *Service {
 
 type SeqDefView struct {
 	ID ubom.SeqDefID `json:"id"`
+}
+
+type SeqDefFieldView struct {
+	Name    string   `json:"name"`
+	Kind    string   `json:"kind"`
+	Options []string `json:"options,omitempty"`
+	Min     *int     `json:"min,omitempty"`
+	Max     *int     `json:"max,omitempty"`
+	Width   int      `json:"width,omitempty"`
 }
 type TaxonomyDefSummary struct {
 	ID     ubom.TaxonomyDefID `json:"id"`
@@ -40,6 +51,102 @@ func (s *Service) GetSeqDefForAuthoring(id ubom.SeqDefID) (ubom.SeqDef, error) {
 func (s *Service) GetTaxonomyDefForAuthoring(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	return s.store.GetTaxonomyDef(id)
 }
+func (s *Service) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	return s.store.CreatePartNumberDraft(draft)
+}
+func (s *Service) GetPartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumberDraft, error) {
+	return s.store.GetPartNumberDraft(id)
+}
+func (s *Service) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	return s.store.UpdatePartNumberDraft(draft)
+}
+func (s *Service) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumber, error) {
+	return s.store.ReleasePartNumberDraft(id)
+}
+
+type PartNumberDraftPreview struct {
+	ID                ubom.PartNumberDraftID `json:"id"`
+	Status            ubom.DraftStatus       `json:"status"`
+	Complete          bool                   `json:"complete"`
+	Value             string                 `json:"value,omitempty"`
+	Bindings          map[string]string      `json:"bindings"`
+	SuggestedBindings map[string]string      `json:"suggestedBindings,omitempty"`
+	Error             string                 `json:"error,omitempty"`
+}
+
+func (s *Service) PreviewPartNumberDraft(id ubom.PartNumberDraftID) (PartNumberDraftPreview, error) {
+	draft, err := s.store.GetPartNumberDraft(id)
+	if err != nil {
+		return PartNumberDraftPreview{}, err
+	}
+	preview := PartNumberDraftPreview{ID: draft.ID, Status: draft.Status, Bindings: draft.Bindings}
+	seqDef, err := s.store.GetSeqDef(draft.SeqDefID)
+	if err != nil {
+		return PartNumberDraftPreview{}, err
+	}
+	bindings := map[string]string{}
+	for key, value := range draft.Bindings {
+		bindings[key] = value
+	}
+	value, err := seqDef.Generate(bindings)
+	if err != nil {
+		preview.Error = err.Error()
+		return preview, nil
+	}
+	preview.Value = value
+	taxonomy, err := s.store.GetTaxonomyDef(draft.TaxonomyDefID)
+	if err != nil {
+		return PartNumberDraftPreview{}, err
+	}
+	part, err := ubom.NewPartNumber(value, seqDef, taxonomy)
+	if err != nil {
+		preview.Error = err.Error()
+		return preview, nil
+	}
+	part.Attributes = draft.Attributes
+	assignments, err := taxonomy.Taxonomy.EffectiveAttributes(part.TaxonomyNodeID)
+	if err != nil {
+		preview.Error = err.Error()
+		return preview, nil
+	}
+	if err := ubom.ValidatePartNumberAttributes(part.Attributes, assignments, taxonomy.AttributeDefs); err != nil {
+		preview.Error = err.Error()
+		return preview, nil
+	}
+	for {
+		if _, lookupErr := s.store.GetPartNumber(value); errors.Is(lookupErr, store.ErrNotFound) {
+			break
+		} else if lookupErr != nil {
+			return PartNumberDraftPreview{}, lookupErr
+		}
+		advanced := false
+		fields := seqDef.Fields()
+		for i := len(fields) - 1; i >= 0; i-- {
+			rangeNode, ok := fields[i].Node.(ubom.RangeNode)
+			if !ok {
+				continue
+			}
+			current, parseErr := strconv.Atoi(bindings[fields[i].Name])
+			if parseErr != nil || current >= rangeNode.Max {
+				continue
+			}
+			bindings[fields[i].Name] = fmt.Sprintf("%0*d", rangeNode.WidthValue, current+1)
+			value, err = seqDef.Generate(bindings)
+			if err != nil {
+				return PartNumberDraftPreview{}, err
+			}
+			advanced = true
+			break
+		}
+		if !advanced {
+			preview.Error = "no unused part number is available"
+			return preview, nil
+		}
+	}
+	preview.Value, preview.Bindings, preview.SuggestedBindings = value, bindings, bindings
+	preview.Complete = true
+	return preview, nil
+}
 func (s *Service) ListSeqDefViews() ([]SeqDefView, error) {
 	defs, err := s.store.ListSeqDefs()
 	if err != nil {
@@ -50,6 +157,33 @@ func (s *Service) ListSeqDefViews() ([]SeqDefView, error) {
 		views = append(views, SeqDefView{ID: def.ID})
 	}
 	return views, nil
+}
+func (s *Service) SeqDefFieldViews(id ubom.SeqDefID) ([]SeqDefFieldView, error) {
+	def, err := s.store.GetSeqDef(id)
+	if err != nil {
+		return nil, err
+	}
+	fields := make([]SeqDefFieldView, 0)
+	for _, field := range def.Fields() {
+		view := SeqDefFieldView{Name: field.Name}
+		switch node := field.Node.(type) {
+		case ubom.ChoiceNode:
+			view.Kind = "choice"
+			for _, child := range node.Children {
+				if literal, ok := child.(ubom.LiteralNode); ok {
+					view.Options = append(view.Options, literal.Text)
+				}
+			}
+		case ubom.PlaceSequenceNode:
+			view.Kind = "text"
+		case ubom.RangeNode:
+			view.Kind, view.Min, view.Max, view.Width = "range", &node.Min, &node.Max, node.WidthValue
+		default:
+			view.Kind = "text"
+		}
+		fields = append(fields, view)
+	}
+	return fields, nil
 }
 func (s *Service) ListTaxonomyDefSummaries() ([]TaxonomyDefSummary, error) {
 	defs, err := s.store.ListTaxonomyDefs()
@@ -91,12 +225,14 @@ type LineItemView struct {
 }
 
 type TaxonomyNodeView struct {
-	ID          ubom.TaxonomyNodeID  `json:"id"`
-	Label       string               `json:"label"`
-	Path        []TaxonomyPathItem   `json:"path"`
-	Attributes  []AttributeView      `json:"attributes"`
-	Children    []TaxonomyChildView  `json:"children"`
-	PartNumbers []PartNumberListItem `json:"partNumbers"`
+	ID            ubom.TaxonomyNodeID  `json:"id"`
+	TaxonomyDefID ubom.TaxonomyDefID   `json:"taxonomyDefId"`
+	SeqDefID      ubom.SeqDefID        `json:"seqDefId"`
+	Label         string               `json:"label"`
+	Path          []TaxonomyPathItem   `json:"path"`
+	Attributes    []AttributeView      `json:"attributes"`
+	Children      []TaxonomyChildView  `json:"children"`
+	PartNumbers   []PartNumberListItem `json:"partNumbers"`
 }
 
 type AttributeView struct {
@@ -370,12 +506,14 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	}
 
 	view := TaxonomyNodeView{
-		ID:          node.ID,
-		Label:       node.Label,
-		Path:        path,
-		Attributes:  attributes,
-		Children:    make([]TaxonomyChildView, 0, len(node.Children)),
-		PartNumbers: make([]PartNumberListItem, 0, len(parts)),
+		ID:            node.ID,
+		TaxonomyDefID: taxonomyID,
+		SeqDefID:      taxonomyDef.SeqDef,
+		Label:         node.Label,
+		Path:          path,
+		Attributes:    attributes,
+		Children:      make([]TaxonomyChildView, 0, len(node.Children)),
+		PartNumbers:   make([]PartNumberListItem, 0, len(parts)),
 	}
 	for _, child := range node.Children {
 		view.Children = append(view.Children, TaxonomyChildView{ID: child.ID, Label: child.Label})

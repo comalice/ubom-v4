@@ -1,6 +1,9 @@
 package artifact
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type SourceID string
 type ID string
@@ -14,13 +17,13 @@ type Source struct {
 }
 
 func (s Source) Validate() error {
-	if s.ID == "" {
+	if strings.TrimSpace(string(s.ID)) == "" {
 		return fmt.Errorf("artifact source has no ID")
 	}
-	if s.Name == "" {
+	if strings.TrimSpace(s.Name) == "" {
 		return fmt.Errorf("artifact source %q has no name", s.ID)
 	}
-	if s.Kind == "" {
+	if strings.TrimSpace(s.Kind) == "" {
 		return fmt.Errorf("artifact source %q has no kind", s.ID)
 	}
 	return nil
@@ -36,17 +39,20 @@ type Artifact struct {
 }
 
 func (a Artifact) Validate() error {
-	if a.ID == "" {
+	if strings.TrimSpace(string(a.ID)) == "" {
 		return fmt.Errorf("artifact has no ID")
 	}
-	if a.Name == "" {
+	if strings.TrimSpace(a.Name) == "" {
 		return fmt.Errorf("artifact %q has no name", a.ID)
 	}
-	if a.Kind == "" {
+	if strings.TrimSpace(a.Kind) == "" {
 		return fmt.Errorf("artifact %q has no kind", a.ID)
 	}
-	if a.SourceID == "" {
+	if strings.TrimSpace(string(a.SourceID)) == "" {
 		return fmt.Errorf("artifact %q has no source ID", a.ID)
+	}
+	if strings.TrimSpace(a.Path) == "" {
+		return fmt.Errorf("artifact %q has no source path", a.ID)
 	}
 	return nil
 }
@@ -64,13 +70,13 @@ type Snapshot struct {
 }
 
 func (s Snapshot) Validate() error {
-	if s.ID == "" {
+	if strings.TrimSpace(string(s.ID)) == "" {
 		return fmt.Errorf("artifact snapshot has no ID")
 	}
-	if s.ArtifactID == "" {
+	if strings.TrimSpace(string(s.ArtifactID)) == "" {
 		return fmt.Errorf("artifact snapshot %q has no artifact ID", s.ID)
 	}
-	if s.Commit == "" && s.Digest == "" && s.SnapshotKey == "" {
+	if strings.TrimSpace(s.Commit) == "" && strings.TrimSpace(s.Digest) == "" && strings.TrimSpace(s.SnapshotKey) == "" {
 		return fmt.Errorf("artifact snapshot %q has no immutable identity", s.ID)
 	}
 	if s.Size < 0 {

@@ -50,3 +50,15 @@ func TestSnapshotValidateRejectsNegativeSize(t *testing.T) {
 		t.Fatal("Snapshot.Validate() accepted a negative size")
 	}
 }
+
+func TestModelsValidateRejectsWhitespaceIdentity(t *testing.T) {
+	if err := (Source{ID: " ", Name: "source", Kind: "local"}).Validate(); err == nil {
+		t.Fatal("Source.Validate() accepted a whitespace-only ID")
+	}
+	if err := (Artifact{ID: "item", Name: "item", Kind: "file", SourceID: "source", Path: " "}).Validate(); err == nil {
+		t.Fatal("Artifact.Validate() accepted a whitespace-only path")
+	}
+	if err := (Snapshot{ID: "snapshot", ArtifactID: "artifact", SnapshotKey: " "}).Validate(); err == nil {
+		t.Fatal("Snapshot.Validate() accepted a whitespace-only immutable identity")
+	}
+}

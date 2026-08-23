@@ -81,10 +81,11 @@ type RevisionSummary struct {
 }
 
 type PartNumberListItem struct {
-	ID           ubom.PartNumberID `json:"id"`
-	Value        string            `json:"value"`
-	TaxonomyPath []string          `json:"taxonomyPath"`
-	Revisions    []RevisionSummary `json:"revisions"`
+	ID           ubom.PartNumberID   `json:"id"`
+	Value        string              `json:"value"`
+	TaxonomyPath []string            `json:"taxonomyPath"`
+	Attributes   []PartAttributeView `json:"attributes"`
+	Revisions    []RevisionSummary   `json:"revisions"`
 }
 
 type RevisionDetailView struct {
@@ -277,8 +278,18 @@ func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, 
 		ID:           part.ID,
 		Value:        part.Value,
 		TaxonomyPath: taxonomyPath,
+		Attributes:   []PartAttributeView{},
 		Revisions:    make([]RevisionSummary, 0, len(part.PartRevisionID)),
 	}
+	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
+	if err != nil {
+		return PartNumberListItem{}, err
+	}
+	attributes, err := partAttributeViews(part, taxonomyDef)
+	if err != nil {
+		return PartNumberListItem{}, err
+	}
+	item.Attributes = attributes
 	for _, revisionID := range part.PartRevisionID {
 		revision, err := s.store.GetPartRevision(revisionID)
 		if err != nil {

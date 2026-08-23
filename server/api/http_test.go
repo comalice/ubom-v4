@@ -67,6 +67,9 @@ func TestPartNumberList(t *testing.T) {
 	if len(views[0].Revisions) != 1 || views[0].Revisions[0].Revision != "1" {
 		t.Fatalf("revisions = %#v, want revision 1", views[0].Revisions)
 	}
+	if len(views[0].Attributes) != 4 || views[0].Attributes[0].ID != "footprint" || views[0].Attributes[1].ID != "resistance" {
+		t.Fatalf("attributes = %#v, want sample resistor attributes", views[0].Attributes)
+	}
 }
 
 func TestPartNumberViewNotFound(t *testing.T) {

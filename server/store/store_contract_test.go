@@ -40,6 +40,55 @@ func TestStoreContract(t *testing.T) {
 	}
 }
 
+func TestPartNumberPersistenceInvariant(t *testing.T) {
+	tests := []struct {
+		name  string
+		build func(t *testing.T) Store
+	}{
+		{name: "memory", build: func(t *testing.T) Store { return NewMemoryStore() }},
+		{name: "sqlite", build: func(t *testing.T) Store {
+			store, err := OpenSQLiteStore("file:part-number-invariant?mode=memory&cache=shared")
+			if err != nil {
+				t.Fatalf("OpenSQLiteStore() error = %v", err)
+			}
+			t.Cleanup(func() { store.Close() })
+			return store
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store := test.build(t)
+			seqDef := ubom.NewSeqDef(ubom.Concat(
+				ubom.Bind("family", ubom.PlaceSequence("AB")),
+				ubom.Bind("number", ubom.Range(0, 9).Width(1)),
+			)).WithID("pn-invariant-seq")
+			taxonomy := ubom.TaxonomyDef{ID: "pn-invariant-taxonomy", SeqDef: seqDef.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+				ID: "root",
+				Children: []ubom.TaxonomyNode{
+					{ID: "a", Matches: map[string]string{"family": "A"}},
+					{ID: "b", Matches: map[string]string{"family": "B"}},
+				},
+			}}}
+			if err := store.CreateSeqDef(seqDef); err != nil {
+				t.Fatalf("CreateSeqDef() error = %v", err)
+			}
+			if err := store.CreateTaxonomyDef(taxonomy); err != nil {
+				t.Fatalf("CreateTaxonomyDef() error = %v", err)
+			}
+			cases := []ubom.PartNumber{
+				{Value: "C1", SeqDefID: seqDef.ID, TaxonomyDefID: taxonomy.ID, TaxonomyNodeID: "a"},
+				{Value: "A01", SeqDefID: seqDef.ID, TaxonomyDefID: taxonomy.ID, TaxonomyNodeID: "a"},
+				{Value: "B1", SeqDefID: seqDef.ID, TaxonomyDefID: taxonomy.ID, TaxonomyNodeID: "a"},
+			}
+			for _, part := range cases {
+				if _, err := store.CreatePartNumber(part); err == nil {
+					t.Fatalf("CreatePartNumber(%q) accepted invalid or mismatched value", part.Value)
+				}
+			}
+		})
+	}
+}
+
 func runStoreContract(t *testing.T, store Store) {
 	source := artifact.Source{ID: "local", Name: "Local files", Kind: "filesystem"}
 	item := artifact.Artifact{ID: "drawing", Name: "Widget drawing", Kind: "drawing", SourceID: source.ID, Path: "cad/widget.drw"}
@@ -79,7 +128,7 @@ func runStoreContract(t *testing.T, store Store) {
 		t.Fatalf("GetSnapshot() missing error = %v, want ErrNotFound", err)
 	}
 
-	seqDef := ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn-v1")
+	seqDef := ubom.NewSeqDef(ubom.Choice(ubom.Literal("PN-1"), ubom.Literal("PN-2"))).WithID("pn-v1")
 	revisionSeqDef := ubom.NewSeqDef(ubom.Range(1, 9).Width(1)).WithID("revision-v1")
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "taxonomy-v1",

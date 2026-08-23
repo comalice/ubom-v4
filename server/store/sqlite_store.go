@@ -31,6 +31,7 @@ func OpenSQLiteStore(dsn string) (*SQLiteStore, error) {
 }
 
 func NewSQLiteStore(db *sql.DB) (*SQLiteStore, error) {
+	db.SetMaxOpenConns(1)
 	store := &SQLiteStore{db: db}
 	if err := store.init(); err != nil {
 		return nil, err
@@ -516,20 +517,28 @@ func (s *SQLiteStore) ListPartNumbers() ([]ubom.PartNumber, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	parts := []ubom.PartNumber{}
+	values := []string{}
 	for rows.Next() {
 		var value string
 		if err := rows.Scan(&value); err != nil {
+			rows.Close()
 			return nil, err
 		}
+		values = append(values, value)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	parts := make([]ubom.PartNumber, 0, len(values))
+	for _, value := range values {
 		part, err := s.GetPartNumber(value)
 		if err != nil {
 			return nil, err
 		}
 		parts = append(parts, part)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	return parts, nil
 }
@@ -548,20 +557,28 @@ func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 		return nil, err
 	}
 	defer rows.Close()
-	parts := []ubom.PartNumber{}
+	values := []string{}
 	for rows.Next() {
 		var value string
 		if err := rows.Scan(&value); err != nil {
+			rows.Close()
 			return nil, err
 		}
+		values = append(values, value)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	parts := make([]ubom.PartNumber, 0, len(values))
+	for _, value := range values {
 		part, err := s.GetPartNumber(value)
 		if err != nil {
 			return nil, err
 		}
 		parts = append(parts, part)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	return parts, nil
 }

@@ -167,7 +167,7 @@ func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if _, ok := s.taxonomyDefs[def.ID]; ok {
 		return ErrAlreadyExists
 	}
-	s.taxonomyDefs[def.ID] = def
+	s.taxonomyDefs[def.ID] = cloneTaxonomyDef(def)
 	return nil
 }
 
@@ -176,7 +176,7 @@ func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 	if !ok {
 		return ubom.TaxonomyDef{}, ErrNotFound
 	}
-	return def, nil
+	return cloneTaxonomyDef(def), nil
 }
 
 func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
@@ -191,8 +191,8 @@ func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	}
 	part.ID = ubom.PartNumberID(strconv.FormatInt(s.nextPartID, 10))
 	s.nextPartID++
-	s.partNumbers[part.Value] = part
-	return part, nil
+	s.partNumbers[part.Value] = clonePartNumber(part)
+	return clonePartNumber(part), nil
 }
 
 func (s *MemoryStore) GetPartNumber(value string) (ubom.PartNumber, error) {
@@ -200,7 +200,7 @@ func (s *MemoryStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	if !ok {
 		return ubom.PartNumber{}, ErrNotFound
 	}
-	return part, nil
+	return clonePartNumber(part), nil
 }
 
 func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, error) {
@@ -208,13 +208,13 @@ func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 	if !ok {
 		return ubom.PartNumber{}, ErrNotFound
 	}
-	return part, nil
+	return clonePartNumber(part), nil
 }
 
 func (s *MemoryStore) ListPartNumbers() ([]ubom.PartNumber, error) {
 	parts := make([]ubom.PartNumber, 0, len(s.partNumbers))
 	for _, part := range s.partNumbers {
-		parts = append(parts, part)
+		parts = append(parts, clonePartNumber(part))
 	}
 	sort.Slice(parts, func(i, j int) bool { return parts[i].Value < parts[j].Value })
 	return parts, nil
@@ -231,7 +231,7 @@ func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 	parts := []ubom.PartNumber{}
 	for _, part := range s.partNumbers {
 		if part.TaxonomyDefID == taxonomyID && part.TaxonomyNodeID == nodeID {
-			parts = append(parts, part)
+			parts = append(parts, clonePartNumber(part))
 		}
 	}
 	sort.Slice(parts, func(i, j int) bool { return parts[i].Value < parts[j].Value })
@@ -250,6 +250,7 @@ func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 		return ubom.PartRevision{}, err
 	}
 	part, _ := s.partNumbersByID(revision.PartNumberID)
+	part = clonePartNumber(part)
 	for _, existingID := range part.PartRevisionID {
 		existing, _ := s.GetPartRevision(existingID)
 		if existing.Revision == revision.Revision {
@@ -259,10 +260,10 @@ func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 
 	revision.ID = prospectiveID
 	s.nextRevisionID++
-	s.partRevisions[revision.ID] = revision
+	s.partRevisions[revision.ID] = clonePartRevision(revision)
 	part.PartRevisionID = append(part.PartRevisionID, revision.ID)
 	s.partNumbers[part.Value] = part
-	return revision, nil
+	return clonePartRevision(revision), nil
 }
 
 func (s *MemoryStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision, error) {
@@ -270,7 +271,45 @@ func (s *MemoryStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision
 	if !ok {
 		return ubom.PartRevision{}, ErrNotFound
 	}
-	return revision, nil
+	return clonePartRevision(revision), nil
+}
+
+func clonePartNumber(part ubom.PartNumber) ubom.PartNumber {
+	part.PartRevisionID = append([]ubom.PartRevisionID(nil), part.PartRevisionID...)
+	part.Attributes = append([]ubom.PartNumberAttribute(nil), part.Attributes...)
+	return part
+}
+
+func clonePartRevision(revision ubom.PartRevision) ubom.PartRevision {
+	revision.BOM = append([]ubom.LineItem(nil), revision.BOM...)
+	return revision
+}
+
+func cloneTaxonomyDef(def ubom.TaxonomyDef) ubom.TaxonomyDef {
+	def.AttributeDefs = append([]ubom.AttributeDef(nil), def.AttributeDefs...)
+	for i := range def.AttributeDefs {
+		def.AttributeDefs[i].EnumValues = append([]string(nil), def.AttributeDefs[i].EnumValues...)
+	}
+	def.Taxonomy.Root = cloneTaxonomyNode(def.Taxonomy.Root)
+	return def
+}
+
+func cloneTaxonomyNode(node ubom.TaxonomyNode) ubom.TaxonomyNode {
+	clone := node
+	if node.Matches != nil {
+		clone.Matches = make(map[string]string, len(node.Matches))
+		for key, value := range node.Matches {
+			clone.Matches[key] = value
+		}
+	}
+	clone.Attributes = append([]ubom.AttributeAssignment(nil), node.Attributes...)
+	if node.Children != nil {
+		clone.Children = make([]ubom.TaxonomyNode, len(node.Children))
+		for i, child := range node.Children {
+			clone.Children[i] = cloneTaxonomyNode(child)
+		}
+	}
+	return clone
 }
 
 func (s *MemoryStore) partNumbersByID(id ubom.PartNumberID) (ubom.PartNumber, bool) {

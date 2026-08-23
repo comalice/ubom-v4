@@ -44,11 +44,24 @@ func Populate(s store.Store, options Options) (Result, error) {
 	taxonomyDef := ubom.TaxonomyDef{
 		ID:     "sample-taxonomy-v1",
 		SeqDef: seqDef.ID,
+		AttributeDefs: []ubom.AttributeDef{
+			{ID: "footprint", Label: "Footprint", ValueType: ubom.AttributeValueEnum, EnumValues: []string{"0603", "0805"}},
+			{ID: "resistance", Label: "Resistance value", ValueType: ubom.AttributeValueDecimal, Unit: "ohm"},
+			{ID: "tolerance", Label: "Tolerance", ValueType: ubom.AttributeValueDecimal, Unit: "percent"},
+			{ID: "power_rating", Label: "Power rating", ValueType: ubom.AttributeValueDecimal, Unit: "W"},
+		},
 		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
 			ID:    "components",
 			Label: "Components",
+			Attributes: []ubom.AttributeAssignment{
+				{AttributeDefID: "footprint", Required: true},
+			},
 			Children: []ubom.TaxonomyNode{
-				{ID: "resistors", Label: "Resistors", Matches: map[string]string{"category": "A"}},
+				{ID: "resistors", Label: "Resistors", Matches: map[string]string{"category": "A"}, Attributes: []ubom.AttributeAssignment{
+					{AttributeDefID: "resistance", Required: true},
+					{AttributeDefID: "tolerance"},
+					{AttributeDefID: "power_rating"},
+				}},
 				{ID: "capacitors", Label: "Capacitors", Matches: map[string]string{"category": "B"}},
 			},
 		}},
@@ -66,6 +79,14 @@ func Populate(s store.Store, options Options) (Result, error) {
 		part, err := ubom.NewPartNumber(fmt.Sprintf("PN-%s%04d", category, i/2), seqDef, taxonomyDef)
 		if err != nil {
 			return Result{}, err
+		}
+		part.Attributes = []ubom.PartNumberAttribute{{AttributeDefID: "footprint", Value: "0603"}}
+		if category == "A" {
+			part.Attributes = append(part.Attributes,
+				ubom.PartNumberAttribute{AttributeDefID: "resistance", Value: fmt.Sprintf("%d", 1000+(i/2)*1000)},
+				ubom.PartNumberAttribute{AttributeDefID: "tolerance", Value: "1"},
+				ubom.PartNumberAttribute{AttributeDefID: "power_rating", Value: "0.1"},
+			)
 		}
 		part, err = s.CreatePartNumber(part)
 		if err != nil {

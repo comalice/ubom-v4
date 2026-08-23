@@ -29,7 +29,7 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 		SeqDef: seqDef.ID,
 		AttributeDefs: []ubom.AttributeDef{
 			{ID: "footprint", Label: "Footprint", ValueType: ubom.AttributeValueEnum, EnumValues: []string{"0603", "0805"}},
-			{ID: "resistance", Label: "Resistance", ValueType: ubom.AttributeValueDecimal, Unit: "ohm"},
+			{ID: "resistance", Label: "Resistance value", ValueType: ubom.AttributeValueDecimal, Unit: "ohm"},
 			{ID: "tolerance", Label: "Tolerance", ValueType: ubom.AttributeValueDecimal, Unit: "percent"},
 			{ID: "power_rating", Label: "Power rating", ValueType: ubom.AttributeValueDecimal, Unit: "W"},
 		},

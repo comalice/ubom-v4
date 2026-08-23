@@ -54,4 +54,15 @@ func TestFileSnapshotStorePutOpen(t *testing.T) {
 	if err != nil || closeErr != nil || string(data) != "file content" {
 		t.Fatalf("opened file = %q, read error %v, close error %v", data, err, closeErr)
 	}
+	if _, err := store.Open(context.Background(), "../outside"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("path traversal Open() error = %v, want os.ErrNotExist", err)
+	}
+}
+
+func TestSnapshotStoreRejectsOversizedContent(t *testing.T) {
+	store := NewMemorySnapshotStore()
+	_, err := store.Put(context.Background(), strings.NewReader(strings.Repeat("x", int(MaxSnapshotSize)+1)), "text/plain")
+	if !errors.Is(err, ErrSnapshotTooLarge) {
+		t.Fatalf("Put() error = %v, want ErrSnapshotTooLarge", err)
+	}
 }

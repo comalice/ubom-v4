@@ -108,9 +108,18 @@ func (s *Server) handleArtifact(w http.ResponseWriter, r *http.Request) {
 			var request struct {
 				Reference string `json:"reference"`
 			}
-			decoder := json.NewDecoder(r.Body)
+			decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 			decoder.DisallowUnknownFields()
-			if err := decoder.Decode(&request); err != nil && !errors.Is(err, io.EOF) {
+			if err := decoder.Decode(&request); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid snapshot request")
+				return
+			}
+			if request.Reference == "" {
+				writeError(w, http.StatusBadRequest, "snapshot reference is required")
+				return
+			}
+			var extra any
+			if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 				writeError(w, http.StatusBadRequest, "invalid snapshot request")
 				return
 			}
@@ -120,7 +129,7 @@ func (s *Server) handleArtifact(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if err != nil {
-				writeError(w, http.StatusBadRequest, err.Error())
+				writeError(w, http.StatusBadRequest, "could not capture snapshot")
 				return
 			}
 			writeJSON(w, app.SnapshotView{ID: snapshot.ID, ArtifactID: snapshot.ArtifactID, Reference: snapshot.Reference, Commit: snapshot.Commit, SnapshotKey: snapshot.SnapshotKey, Digest: snapshot.Digest, MediaType: snapshot.MediaType, Size: snapshot.Size})

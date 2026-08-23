@@ -38,6 +38,9 @@ func (s *SnapshotService) Capture(ctx context.Context, artifactID artifact.ID, r
 	if err != nil {
 		return artifact.Snapshot{}, err
 	}
+	if resolved.Content == nil {
+		return artifact.Snapshot{}, errors.New("source returned no artifact content")
+	}
 	defer resolved.Content.Close()
 	stored, err := s.content.Put(ctx, resolved.Content, resolved.MediaType)
 	if err != nil {

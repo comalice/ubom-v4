@@ -9,7 +9,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+const MaxSnapshotSize int64 = 64 << 20
+
+var ErrSnapshotTooLarge = errors.New("artifact snapshot exceeds maximum size")
 
 // MemorySnapshotStore is a content-only SnapshotStore for tests and ephemeral use.
 type MemorySnapshotStore struct {
@@ -35,6 +40,9 @@ func (s *MemorySnapshotStore) Put(ctx context.Context, r io.Reader, mediaType st
 func (s *MemorySnapshotStore) Open(ctx context.Context, key string) (io.ReadCloser, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	if !validContentKey(key) {
+		return nil, os.ErrNotExist
 	}
 	data, ok := s.contents[key]
 	if !ok {
@@ -93,14 +101,52 @@ func (s *FileSnapshotStore) Open(ctx context.Context, key string) (io.ReadCloser
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if !validContentKey(key) {
+		return nil, os.ErrNotExist
+	}
 	return os.Open(filepath.Join(s.root, key))
 }
 
 func readContent(ctx context.Context, r io.Reader) ([]byte, error) {
+	if r == nil {
+		return nil, errors.New("snapshot content is nil")
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return io.ReadAll(r)
+	data, err := io.ReadAll(io.LimitReader(contextReader{ctx: ctx, reader: r}, MaxSnapshotSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > MaxSnapshotSize {
+		return nil, ErrSnapshotTooLarge
+	}
+	return data, nil
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
+}
+
+func validContentKey(key string) bool {
+	return strings.HasPrefix(key, "sha256:") && len(key) == len("sha256:")+64 && isHex(key[len("sha256:"):])
+}
+
+func isHex(value string) bool {
+	for _, character := range value {
+		if !(character >= '0' && character <= '9') && !(character >= 'a' && character <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func contentDigest(data []byte) string {

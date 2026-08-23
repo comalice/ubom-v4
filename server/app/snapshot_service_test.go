@@ -64,3 +64,47 @@ func TestLocalFileAdapterRejectsPathEscape(t *testing.T) {
 		t.Fatal("Resolve() accepted a path outside the source root")
 	}
 }
+
+func TestLocalFileAdapterRejectsSymlinkEscape(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "link")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	source := artifact.Source{ID: "local", Name: "Local", Kind: "filesystem"}
+	adapter, err := NewLocalFileAdapter(source, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = adapter.Resolve(context.Background(), artifact.Artifact{ID: "x", Name: "x", Kind: "file", SourceID: source.ID, Path: "link/secret.txt"}, "ref")
+	if err == nil {
+		t.Fatal("Resolve() accepted a symlink path outside the source root")
+	}
+}
+
+func TestSnapshotServiceRejectsEmptyReference(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "widget.txt"), []byte("widget"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	metadata := store.NewMemoryStore()
+	source := artifact.Source{ID: "local", Name: "Local", Kind: "filesystem"}
+	item := artifact.Artifact{ID: "widget", Name: "Widget", Kind: "text", SourceID: source.ID, Path: "widget.txt"}
+	if err := metadata.CreateSource(source); err != nil {
+		t.Fatal(err)
+	}
+	if err := metadata.CreateArtifact(item); err != nil {
+		t.Fatal(err)
+	}
+	adapter, err := NewLocalFileAdapter(source, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = NewSnapshotService(metadata, artifact.NewMemorySnapshotStore(), adapter).Capture(context.Background(), item.ID, "")
+	if err == nil {
+		t.Fatal("Capture() accepted an empty reference")
+	}
+}

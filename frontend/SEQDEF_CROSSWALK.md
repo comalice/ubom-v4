@@ -13,6 +13,14 @@ without creating a second grammar.
 | Inactive component zone | None | Transient editor state. Inactive items are not persisted. |
 | Selected component/options | None | Transient editor state. |
 
+## Frontend State
+
+All editor state is transient: active and inactive component lists, selection,
+draft dialog and drag state, name, bindings, and request status/errors. Only the
+name and active components are persisted: the name is `SeqDef.ID`, and active
+components serialize to the AST. Bindings are request input for preview and
+authoring, not persisted sequence-definition state.
+
 ## Components
 
 | Reference UI | UBOM AST | Status |
@@ -41,9 +49,9 @@ edit component canvas
   -> part draft uses those fields
 ```
 
-The frontend must not become authoritative for generation, parsing, or
-uniqueness. The local reference-style generate/parse/increment controls are
-interaction aids only until equivalent UBOM operations exist.
+The frontend serializes the editor's active components and sends bindings with
+preview or authoring requests. The backend remains authoritative for validation,
+generation, parsing, and uniqueness.
 
 ## Required Follow-Up Slices
 

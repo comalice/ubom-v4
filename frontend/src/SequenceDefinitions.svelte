@@ -58,7 +58,7 @@
 </script>
 
 {#if !creating}
-  <p class="eyebrow">Settings</p><h1>Sequence definitions</h1><a class="button-link" href="/settings/sequence-definitions/new">New sequence definition</a>
+  <p class="eyebrow">Settings</p><h1>Sequence definitions</h1><div class="seq-def-actions"><a class="button-link" href="/settings/sequence-definitions/new">New sequence definition</a><a class="quiet-button" href="/settings/sequence-definitions/mock">View choice UI mock</a></div>
   {#if error}<p class="error">{error}</p>{/if}
   {#if definitions.length}<div class="part-list seq-def-list">{#each definitions as definition}<div class="part-row"><span class="part-value">{definition.id}</span><span class="muted">SeqDef</span></div>{/each}</div>{:else}<p class="empty-state">No sequence definitions.</p>{/if}
 {:else}

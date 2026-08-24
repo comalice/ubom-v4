@@ -7,6 +7,7 @@ export type Route =
   | { kind: 'revision'; partNumber: string; id: string }
   | { kind: 'settings' }
   | { kind: 'seq-defs' }
+  | { kind: 'seq-def-mock' }
   | { kind: 'new-seq-def' }
   | { kind: 'not-found' }
 
@@ -24,6 +25,7 @@ export function parseRoute(pathname = window.location.pathname): Route {
     return { kind: 'revision', partNumber: parts[1], id: parts[3] }
   }
   if (parts.length === 2 && parts[0] === 'settings' && parts[1] === 'sequence-definitions') return { kind: 'seq-defs' }
+  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'mock') return { kind: 'seq-def-mock' }
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'new') return { kind: 'new-seq-def' }
   return { kind: 'not-found' }
 }

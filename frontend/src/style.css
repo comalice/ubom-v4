@@ -117,6 +117,7 @@ ul { line-height: 1.8; }
 .settings-item small { margin-top: .2rem; color: var(--muted); font-size: .78rem; }
 .settings-item-disabled { color: var(--muted); }
 .button-link, .authoring-panel button { display: inline-flex; align-items: center; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .25rem; cursor: pointer; font: inherit; }
+.seq-def-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
 .seq-def-form { max-width: 48rem; }
 .node-editor { display: grid; gap: .75rem; margin: 0; padding: 1rem; border: 1px solid var(--hairline); border-radius: .25rem; }
 .node-editor legend { padding: 0 .35rem; color: var(--muted); font-size: .75rem; }

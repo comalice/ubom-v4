@@ -51,6 +51,5 @@ interaction aids only until equivalent UBOM operations exist.
    and option descriptions become product requirements.
 2. Model character ranges, likely as a new typed AST node, before exposing them
    as a real persisted option.
-3. Replace local preview generation with server preview for every preview result.
-4. Add SeqDef detail/update semantics before presenting existing definitions as
+3. Add SeqDef detail/update semantics before presenting existing definitions as
    editable.

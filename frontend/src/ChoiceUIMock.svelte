@@ -29,7 +29,7 @@
 
     <div class="flow-row before-choice">
       <span class="flow-label">Before choice</span>
-      <span class="flow-node">{components.prefix}</span><span class="flow-arrow">→</span><span class="flow-node">{components.family}</span>
+      <span class="canvas-component type-literal"><strong>{components.prefix}</strong><small class="component-type">LITERAL</small></span><span class="flow-arrow">→</span><span class="canvas-component type-literal"><strong>{components.family}</strong><small class="component-type">LITERAL</small></span>
     </div>
 
     <div class="choice-block">
@@ -37,37 +37,37 @@
 
       <div class="alternative-row">
         <div class="branch-label"><span class="branch-marker">A</span><span>Standard</span></div>
-        <div class="branch-flow"><span class="flow-node">{components.standard[0]}</span><span class="flow-arrow">→</span><span class="flow-node">{components.standard[1]}</span></div>
+        <div class="branch-flow"><span class="canvas-component type-literal"><strong>{components.standard[0]}</strong><small class="component-type">LITERAL</small></span><span class="flow-arrow">→</span><span class="canvas-component type-choice"><strong>{components.standard[1]}</strong><small class="component-type">CHOICE</small></span></div>
       </div>
 
       <div class="alternative-row nested-alternative">
         <div class="branch-label"><span class="branch-marker">B</span><span>Compact</span></div>
-        <div class="branch-flow"><span class="flow-node">{components.compact[0]}</span><span class="flow-arrow">→</span><span class="flow-node">{components.compact[1]}</span><span class="flow-arrow">→</span><span class="flow-node">{components.adapter}</span></div>
+        <div class="branch-flow"><span class="canvas-component type-literal"><strong>{components.compact[0]}</strong><small class="component-type">LITERAL</small></span><span class="flow-arrow">→</span><span class="canvas-component type-choice"><strong>{components.compact[1]}</strong><small class="component-type">CHOICE</small></span><span class="flow-arrow">→</span><span class="canvas-component type-places"><strong>{components.adapter}</strong><small class="component-type">PLACES</small></span></div>
 
         <div class="nested-choice">
           <div class="choice-title"><span class="choice-kicker">Nested choice</span><strong>Seal type</strong><span class="choice-rule">within Compact</span></div>
           <div class="alternative-row">
             <div class="branch-label"><span class="branch-marker">B1</span><span>Weatherproof</span></div>
-            <div class="branch-flow"><span class="flow-node">{components.nestedA}</span></div>
+            <div class="branch-flow"><span class="canvas-component type-choice"><strong>{components.nestedA}</strong><small class="component-type">CHOICE</small></span></div>
           </div>
           <div class="alternative-row">
             <div class="branch-label"><span class="branch-marker">B2</span><span>Indoor</span></div>
-            <div class="branch-flow"><span class="flow-node">{components.nestedB}</span></div>
+            <div class="branch-flow"><span class="canvas-component type-choice"><strong>{components.nestedB}</strong><small class="component-type">CHOICE</small></span></div>
           </div>
         </div>
 
-        <div class="continuation-row"><span class="continuation-label">Parent continues</span><span class="flow-arrow">→</span><span class="flow-node">{components.parentAfterNested}</span></div>
+        <div class="continuation-row"><span class="continuation-label">Parent continues</span><span class="flow-arrow">→</span><span class="canvas-component type-range"><strong>{components.parentAfterNested}</strong><small class="component-type">RANGE</small></span></div>
       </div>
 
       <div class="alternative-row">
         <div class="branch-label"><span class="branch-marker">C</span><span>Service</span></div>
-        <div class="branch-flow"><span class="flow-node">{components.service[0]}</span><span class="flow-arrow">→</span><span class="flow-node">{components.service[1]}</span></div>
+        <div class="branch-flow"><span class="canvas-component type-literal"><strong>{components.service[0]}</strong><small class="component-type">LITERAL</small></span><span class="flow-arrow">→</span><span class="canvas-component type-choice"><strong>{components.service[1]}</strong><small class="component-type">CHOICE</small></span></div>
       </div>
     </div>
 
     <div class="flow-row after-choice">
       <span class="flow-label">After whole choice</span>
-      <span class="flow-arrow">→</span><span class="flow-node">{components.suffix}</span>
+      <span class="flow-arrow">→</span><span class="canvas-component type-places"><strong>{components.suffix}</strong><small class="component-type">PLACES</small></span>
     </div>
   </section>
 </div>
@@ -84,7 +84,8 @@
   .before-choice { border-bottom: 1px solid var(--hairline-light); }
   .after-choice { border-top: 1px solid var(--hairline-light); }
   .flow-label { width: 7.5rem; text-transform: uppercase; }
-  .flow-node { display: inline-flex; align-items: center; min-height: 2.2rem; padding: .35rem .65rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; font: .8rem ui-monospace, monospace; }
+  .mock-sequence .canvas-component { width: 5.25rem; min-height: 4.25rem; margin: 0; padding: .85rem .45rem .8rem; font-size: 1.25rem; cursor: default; }
+  .mock-sequence .canvas-component .component-type { bottom: .25rem; font-size: .5rem; }
   .flow-arrow { color: var(--accent); font-weight: 600; }
   .choice-block { margin: 1rem 1.25rem; border-left: 3px solid var(--accent); background: var(--ground); }
   .choice-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: .55rem; padding: .75rem 1rem; background: var(--accent-light); border-bottom: 1px solid var(--hairline); }
@@ -110,6 +111,7 @@
     .flow-label { width: 100%; }
     .choice-block { margin: .75rem .7rem; }
     .branch-label { width: 100%; }
+    .mock-sequence .canvas-component { width: 4.5rem; min-height: 3.75rem; font-size: 1rem; }
     .nested-choice, .continuation-row { margin-left: 1.25rem; }
     .choice-rule { width: 100%; margin-left: 0; }
   }

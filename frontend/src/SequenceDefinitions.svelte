@@ -42,7 +42,24 @@
   function parse(input: string): boolean { const generated = generate(100); return generated.includes(input) }
   function increment(input: string): string | null { const generated = generate(200); const index = generated.indexOf(input); return index >= 0 ? generated[index + 1] || null : null }
   function grammar(component: SeqDefComponent): string { if (component.kind === 'literal') return `'${component.text || ''}'`; if (component.kind === 'range') return `[${component.min || ''}-${component.max || ''}]`; if (component.kind === 'places') return `places(${(component.alphabets || []).join(', ')})`; return `{${(component.options || []).join(', ')}}` }
-  function importGrammar(text: string) { components = text.trim().replace(/^\w+\s*:=\s*/, '').split(/\s*\+\s*/).flatMap((part): SeqDefComponent[] => { const value = part.trim(); if (value.startsWith("'") && value.endsWith("'")) return [{ kind: 'literal', text: value.slice(1, -1) }]; if (value.startsWith('{') && value.endsWith('}')) return [{ kind: 'choice', options: value.slice(1, -1).split(',').map(item => item.trim()) }]; if (value.startsWith('[') && value.endsWith(']')) { const body = value.slice(1, -1); if (body.includes(',')) return [{ kind: 'choice', options: body.split(',').map(item => item.trim()) }]; const [min, max] = body.split('-'); if (/^\d+$/.test(min) && /^\d+$/.test(max)) return [{ kind: 'range', min, max, width: min.length > 1 ? min.length : 0 }]; } return [] }) }
+  function importGrammar(text: string) { components = text.trim().replace(/^\w+\s*:=\s*/, '').split(/\s*\+\s*/).flatMap((part): SeqDefComponent[] => { const value = part.trim(); if (value.startsWith("'") && value.endsWith("'")) return [{ kind: 'literal', text: value.slice(1, -1) }]; if (value.startsWith('{') && value.endsWith('}')) return [{ kind: 'choice', options: value.slice(1, -1).split(',').map(item => item.trim()) }]; if (value.startsWith('[') && value.endsWith(']')) { const body = value.slice(1, -1); if (body.includes(',')) return [{ kind: 'choice', options: body.split(',').map(item => item.trim()) }]; const [min, max] = body.split('-'); if (/^\d+$/.test(min) && /^\d+$/.test(max)) return [{ kind: 'range', min, max, width: Math.max(min.length, max.length) }]; } return [] }) }
+  function validateComponent(component: SeqDefComponent, index: number): string | null {
+    const label = `Component ${index + 1}`
+    if (component.kind === 'range') {
+      if (!/^\d+$/.test(component.min || '') || !/^\d+$/.test(component.max || '')) return `${label}: range minimum and maximum must be whole numbers`
+      const min = Number(component.min); const max = Number(component.max); const width = component.width ?? 1
+      if (min > max) return `${label}: range minimum must not exceed maximum`
+      if (!Number.isInteger(width) || width < 1) return `${label}: range width must be at least 1`
+      if (String(max).length > width) return `${label}: range width is too small for the maximum`
+    }
+    if (component.kind === 'choice') {
+      if (!component.options?.length) return `${label}: select needs at least one option`
+      if (component.options.some(option => !option.trim())) return `${label}: select options cannot be empty`
+    }
+    if (component.kind === 'places' && (!component.alphabets?.length || component.alphabets.some(alphabet => !alphabet.trim()))) return `${label}: places needs non-empty alphabets`
+    return null
+  }
+  $: validationError = components.length ? components.map(validateComponent).find(Boolean) || '' : 'Add at least one component'
   // This is the explicit UI-to-backend adapter; editor metadata is not persisted.
   function ast(component: SeqDefComponent): SeqDefNode {
     let node: SeqDefNode
@@ -50,11 +67,11 @@
     else if (component.kind === 'range' && /^\d+$/.test(component.min || '') && /^\d+$/.test(component.max || '')) node = { kind: 'range', min: Number(component.min), max: Number(component.max), width: component.width || String(component.max).length }
     else if (component.kind === 'choice') node = { kind: 'choice', children: (component.options || []).map(text => ({ kind: 'literal', text })) }
     else if (component.kind === 'places') node = { kind: 'places', alphabets: component.alphabets || [] }
-    else node = { kind: 'literal', text: component.min || '' }
+    else throw new Error('Range requires numeric minimum and maximum values')
     return component.fieldName?.trim() ? { kind: 'bind', name: component.fieldName.trim(), child: node } : node
   }
-  $: root = { kind: 'concat', children: components.map(ast) } as SeqDefNode
-  async function save() { saving = true; error = ''; try { await createSeqDef(name.trim(), root); navigate('/settings/sequence-definitions') } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to save sequence definition' } finally { saving = false } }
+  function serialize(): SeqDefNode { return { kind: 'concat', children: components.map(ast) } }
+  async function save() { saving = true; error = ''; try { await createSeqDef(name.trim(), serialize()); navigate('/settings/sequence-definitions') } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to save sequence definition' } finally { saving = false } }
   async function preview() { backendPreview = ''; error = ''; try { const result = await previewSeqDef(name.trim(), bindings); backendPreview = result.error ? `Error: ${result.error}` : result.value || '' } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to preview sequence definition' } }
   async function load() { try { definitions = await getSeqDefs() } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to load sequence definitions' } }
   function download() { const blob = new Blob([components.map(grammar).join(' + ')], { type: 'text/plain' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${name || 'sequence'}.txt`; link.click(); URL.revokeObjectURL(link.href) }
@@ -67,13 +84,13 @@
   {#if definitions.length}<div class="part-list seq-def-list">{#each definitions as definition}<div class="part-row"><span class="part-value">{definition.id}</span><span class="muted">SeqDef</span></div>{/each}</div>{:else}<p class="empty-state">No sequence definitions.</p>{/if}
 {:else}
   <div class="generator-page">
-    <div class="generator-topbar"><button class="icon-link" on:click={() => navigate('/settings/sequence-definitions')}>☰</button><button class="topbar-button" on:click={save} disabled={saving || !name.trim()}>Save</button><button class="topbar-button" on:click={preview} disabled={!name.trim()}>Backend preview</button><span class="topbar-caption">{name || 'New sequence definition'}</span></div>
+     <div class="generator-topbar"><button class="icon-link" on:click={() => navigate('/settings/sequence-definitions')}>☰</button><button class="topbar-button" on:click={save} disabled={saving || !name.trim() || validationError}>Save</button><button class="topbar-button" on:click={preview} disabled={!name.trim() || validationError}>Backend preview</button><span class="topbar-caption">{name || 'New sequence definition'}</span></div>
     <SeqDefCanvas bind:components bind:inactiveComponents bind:selectedIndex bind:selectedOptions onComponentsChange={(value) => components = value} onInactiveChange={(value) => inactiveComponents = value} onSelectedIndexChange={(value) => selectedIndex = value} onSelectedOptionsChange={(value) => selectedOptions = value} />
     <div class="powerline-bar"><input bind:this={fileInput} type="file" accept=".txt" hidden on:change={async (event) => { const file = (event.currentTarget as HTMLInputElement).files?.[0]; if (file) importGrammar(await file.text()); (event.currentTarget as HTMLInputElement).value = '' }} /><input class="sequence-name" bind:value={name} placeholder="sequence_name" /><code>{components.length ? components.map(grammar).join(' + ') : 'No components'}</code><div class="powerline-actions"><button on:click={() => fileInput.click()}>Import</button><button on:click={download} disabled={!components.length}>Export</button><button on:click={preview} disabled={!name.trim()}>Preview</button><button class="primary-button" on:click={() => results = generate(20)} disabled={!components.length}>Generate</button></div></div>
     {#if results.length}<div class="results-panel"><div class="results-header"><b>Generated Sequences ({results.length})</b><button on:click={() => results = []}>Clear</button></div><div class="results-grid">{#each results as result}<button on:click={() => navigator.clipboard?.writeText(result)}>{result}<span>⧉</span></button>{/each}</div></div>{/if}
     <div class="generator-controls"><div><label>Parse &amp; Jump<input bind:value={parseValue} placeholder="e.g. A-005" /></label><button on:click={() => results = parse(parseValue) ? [parseValue, ...generate(10, parseValue)] : []} disabled={!parseValue || !components.length}>Parse</button></div><div><label>Increment<input bind:value={incrementValue} placeholder="e.g. Z-998" /></label><button on:click={() => { const next = increment(incrementValue); results = next ? [next] : [] }} disabled={!incrementValue || !components.length}>Increment</button></div></div>
     {#if fieldNames.length}<div class="preview-fields"><h2>Preview bindings</h2>{#each fieldNames as field}<label>{field}<input bind:value={bindings[field]} /></label>{/each}</div>{/if}
-    {#if backendPreview}<p class="success artifact-code">Backend preview: {backendPreview}</p>{/if}{#if error}<p class="error">{error}</p>{/if}
-    <div class="form-actions"><button class="primary-button" on:click={save} disabled={saving || !name.trim()}>Create definition</button><button class="quiet-button" on:click={() => navigate('/settings/sequence-definitions')}>Cancel</button></div>
+     {#if validationError}<p class="error" role="alert">{validationError}</p>{/if}{#if backendPreview}<p class="success artifact-code">Backend preview: {backendPreview}</p>{/if}{#if error}<p class="error" role="alert">{error}</p>{/if}
+     <div class="form-actions"><button class="primary-button" on:click={save} disabled={saving || !name.trim() || validationError}>Create definition</button><button class="quiet-button" on:click={() => navigate('/settings/sequence-definitions')}>Cancel</button></div>
   </div>
 {/if}

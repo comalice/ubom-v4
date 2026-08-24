@@ -6,6 +6,7 @@
     max?: string
     width?: number
     options?: string[]
+    alphabets?: string[]
   }
   type SeqDefComponentMetadata = {
     fieldName?: string

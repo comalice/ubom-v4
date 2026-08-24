@@ -18,11 +18,9 @@
   export let components: SeqDefComponent[] = []
   export let inactiveComponents: SeqDefComponent[] = []
   export let selectedIndex: number | null = null
-  export let selectedOptions: Record<number, number> = {}
   export let onComponentsChange: (value: SeqDefComponent[]) => void
   export let onInactiveChange: (value: SeqDefComponent[]) => void
   export let onSelectedIndexChange: (value: number | null) => void
-  export let onSelectedOptionsChange: (value: Record<number, number>) => void
 
   let editingIndex: number | null = null
   let editingInactive = false
@@ -168,9 +166,9 @@
   }
 
   function resetDrag() { draggedIndex = null; draggedInactive = false; dropPosition = null; menuDragging = false }
-  function display(component: SeqDefComponent, index: number): string {
+  function display(component: SeqDefComponent): string {
     if (component.kind === 'literal') return component.text || ''
-    if (component.kind === 'choice') return component.options?.[selectedOptions[index] ?? 0] || ''
+    if (component.kind === 'choice') return component.options?.[0] || ''
     if (component.kind === 'places') return (component.alphabets || []).map(alphabet => alphabet[0] || '').join('')
     return component.min || ''
   }
@@ -213,7 +211,7 @@
             {#if dropPosition === index && draggedIndex !== null}<span class="drop-marker"></span>{/if}
             <div class:selected-component={selectedIndex === index} class:dragged-component={draggedIndex === index && !draggedInactive} class="canvas-component type-{component.kind}" draggable="true" role="button" tabindex="0" aria-label={`${component.kind} component`} on:dragstart={(event) => dragStart(event, index, false)} on:keydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectedIndexChange(index) } }} on:click|stopPropagation={() => onSelectedIndexChange(index)}>
               {#if component.fieldName}<small class="component-field">{component.fieldName}</small>{/if}
-              <strong>{display(component, index)}</strong>{#if component.kind === 'choice'}<button type="button" class="select-cycle" aria-label="Choose option" on:click|stopPropagation={() => onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })}>⌄</button>{/if}<small class="component-type">{component.kind.toUpperCase()}</small>
+              <strong>{display(component)}</strong><small class="component-type">{component.kind.toUpperCase()}</small>
               <span class="component-buttons"><button type="button" aria-label="Configure component" on:click|stopPropagation={() => edit(index)} title="Configure">⚙</button><button type="button" aria-label="Remove component" on:click|stopPropagation={() => remove(index)} title="Remove">×</button></span>
             </div>
             {#if index === components.length - 1 && dropPosition === index + 1}<span class="drop-marker end-marker"></span>{/if}
@@ -226,7 +224,7 @@
   <div class="inactive-zone" role="region" on:dragover={(event) => event.preventDefault()} on:drop={dropInactive}>
     <div class="zone-title">INACTIVE ZONE</div>
     {#if inactiveComponents.length === 0}<p class="muted">Drag components here to temporarily remove them</p>{:else}
-      <div class="inactive-components">{#each inactiveComponents as component, index}<div class="inactive-component" role="button" tabindex="0" draggable="true" aria-label={`${component.kind} inactive component`} on:dragstart={(event) => dragStart(event, index, true)} on:keydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) } }} on:click={() => { const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) }}>{display(component, index)} <button type="button" aria-label="Remove inactive component" on:click|stopPropagation={() => remove(index, true)}>×</button></div>{/each}</div>
+       <div class="inactive-components">{#each inactiveComponents as component, index}<div class="inactive-component" role="button" tabindex="0" draggable="true" aria-label={`${component.kind} inactive component`} on:dragstart={(event) => dragStart(event, index, true)} on:keydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) } }} on:click={() => { const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) }}>{display(component)} <button type="button" aria-label="Remove inactive component" on:click|stopPropagation={() => remove(index, true)}>×</button></div>{/each}</div>
     {/if}
   </div>
 </div>

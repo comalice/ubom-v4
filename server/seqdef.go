@@ -85,6 +85,9 @@ func validateRange(n RangeNode) error {
 	if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
 		return fmt.Errorf("invalid range definition")
 	}
+	if len(strconv.Itoa(n.Max)) > n.WidthValue {
+		return fmt.Errorf("invalid range definition")
+	}
 	if n.Pad != 0 && n.Pad >= '1' && n.Pad <= '9' {
 		return fmt.Errorf("invalid range padding character")
 	}

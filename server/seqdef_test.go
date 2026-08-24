@@ -144,6 +144,10 @@ func TestSeqDefValidate(t *testing.T) {
 			name: "invalid range",
 			def:  NewSeqDef(RangeNode{Min: 10, Max: 1, WidthValue: 1}).WithID("pn-v1"),
 		},
+		{
+			name: "range maximum exceeds width",
+			def:  NewSeqDef(Range(0, 100).Width(2)).WithID("pn-v1"),
+		},
 	}
 
 	for _, test := range tests {

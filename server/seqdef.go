@@ -74,13 +74,23 @@ func validateSeqDefNode(node SeqDefNode) error {
 		}
 		return nil
 	case RangeNode:
-		if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
-			return fmt.Errorf("invalid range definition")
+		if err := validateRange(n); err != nil {
+			return err
 		}
 		return nil
 	default:
 		return fmt.Errorf("unknown sequence node type %T", node)
 	}
+}
+
+func validateRange(n RangeNode) error {
+	if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
+		return fmt.Errorf("invalid range definition")
+	}
+	if n.Pad != 0 && n.Pad >= '1' && n.Pad <= '9' {
+		return fmt.Errorf("invalid range padding character")
+	}
+	return nil
 }
 
 func (d SeqDef) Root() SeqDefNode { return d.root }
@@ -187,23 +197,7 @@ func generateSeqDefNode(node SeqDefNode, bindings map[string]string) (string, er
 		}
 		return string(result), nil
 	case RangeNode:
-		if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
-			return "", fmt.Errorf("invalid range definition")
-		}
-		digits := strconv.Itoa(n.Min)
-		if len(digits) > n.WidthValue {
-			return "", fmt.Errorf("invalid range definition: minimum %d exceeds width %d", n.Min, n.WidthValue)
-		}
-		pad := n.Pad
-		if pad == 0 {
-			pad = '0'
-		}
-		result := make([]byte, n.WidthValue)
-		for i := range result {
-			result[i] = pad
-		}
-		copy(result[n.WidthValue-len(digits):], digits)
-		return string(result), nil
+		return n.Format(n.Min)
 	default:
 		return "", fmt.Errorf("unknown sequence node type %T", node)
 	}
@@ -398,23 +392,67 @@ type RangeNode struct {
 }
 
 func (n RangeNode) parseAt(input string, offset int, _ map[string]string) (string, int, error) {
-	if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
-		return "", offset, fmt.Errorf("invalid range definition")
+	if err := validateRange(n); err != nil {
+		return "", offset, err
 	}
 	if len(input)-offset < n.WidthValue {
 		return "", offset, expected(offset, fmt.Sprintf("%d digits", n.WidthValue))
 	}
 	text := input[offset : offset+n.WidthValue]
-	for i := range text {
-		if text[i] < '0' || text[i] > '9' {
-			return "", offset, expected(offset+i, "a decimal digit")
-		}
-	}
-	value, err := strconv.Atoi(text)
+	value, err := n.ParseValue(text)
 	if err != nil || value < n.Min || value > n.Max {
 		return "", offset, expected(offset, fmt.Sprintf("a number from %d to %d", n.Min, n.Max))
 	}
 	return text, offset + n.WidthValue, nil
+}
+
+func (n RangeNode) Format(value int) (string, error) {
+	if err := validateRange(n); err != nil {
+		return "", err
+	}
+	if value < n.Min || value > n.Max {
+		return "", fmt.Errorf("value %d is outside range %d-%d", value, n.Min, n.Max)
+	}
+	digits := strconv.Itoa(value)
+	if len(digits) > n.WidthValue {
+		return "", fmt.Errorf("invalid range definition: value %d exceeds width %d", value, n.WidthValue)
+	}
+	pad := n.Pad
+	if pad == 0 {
+		pad = '0'
+	}
+	result := make([]byte, n.WidthValue)
+	for i := range result {
+		result[i] = pad
+	}
+	copy(result[n.WidthValue-len(digits):], digits)
+	return string(result), nil
+}
+
+func (n RangeNode) ParseValue(text string) (int, error) {
+	if err := validateRange(n); err != nil {
+		return 0, err
+	}
+	if len(text) != n.WidthValue {
+		return 0, fmt.Errorf("range value has width %d, want %d", len(text), n.WidthValue)
+	}
+	pad := n.Pad
+	if pad == 0 {
+		pad = '0'
+	}
+	firstDigit := 0
+	for firstDigit < len(text) && text[firstDigit] == pad {
+		firstDigit++
+	}
+	if firstDigit == len(text) {
+		return 0, nil
+	}
+	for i := firstDigit; i < len(text); i++ {
+		if text[i] < '0' || text[i] > '9' {
+			return 0, fmt.Errorf("range value contains a non-decimal digit")
+		}
+	}
+	return strconv.Atoi(text[firstDigit:])
 }
 
 // Range matches a zero-padded decimal number. Its default width is the number

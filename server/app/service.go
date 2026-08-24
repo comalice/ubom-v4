@@ -2,8 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 
 	ubom "ubom-v4"
 	"ubom-v4/artifact"
@@ -29,6 +27,7 @@ type SeqDefFieldView struct {
 	Min     *int     `json:"min,omitempty"`
 	Max     *int     `json:"max,omitempty"`
 	Width   int      `json:"width,omitempty"`
+	Pad     string   `json:"pad,omitempty"`
 }
 type TaxonomyDefSummary struct {
 	ID     ubom.TaxonomyDefID `json:"id"`
@@ -159,11 +158,14 @@ func (s *Service) PreviewPartNumberDraft(id ubom.PartNumberDraftID) (PartNumberD
 			if !ok {
 				continue
 			}
-			current, parseErr := strconv.Atoi(bindings[fields[i].Name])
+			current, parseErr := rangeNode.ParseValue(bindings[fields[i].Name])
 			if parseErr != nil || current >= rangeNode.Max {
 				continue
 			}
-			bindings[fields[i].Name] = fmt.Sprintf("%0*d", rangeNode.WidthValue, current+1)
+			bindings[fields[i].Name], err = rangeNode.Format(current + 1)
+			if err != nil {
+				return PartNumberDraftPreview{}, err
+			}
 			value, err = seqDef.Generate(bindings)
 			if err != nil {
 				return PartNumberDraftPreview{}, err
@@ -211,6 +213,9 @@ func (s *Service) SeqDefFieldViews(id ubom.SeqDefID) ([]SeqDefFieldView, error) 
 			view.Kind = "text"
 		case ubom.RangeNode:
 			view.Kind, view.Min, view.Max, view.Width = "range", &node.Min, &node.Max, node.WidthValue
+			if node.Pad != 0 {
+				view.Pad = string(node.Pad)
+			}
 		default:
 			view.Kind = "text"
 		}

@@ -48,6 +48,8 @@
       if (min > max) return `${label}: range minimum must not exceed maximum`
       if (!Number.isInteger(width) || width < 1) return `${label}: range width must be at least 1`
       if (String(max).length > width) return `${label}: range width is too small for the maximum`
+      const pad = component.pad ?? '0'
+      if (pad.length !== 1 || (pad >= '0' && pad <= '9' && pad !== '0')) return `${label}: pad must be one non-decimal character or 0`
     }
     if (component.kind === 'choice') {
       if (!component.options?.length) return `${label}: select needs at least one option`
@@ -61,7 +63,7 @@
   function ast(component: SeqDefComponent): SeqDefNode {
     let node: SeqDefNode
     if (component.kind === 'literal') node = { kind: 'literal', text: component.text || '' }
-    else if (component.kind === 'range' && /^\d+$/.test(component.min || '') && /^\d+$/.test(component.max || '')) node = { kind: 'range', min: Number(component.min), max: Number(component.max), width: component.width || String(component.max).length }
+    else if (component.kind === 'range' && /^\d+$/.test(component.min || '') && /^\d+$/.test(component.max || '')) node = { kind: 'range', min: Number(component.min), max: Number(component.max), width: component.width || String(component.max).length, pad: component.pad && component.pad !== '0' ? component.pad.charCodeAt(0) : undefined }
     else if (component.kind === 'choice') node = { kind: 'choice', children: (component.options || []).map(text => ({ kind: 'literal', text })) }
     else if (component.kind === 'places') node = { kind: 'places', alphabets: component.alphabets || [] }
     else throw new Error('Range requires numeric minimum and maximum values')

@@ -124,7 +124,7 @@ export const previewSeqDef = (root: SeqDefNode, bindings: Record<string, string>
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })
-export type SeqDefField = { name: string; kind: string; options?: string[]; min?: number; max?: number; width?: number }
+export type SeqDefField = { name: string; kind: string; options?: string[]; min?: number; max?: number; width?: number; pad?: string }
 export const getSeqDefFields = (id: string) => get<SeqDefField[]>(`/api/seq-defs/${encodeURIComponent(id)}/fields`)
 export const createPartDraft = (seqDef: string, taxonomyDef: string, contextNodeId: string) =>
   post<{ id: string; status: string }>('/api/part-drafts', { seqDef, taxonomyDef, contextNodeId })

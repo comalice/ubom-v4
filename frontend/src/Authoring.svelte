@@ -14,7 +14,7 @@
   onMount(async () => {
     try {
       fields = await getSeqDefFields(taxonomy.seqDefId)
-      for (const field of fields) if (field.kind === 'range' && field.min !== undefined) bindings[field.name] = String(field.min).padStart(field.width ?? 1, '0')
+       for (const field of fields) if (field.kind === 'range' && field.min !== undefined) bindings[field.name] = String(field.min).padStart(field.width ?? 1, field.pad ?? '0')
     } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to load sequence fields' }
   })
 

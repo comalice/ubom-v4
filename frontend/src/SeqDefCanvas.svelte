@@ -5,6 +5,7 @@
     min?: string
     max?: string
     width?: number
+    pad?: string
     options?: string[]
     alphabets?: string[]
   }
@@ -239,7 +240,7 @@
        {#if draft.kind === 'literal'}
          <label>Text value<input value={draft.text || ''} on:input={(event) => changeText(event, 'text')} /></label>
        {:else if draft.kind === 'range'}
-         <div class="field-grid"><label>Min<input type="number" min="0" value={draft.min || ''} on:input={(event) => changeText(event, 'min')} /></label><label>Max<input type="number" min="0" value={draft.max || ''} on:input={(event) => changeText(event, 'max')} /></label><label>Width<input type="number" min="1" value={draft.width ?? 1} on:input={(event) => numberChange(event, 'width')} /></label></div>
+         <div class="field-grid"><label>Min<input type="number" min="0" value={draft.min || ''} on:input={(event) => changeText(event, 'min')} /></label><label>Max<input type="number" min="0" value={draft.max || ''} on:input={(event) => changeText(event, 'max')} /></label><label>Width<input type="number" min="1" value={draft.width ?? 1} on:input={(event) => numberChange(event, 'width')} /></label><label>Pad character<input maxlength="1" value={draft.pad ?? '0'} on:input={(event) => changeText(event, 'pad')} /></label></div>
        {:else if draft.kind === 'places'}
          <label>Alphabets <span class="muted">one alphabet per line</span><textarea rows="4" value={(draft.alphabets || []).join('\n')} on:input={(event) => draft = { ...draft, alphabets: (event.currentTarget as HTMLTextAreaElement).value.split('\n') }}></textarea></label>
          <p class="semantic-note">Each position uses the first matching character during backend generation.</p>

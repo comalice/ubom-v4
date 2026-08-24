@@ -198,8 +198,11 @@ func TestSeqDefRangeRetainsPadding(t *testing.T) {
 	if node.Pad != 'X' {
 		t.Fatalf("range padding = %q, want %q", node.Pad, 'X')
 	}
-	if _, err := NewSeqDef(node).Parse("07"); err != nil {
+	if _, err := NewSeqDef(node).Parse("X7"); err != nil {
 		t.Fatalf("Parse() error = %v", err)
+	}
+	if value, err := NewSeqDef(node).Generate(nil); err != nil || value != "X0" {
+		t.Fatalf("Generate() = %q, %v; want X0", value, err)
 	}
 }
 

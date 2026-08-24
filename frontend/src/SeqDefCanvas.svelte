@@ -182,7 +182,13 @@
     const value = (event.currentTarget as HTMLInputElement).value
     draft = { ...draft, [key]: value === '' ? undefined : Number(value) }
   }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && draft) closeEditor()
+  }
 </script>
+
+<svelte:window on:keydown={handleWindowKeydown} />
 
 <div class="generator-frame">
   <div class="component-menu" data-component-menu>
@@ -204,11 +210,11 @@
         {#each components as component, index}
           <div class="canvas-component-wrap" role="listitem" on:dragover={(event) => dragOver(event, index)} on:drop={(event) => dropActive(event, dropPosition ?? index)}>
             {#if dropPosition === index && draggedIndex !== null}<span class="drop-marker"></span>{/if}
-            <button class:selected-component={selectedIndex === index} class:dragged-component={draggedIndex === index && !draggedInactive} class="canvas-component type-{component.kind}" draggable="true" on:dragstart={(event) => dragStart(event, index, false)} on:click|stopPropagation={() => onSelectedIndexChange(index)}>
+            <div class:selected-component={selectedIndex === index} class:dragged-component={draggedIndex === index && !draggedInactive} class="canvas-component type-{component.kind}" draggable="true" role="button" tabindex="0" aria-label={`${component.kind} component`} on:dragstart={(event) => dragStart(event, index, false)} on:keydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectedIndexChange(index) } }} on:click|stopPropagation={() => onSelectedIndexChange(index)}>
               {#if component.fieldName}<small class="component-field">{component.fieldName}</small>{/if}
-              <strong>{display(component, index)}</strong>{#if component.kind === 'choice'}<span class="select-cycle" role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })} on:click|stopPropagation={() => onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })} title="Choose option">⌄</span>{/if}<small class="component-type">{component.kind.toUpperCase()}</small>
-              <span class="component-buttons"><span role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && edit(index)} on:click|stopPropagation={() => edit(index)} title="Configure">⚙</span><span role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && remove(index)} on:click|stopPropagation={() => remove(index)} title="Remove">×</span></span>
-            </button>
+              <strong>{display(component, index)}</strong>{#if component.kind === 'choice'}<button type="button" class="select-cycle" aria-label="Choose option" on:click|stopPropagation={() => onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })}>⌄</button>{/if}<small class="component-type">{component.kind.toUpperCase()}</small>
+              <span class="component-buttons"><button type="button" aria-label="Configure component" on:click|stopPropagation={() => edit(index)} title="Configure">⚙</button><button type="button" aria-label="Remove component" on:click|stopPropagation={() => remove(index)} title="Remove">×</button></span>
+            </div>
             {#if index === components.length - 1 && dropPosition === index + 1}<span class="drop-marker end-marker"></span>{/if}
           </div>
         {/each}
@@ -219,7 +225,7 @@
   <div class="inactive-zone" role="region" on:dragover={(event) => event.preventDefault()} on:drop={dropInactive}>
     <div class="zone-title">INACTIVE ZONE</div>
     {#if inactiveComponents.length === 0}<p class="muted">Drag components here to temporarily remove them</p>{:else}
-      <div class="inactive-components">{#each inactiveComponents as component, index}<button class="inactive-component" draggable="true" on:dragstart={(event) => dragStart(event, index, true)} on:click={() => { const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) }}>{display(component, index)} <span role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && remove(index, true)} on:click|stopPropagation={() => remove(index, true)}>×</span></button>{/each}</div>
+      <div class="inactive-components">{#each inactiveComponents as component, index}<div class="inactive-component" role="button" tabindex="0" draggable="true" aria-label={`${component.kind} inactive component`} on:dragstart={(event) => dragStart(event, index, true)} on:keydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) } }} on:click={() => { const next = [...components, component]; onComponentsChange(next); onInactiveChange(inactiveComponents.filter((_, i) => i !== index)); onSelectedIndexChange(next.length - 1) }}>{display(component, index)} <button type="button" aria-label="Remove inactive component" on:click|stopPropagation={() => remove(index, true)}>×</button></div>{/each}</div>
     {/if}
   </div>
 </div>
@@ -227,7 +233,7 @@
 {#if draft}
     <div class="dialog-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && closeEditor()}>
       <div class="component-dialog" role="dialog" aria-modal="true" aria-labelledby="component-dialog-title">
-       <div class="dialog-heading"><h2 id="component-dialog-title">Configure Component</h2><button class="close-button" on:click={closeEditor}>×</button></div>
+       <div class="dialog-heading"><h2 id="component-dialog-title">Configure Component</h2><button type="button" class="close-button" aria-label="Close component dialog" on:click={closeEditor}>×</button></div>
        <label>Component type<select value={draft.kind} on:change={(event) => { const kind = (event.currentTarget as HTMLSelectElement).value as SeqDefComponent['kind']; draft = { ...template(kind), fieldName: draft.fieldName } }}><option value="literal">Literal</option><option value="range">Range</option><option value="choice">Select</option><option value="places">Places</option></select></label>
        <label>Field name (optional)<input value={draft.fieldName || ''} placeholder="e.g. prefix, year, id" on:input={(event) => changeText(event, 'fieldName')} /></label>
        {#if draft.kind === 'literal'}

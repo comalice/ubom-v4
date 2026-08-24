@@ -1,24 +1,24 @@
 <script lang="ts">
-  export type SequenceComponent = {
-    type: 'literal' | 'range' | 'sequence' | 'select'
-    value?: string
-    start?: string
-    end?: string
-    padding?: number
-    step?: number
-    values?: string[]
+  type SeqDefComponentFields = {
+    kind: 'literal' | 'range' | 'choice' | 'places'
+    text?: string
+    min?: string
+    max?: string
+    width?: number
     options?: string[]
-    optionDescriptions?: string[]
+  }
+  type SeqDefComponentMetadata = {
     fieldName?: string
-    description?: string
   }
 
-  export let components: SequenceComponent[] = []
-  export let inactiveComponents: SequenceComponent[] = []
+  export type SeqDefComponent = SeqDefComponentFields & SeqDefComponentMetadata
+
+  export let components: SeqDefComponent[] = []
+  export let inactiveComponents: SeqDefComponent[] = []
   export let selectedIndex: number | null = null
   export let selectedOptions: Record<number, number> = {}
-  export let onComponentsChange: (value: SequenceComponent[]) => void
-  export let onInactiveChange: (value: SequenceComponent[]) => void
+  export let onComponentsChange: (value: SeqDefComponent[]) => void
+  export let onInactiveChange: (value: SeqDefComponent[]) => void
   export let onSelectedIndexChange: (value: number | null) => void
   export let onSelectedOptionsChange: (value: Record<number, number>) => void
 
@@ -29,29 +29,29 @@
   let dropPosition: number | null = null
   let menuDragging = false
 
-  const templates: { type: SequenceComponent['type']; label: string; icon: string; description: string; example: string }[] = [
-    { type: 'range', label: 'Range', icon: '#', description: 'Sequential values like A-Z or 1-100', example: '[A-Z]' },
-    { type: 'literal', label: 'Literal', icon: 'T', description: 'Fixed text that never changes', example: "'USER_'" },
-    { type: 'sequence', label: 'Sequence', icon: '[]', description: 'Cycle through specific values', example: '[POS, NEG, SKIP]' },
-    { type: 'select', label: 'Select', icon: '{}', description: 'Pick one option from a set', example: '{small, large}' },
+  const templates: { kind: SeqDefComponent['kind']; label: string; icon: string; description: string; example: string }[] = [
+    { kind: 'range', label: 'Range', icon: '#', description: 'Sequential values like A-Z or 1-100', example: '[A-Z]' },
+    { kind: 'literal', label: 'Literal', icon: 'T', description: 'Fixed text that never changes', example: "'USER_'" },
+    { kind: 'choice', label: 'Select', icon: '{}', description: 'Pick one option from a set', example: '{small, large}' },
+    { kind: 'places', label: 'Places', icon: 'ABC', description: 'One alphabet per character position', example: 'ABC / 012' },
   ]
 
-  function template(type: SequenceComponent['type']): SequenceComponent {
-    if (type === 'literal') return { type, value: 'PREFIX_' }
-    if (type === 'range') return { type, start: 'A', end: 'Z', padding: 0, step: 1 }
-    if (type === 'sequence') return { type, values: ['A', 'B', 'C'], step: 1 }
-    return { type, options: ['option1', 'option2'] }
+  function template(kind: SeqDefComponent['kind']): SeqDefComponent {
+    if (kind === 'literal') return { kind, text: 'PREFIX_' }
+    if (kind === 'range') return { kind, min: '0', max: '9', width: 1 }
+    if (kind === 'places') return { kind, alphabets: ['ABC'] }
+    return { kind, options: ['option1', 'option2'] }
   }
 
-  function add(type: SequenceComponent['type']) {
-    const next = [...components, template(type)]
+  function add(kind: SeqDefComponent['kind']) {
+    const next = [...components, template(kind)]
     onComponentsChange(next)
     onSelectedIndexChange(next.length - 1)
     editingIndex = next.length - 1
     editingInactive = false
   }
 
-  function update(index: number, value: SequenceComponent) {
+  function update(index: number, value: SeqDefComponent) {
     const next = [...(editingInactive ? inactiveComponents : components)]
     next[index] = value
     editingInactive ? onInactiveChange(next) : onComponentsChange(next)
@@ -105,11 +105,11 @@
   }
 
   function resetDrag() { draggedIndex = null; draggedInactive = false; dropPosition = null; menuDragging = false }
-  function display(component: SequenceComponent, index: number): string {
-    if (component.type === 'literal') return component.value || ''
-    if (component.type === 'select') return component.options?.[selectedOptions[index] ?? 0] || ''
-    if (component.type === 'sequence') return component.values?.[0] || ''
-    return component.start || ''
+  function display(component: SeqDefComponent, index: number): string {
+    if (component.kind === 'literal') return component.text || ''
+    if (component.kind === 'choice') return component.options?.[selectedOptions[index] ?? 0] || ''
+    if (component.kind === 'places') return (component.alphabets || []).map(alphabet => alphabet[0] || '').join('')
+    return component.min || ''
   }
   function edit(index: number, inactive = false) { editingIndex = index; editingInactive = inactive }
   function changeText(event: Event, key: string) {
@@ -129,14 +129,14 @@
   <div class="component-menu" data-component-menu>
     <span class="menu-label">Components</span>
     {#each templates as item}
-      <button class="component-tool" draggable="true" on:dragstart={(event) => { menuDragging = true; event.dataTransfer?.setData('application/json', JSON.stringify(template(item.type))) }} on:click={() => add(item.type)}>
+      <button class="component-tool" draggable="true" on:dragstart={(event) => { menuDragging = true; event.dataTransfer?.setData('application/json', JSON.stringify(template(item.kind))) }} on:click={() => add(item.kind)}>
         <b>{item.icon}</b><span>{item.label}</span>
       </button>
     {/each}
     <span class="menu-help">Drag to canvas or click to add</span>
   </div>
 
-  <div class="builder-canvas" role="application" aria-label="Sequence builder canvas" on:dragover={(event) => dragOver(event)} on:drop={(event) => dropActive(event)} on:click={(event) => event.target === event.currentTarget && onSelectedIndexChange(null)}>
+  <div class="builder-canvas" role="application" aria-label="Sequence builder canvas" on:dragover={(event) => dragOver(event)} on:drop={(event) => dropActive(event)}>
     <div class="builder-heading"><div><p class="eyebrow">Sequence canvas</p><h2>Builder</h2><p class="muted">Arrange components left to right. Click a component to select it.</p></div><span class="component-count">{components.length} active</span></div>
     {#if components.length === 0}
       <div class="canvas-empty">Drag components from the menu above to start building</div>
@@ -145,9 +145,9 @@
         {#each components as component, index}
           <div class="canvas-component-wrap" role="listitem" on:dragover={(event) => dragOver(event, index)} on:drop={(event) => dropActive(event, dropPosition ?? index)}>
             {#if dropPosition === index && draggedIndex !== null}<span class="drop-marker"></span>{/if}
-            <button class:selected-component={selectedIndex === index} class:dragged-component={draggedIndex === index && !draggedInactive} class="canvas-component type-{component.type}" draggable="true" on:dragstart={(event) => dragStart(event, index, false)} on:click|stopPropagation={() => onSelectedIndexChange(index)}>
+            <button class:selected-component={selectedIndex === index} class:dragged-component={draggedIndex === index && !draggedInactive} class="canvas-component type-{component.kind}" draggable="true" on:dragstart={(event) => dragStart(event, index, false)} on:click|stopPropagation={() => onSelectedIndexChange(index)}>
               {#if component.fieldName}<small class="component-field">{component.fieldName}</small>{/if}
-              <strong>{display(component, index)}</strong>{#if component.type === 'select'}<span class="select-cycle" role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })} on:click|stopPropagation={() => onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })} title="Choose option">⌄</span>{/if}<small class="component-type">{component.type.toUpperCase()}</small>
+              <strong>{display(component, index)}</strong>{#if component.kind === 'choice'}<span class="select-cycle" role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })} on:click|stopPropagation={() => onSelectedOptionsChange({ ...selectedOptions, [index]: ((selectedOptions[index] ?? 0) + 1) % (component.options?.length || 1) })} title="Choose option">⌄</span>{/if}<small class="component-type">{component.kind.toUpperCase()}</small>
               <span class="component-buttons"><span role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && edit(index)} on:click|stopPropagation={() => edit(index)} title="Configure">⚙</span><span role="button" tabindex="0" on:keydown={(event) => event.key === 'Enter' && remove(index)} on:click|stopPropagation={() => remove(index)} title="Remove">×</span></span>
             </button>
             {#if index === components.length - 1 && dropPosition === index + 1}<span class="drop-marker end-marker"></span>{/if}
@@ -170,20 +170,18 @@
   <div class="dialog-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && (editingIndex = null)}>
     <div class="component-dialog" role="dialog" aria-modal="true" aria-labelledby="component-dialog-title">
       <div class="dialog-heading"><h2 id="component-dialog-title">Configure Component</h2><button class="close-button" on:click={() => editingIndex = null}>×</button></div>
-      <label>Component type<select value={current.type} on:change={(event) => { const type = (event.currentTarget as HTMLSelectElement).value as SequenceComponent['type']; update(editingIndex!, { ...template(type), fieldName: current.fieldName, description: current.description }) }}><option value="literal">Literal</option><option value="range">Range</option><option value="sequence">Sequence</option><option value="select">Select</option></select></label>
+      <label>Component type<select value={current.kind} on:change={(event) => { const kind = (event.currentTarget as HTMLSelectElement).value as SeqDefComponent['kind']; update(editingIndex!, { ...template(kind), fieldName: current.fieldName }) }}><option value="literal">Literal</option><option value="range">Range</option><option value="choice">Select</option><option value="places">Places</option></select></label>
       <label>Field name (optional)<input value={current.fieldName || ''} placeholder="e.g. prefix, year, id" on:input={(event) => changeText(event, 'fieldName')} /></label>
-      {#if current.type === 'literal'}
-        <label>Text value<input value={current.value || ''} on:input={(event) => changeText(event, 'value')} /></label>
-      {:else if current.type === 'range'}
-        <div class="field-grid"><label>Start<input value={current.start || ''} on:input={(event) => changeText(event, 'start')} /></label><label>End<input value={current.end || ''} on:input={(event) => changeText(event, 'end')} /></label><label>Padding<input type="number" min="0" value={current.padding ?? 0} on:input={(event) => numberChange(event, 'padding')} /></label><label>Step<input type="number" min="1" value={current.step ?? 1} on:input={(event) => numberChange(event, 'step')} /></label></div>
-      {:else if current.type === 'sequence'}
-        <label>Values <span class="muted">one value per line</span><textarea rows="5" value={(current.values || []).join('\n')} on:input={(event) => update(editingIndex!, { ...current, values: (event.currentTarget as HTMLTextAreaElement).value.split('\n') })}></textarea></label><label>Step<input type="number" min="1" value={current.step ?? 1} on:input={(event) => numberChange(event, 'step')} /></label>
-        <p class="semantic-note">UBOM persists Sequence as a choice of literal values. Its reference cycling step is used by the local preview only.</p>
+      {#if current.kind === 'literal'}
+        <label>Text value<input value={current.text || ''} on:input={(event) => changeText(event, 'text')} /></label>
+      {:else if current.kind === 'range'}
+        <div class="field-grid"><label>Min<input type="number" min="0" value={current.min || ''} on:input={(event) => changeText(event, 'min')} /></label><label>Max<input type="number" min="0" value={current.max || ''} on:input={(event) => changeText(event, 'max')} /></label><label>Width<input type="number" min="1" value={current.width ?? 1} on:input={(event) => numberChange(event, 'width')} /></label></div>
+      {:else if current.kind === 'places'}
+        <label>Alphabets <span class="muted">one alphabet per line</span><textarea rows="4" value={(current.alphabets || []).join('\n')} on:input={(event) => update(editingIndex!, { ...current, alphabets: (event.currentTarget as HTMLTextAreaElement).value.split('\n') })}></textarea></label>
+        <p class="semantic-note">Each position uses the first matching character during backend generation.</p>
       {:else}
         <label>Options <span class="muted">one option per line</span><textarea rows="4" value={(current.options || []).join('\n')} on:input={(event) => update(editingIndex!, { ...current, options: (event.currentTarget as HTMLTextAreaElement).value.split('\n') })}></textarea></label>
-        <label>Option descriptions <span class="muted">one description per line</span><textarea rows="3" value={(current.optionDescriptions || []).join('\n')} on:input={(event) => update(editingIndex!, { ...current, optionDescriptions: (event.currentTarget as HTMLTextAreaElement).value.split('\n') })}></textarea></label>
       {/if}
-      <label>Description (optional)<input value={current.description || ''} on:input={(event) => changeText(event, 'description')} /></label>
       <button class="primary-button" on:click={() => editingIndex = null}>Confirm</button>
     </div>
   </div>

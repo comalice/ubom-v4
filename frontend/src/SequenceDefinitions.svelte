@@ -1,11 +1,11 @@
 <script lang="ts">
-  import SeqDefCanvas, { type SequenceComponent } from './SeqDefCanvas.svelte'
+  import SeqDefCanvas, { type SeqDefComponent } from './SeqDefCanvas.svelte'
   import { createSeqDef, getSeqDefs, previewSeqDef, type SeqDefNode, type SeqDefView } from './api'
   export let creating = false
   export let navigate: (path: string) => void
   let definitions: SeqDefView[] = []
-  let components: SequenceComponent[] = []
-  let inactiveComponents: SequenceComponent[] = []
+  let components: SeqDefComponent[] = []
+  let inactiveComponents: SeqDefComponent[] = []
   let selectedIndex: number | null = null
   let selectedOptions: Record<number, number> = {}
   let name = ''
@@ -22,34 +22,35 @@
   $: fieldNames = [...new Set(components.map(component => component.fieldName).filter(Boolean) as string[])]
   $: for (const field of fieldNames) if (!(field in bindings)) bindings[field] = ''
 
-  function values(component: SequenceComponent): string[] {
-    if (component.type === 'literal') return [component.value || '']
-    if (component.type === 'sequence') return (component.values || []).filter(Boolean).filter((_, index) => index % (component.step || 1) === 0)
-    if (component.type === 'select') return component.options || []
-    const start = component.start || ''; const end = component.end || ''; const step = component.step || 1; const output: string[] = []
-    if (/^\d+$/.test(start) && /^\d+$/.test(end)) for (let i = Number(start); i <= Number(end) && output.length < 100; i += step) output.push(String(i).padStart(component.padding || 0, '0'))
-    else if (start.length === 1 && end.length === 1) for (let i = start.charCodeAt(0); i <= end.charCodeAt(0) && output.length < 100; i += step) output.push(String.fromCharCode(i))
+  function values(component: SeqDefComponent): string[] {
+    if (component.kind === 'literal') return [component.text || '']
+    if (component.kind === 'places') return [(component.alphabets || []).map(alphabet => alphabet[0] || '').join('')]
+    if (component.kind === 'choice') return component.options || []
+    const min = component.min || ''; const max = component.max || ''; const output: string[] = []
+    if (/^\d+$/.test(min) && /^\d+$/.test(max)) for (let i = Number(min); i <= Number(max) && output.length < 100; i += 1) output.push(String(i).padStart(component.width || 0, '0'))
     return output
   }
   function generate(count: number, start?: string): string[] {
     if (!components.length) return []
     const all = components.map(values); const indices = all.map(() => 0)
     if (start) { let rest = start; components.forEach((component, index) => { const match = all[index].findIndex(value => rest.startsWith(value)); if (match >= 0) { indices[index] = match; rest = rest.slice(all[index][match].length) } }) }
-    components.forEach((component, index) => { if (component.type === 'select' && selectedOptions[index] !== undefined) indices[index] = selectedOptions[index] })
+    components.forEach((component, index) => { if (component.kind === 'choice' && selectedOptions[index] !== undefined) indices[index] = selectedOptions[index] })
     const output: string[] = []
-    for (let i = 0; i < count; i += 1) { output.push(indices.map((value, index) => all[index][value] || '').join('')); let carry = true; for (let j = indices.length - 1; j >= 0 && carry; j -= 1) { if (components[j].type === 'literal' || (components[j].type === 'select' && selectedOptions[j] !== undefined)) continue; indices[j] += 1; if (indices[j] >= all[j].length) indices[j] = 0; else carry = false } if (carry) break }
+    for (let i = 0; i < count; i += 1) { output.push(indices.map((value, index) => all[index][value] || '').join('')); let carry = true; for (let j = indices.length - 1; j >= 0 && carry; j -= 1) { if (components[j].kind === 'literal' || (components[j].kind === 'choice' && selectedOptions[j] !== undefined)) continue; indices[j] += 1; if (indices[j] >= all[j].length) indices[j] = 0; else carry = false } if (carry) break }
     return output
   }
   function parse(input: string): boolean { const generated = generate(100); return generated.includes(input) }
   function increment(input: string): string | null { const generated = generate(200); const index = generated.indexOf(input); return index >= 0 ? generated[index + 1] || null : null }
-  function grammar(component: SequenceComponent): string { if (component.type === 'literal') return `'${component.value || ''}'`; if (component.type === 'range') return `[${component.start || ''}-${component.end || ''}]`; if (component.type === 'sequence') return `[${(component.values || []).join(', ')}]`; return `{${(component.options || []).join(', ')}}` }
-  function importGrammar(text: string) { components = text.trim().replace(/^\w+\s*:=\s*/, '').split(/\s*\+\s*/).flatMap((part): SequenceComponent[] => { const value = part.trim(); if (value.startsWith("'") && value.endsWith("'")) return [{ type: 'literal', value: value.slice(1, -1) }]; if (value.startsWith('{') && value.endsWith('}')) return [{ type: 'select', options: value.slice(1, -1).split(',').map(item => item.trim()) }]; if (value.startsWith('[') && value.endsWith(']')) { const body = value.slice(1, -1); if (body.includes(',')) return [{ type: 'sequence', values: body.split(',').map(item => item.trim()) }]; const [start, end] = body.split('-'); return [{ type: 'range', start, end, padding: /^\d+$/.test(start) && start.length > 1 ? start.length : 0 }]; } return [] }) }
-  function ast(component: SequenceComponent): SeqDefNode {
+  function grammar(component: SeqDefComponent): string { if (component.kind === 'literal') return `'${component.text || ''}'`; if (component.kind === 'range') return `[${component.min || ''}-${component.max || ''}]`; if (component.kind === 'places') return `places(${(component.alphabets || []).join(', ')})`; return `{${(component.options || []).join(', ')}}` }
+  function importGrammar(text: string) { components = text.trim().replace(/^\w+\s*:=\s*/, '').split(/\s*\+\s*/).flatMap((part): SeqDefComponent[] => { const value = part.trim(); if (value.startsWith("'") && value.endsWith("'")) return [{ kind: 'literal', text: value.slice(1, -1) }]; if (value.startsWith('{') && value.endsWith('}')) return [{ kind: 'choice', options: value.slice(1, -1).split(',').map(item => item.trim()) }]; if (value.startsWith('[') && value.endsWith(']')) { const body = value.slice(1, -1); if (body.includes(',')) return [{ kind: 'choice', options: body.split(',').map(item => item.trim()) }]; const [min, max] = body.split('-'); if (/^\d+$/.test(min) && /^\d+$/.test(max)) return [{ kind: 'range', min, max, width: min.length > 1 ? min.length : 0 }]; } return [] }) }
+  // This is the explicit UI-to-backend adapter; editor metadata is not persisted.
+  function ast(component: SeqDefComponent): SeqDefNode {
     let node: SeqDefNode
-    if (component.type === 'literal') node = { kind: 'literal', text: component.value || '' }
-    else if (component.type === 'range' && /^\d+$/.test(component.start || '') && /^\d+$/.test(component.end || '')) node = { kind: 'range', min: Number(component.start), max: Number(component.end), width: component.padding || String(component.end).length }
-    else if (component.type === 'select' || component.type === 'sequence') node = { kind: 'choice', children: (component.type === 'select' ? component.options : component.values || []).map(text => ({ kind: 'literal', text })) }
-    else node = { kind: 'literal', text: component.start || '' }
+    if (component.kind === 'literal') node = { kind: 'literal', text: component.text || '' }
+    else if (component.kind === 'range' && /^\d+$/.test(component.min || '') && /^\d+$/.test(component.max || '')) node = { kind: 'range', min: Number(component.min), max: Number(component.max), width: component.width || String(component.max).length }
+    else if (component.kind === 'choice') node = { kind: 'choice', children: (component.options || []).map(text => ({ kind: 'literal', text })) }
+    else if (component.kind === 'places') node = { kind: 'places', alphabets: component.alphabets || [] }
+    else node = { kind: 'literal', text: component.min || '' }
     return component.fieldName?.trim() ? { kind: 'bind', name: component.fieldName.trim(), child: node } : node
   }
   $: root = { kind: 'concat', children: components.map(ast) } as SeqDefNode

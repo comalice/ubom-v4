@@ -112,7 +112,12 @@ export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
 export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
 export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
-export type SeqDefNode = { kind: string; text?: string; name?: string; min?: number; max?: number; width?: number; pad?: string; alphabets?: string[]; children?: SeqDefNode[]; child?: SeqDefNode }
+export type SeqDefNode =
+  | { kind: 'literal'; text: string }
+  | { kind: 'range'; min: number; max: number; width?: number; pad?: number }
+  | { kind: 'choice' | 'concat' | 'branch' | 'range_radix'; children: SeqDefNode[] }
+  | { kind: 'bind'; name: string; child: SeqDefNode }
+  | { kind: 'places'; alphabets: string[] }
 export const createSeqDef = (id: string, root: SeqDefNode) => post<{ id: string }>('/api/seq-defs', { id, root })
 export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
   post<{ id: string; bindings: Record<string, string>; value?: string; error?: string }>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })

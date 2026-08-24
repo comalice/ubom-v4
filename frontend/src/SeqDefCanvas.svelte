@@ -51,6 +51,22 @@
     editingInactive = false
   }
 
+  function menuDrag(event: DragEvent, kind: SeqDefComponent['kind']) {
+    menuDragging = true
+    event.dataTransfer?.setData('application/json', JSON.stringify(template(kind)))
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy'
+  }
+
+  function draggedTemplate(event: DragEvent): SeqDefComponent | null {
+    const data = event.dataTransfer?.getData('application/json')
+    if (!data) return null
+    try {
+      const value = JSON.parse(data) as SeqDefComponent
+      if (['literal', 'range', 'choice', 'places'].includes(value.kind)) return value
+    } catch { /* Ignore invalid external drops. */ }
+    return null
+  }
+
   function update(index: number, value: SeqDefComponent) {
     const next = [...(editingInactive ? inactiveComponents : components)]
     next[index] = value
@@ -79,7 +95,17 @@
   function dropActive(event: DragEvent, position?: number) {
     event.preventDefault()
     if (menuDragging) {
-      add('literal'); resetDrag(); return
+      const item = draggedTemplate(event)
+      if (!item) { resetDrag(); return }
+      const next = [...components]
+      const target = Math.max(0, Math.min(next.length, position ?? next.length))
+      next.splice(target, 0, item)
+      onComponentsChange(next)
+      onSelectedIndexChange(target)
+      editingIndex = target
+      editingInactive = false
+      resetDrag()
+      return
     }
     if (draggedIndex === null) return
     if (draggedInactive) {
@@ -129,7 +155,7 @@
   <div class="component-menu" data-component-menu>
     <span class="menu-label">Components</span>
     {#each templates as item}
-      <button class="component-tool" draggable="true" on:dragstart={(event) => { menuDragging = true; event.dataTransfer?.setData('application/json', JSON.stringify(template(item.kind))) }} on:click={() => add(item.kind)}>
+      <button class="component-tool" draggable="true" on:dragstart={(event) => menuDrag(event, item.kind)} on:click={() => add(item.kind)}>
         <b>{item.icon}</b><span>{item.label}</span>
       </button>
     {/each}

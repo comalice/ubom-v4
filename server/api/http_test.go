@@ -244,6 +244,23 @@ func TestSeqDefFrontendASTCrosswalk(t *testing.T) {
 	}
 }
 
+func TestUnsavedSeqDefPreview(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	preview := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/seq-defs/preview", strings.NewReader(`{"root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"bind","name":"number","child":{"kind":"range","min":1,"max":9,"width":2}}]},"bindings":{"number":"07"}}`))
+	server.Handler().ServeHTTP(preview, request)
+	if preview.Code != http.StatusOK || !strings.Contains(preview.Body.String(), `"value":"PN-07"`) {
+		t.Fatalf("preview = %d %s; want value PN-07", preview.Code, preview.Body)
+	}
+
+	invalid := httptest.NewRecorder()
+	request = httptest.NewRequest(http.MethodPost, "/api/seq-defs/preview", strings.NewReader(`{"root":{"kind":"unknown"},"bindings":{}}`))
+	server.Handler().ServeHTTP(invalid, request)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid preview status = %d; body = %s", invalid.Code, invalid.Body)
+	}
+}
+
 func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	post := func(path, body string, wantStatus int) string {

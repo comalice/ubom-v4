@@ -163,6 +163,31 @@ func (s *Server) handleSeqDefs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"id": request.ID})
 }
 
+func (s *Server) handleUnsavedSeqDefPreview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		Root     sequenceNodeRequest `json:"root"`
+		Bindings map[string]string   `json:"bindings"`
+	}
+	if !decodeBody(w, r, &request) {
+		return
+	}
+	root, err := request.Root.node()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	preview, err := s.service.PreviewSeqDefRoot(root, request.Bindings)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, preview)
+}
+
 func (s *Server) handleSeqDefFields(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)

@@ -72,7 +72,7 @@
   }
   function serialize(): SeqDefNode { return { kind: 'concat', children: components.map(ast) } }
   async function save() { saving = true; error = ''; try { await createSeqDef(name.trim(), serialize()); navigate('/settings/sequence-definitions') } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to save sequence definition' } finally { saving = false } }
-  async function preview() { backendPreview = ''; error = ''; try { const result = await previewSeqDef(name.trim(), bindings); backendPreview = result.error ? `Error: ${result.error}` : result.value || '' } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to preview sequence definition' } }
+  async function preview() { backendPreview = ''; error = ''; try { const result = await previewSeqDef(serialize(), bindings); backendPreview = result.error ? `Error: ${result.error}` : result.value || '' } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to preview sequence definition' } }
   async function load() { try { definitions = await getSeqDefs() } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to load sequence definitions' } }
   function download() { const blob = new Blob([components.map(grammar).join(' + ')], { type: 'text/plain' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${name || 'sequence'}.txt`; link.click(); URL.revokeObjectURL(link.href) }
   $: if (!creating && !loaded) { loaded = true; load() }

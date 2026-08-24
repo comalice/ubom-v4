@@ -119,8 +119,8 @@ export type SeqDefNode =
   | { kind: 'bind'; name: string; child: SeqDefNode }
   | { kind: 'places'; alphabets: string[] }
 export const createSeqDef = (id: string, root: SeqDefNode) => post<{ id: string }>('/api/seq-defs', { id, root })
-export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
-  post<{ id: string; bindings: Record<string, string>; value?: string; error?: string }>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })
+export const previewSeqDef = (root: SeqDefNode, bindings: Record<string, string>) =>
+  post<{ id: string; bindings: Record<string, string>; value?: string; error?: string }>('/api/seq-defs/preview', { root, bindings })
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })

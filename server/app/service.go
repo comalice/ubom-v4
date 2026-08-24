@@ -61,10 +61,23 @@ func (s *Service) PreviewSeqDef(id ubom.SeqDefID, bindings map[string]string) (S
 	if err != nil {
 		return SeqDefPreview{}, err
 	}
+	return previewSeqDef(def, id, bindings)
+}
+
+func (s *Service) PreviewSeqDefRoot(root ubom.SeqDefNode, bindings map[string]string) (SeqDefPreview, error) {
+	return previewSeqDef(ubom.NewSeqDef(root).WithID("preview"), "", bindings)
+}
+
+func previewSeqDef(def ubom.SeqDef, id ubom.SeqDefID, bindings map[string]string) (SeqDefPreview, error) {
+	if err := def.Validate(); err != nil {
+		return SeqDefPreview{}, err
+	}
 	preview := SeqDefPreview{ID: id, Bindings: bindings}
-	preview.Value, err = def.Generate(bindings)
+	value, err := def.Generate(bindings)
 	if err != nil {
 		preview.Error = err.Error()
+	} else {
+		preview.Value = value
 	}
 	return preview, nil
 }

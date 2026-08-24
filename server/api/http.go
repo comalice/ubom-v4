@@ -30,6 +30,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/parts", s.handlePartNumbers)
 	mux.HandleFunc("/api/seq-defs", s.handleSeqDefs)
+	mux.HandleFunc("/api/seq-defs/preview", s.handleUnsavedSeqDefPreview)
 	mux.HandleFunc("/api/seq-defs/", s.handleSeqDefPath)
 	mux.HandleFunc("/api/taxonomy-defs", s.handleTaxonomyDefs)
 	mux.HandleFunc("/api/revisions", s.handleCreateRevision)

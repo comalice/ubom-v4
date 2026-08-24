@@ -171,6 +171,79 @@ func TestSeqDefPreviewAndStrictRequest(t *testing.T) {
 	}
 }
 
+func TestSeqDefFrontendASTCrosswalk(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	tests := []struct {
+		name     string
+		root     string
+		bindings string
+		value    string
+	}{
+		{
+			name:  "literal",
+			root:  `{"kind":"literal","text":"PN-"}`,
+			value: "PN-",
+		},
+		{
+			name:     "named literal",
+			root:     `{"kind":"bind","name":"prefix","child":{"kind":"literal","text":"PN-"}}`,
+			bindings: `{"prefix":"PN-"}`,
+			value:    "PN-",
+		},
+		{
+			name:     "range with width",
+			root:     `{"kind":"range","min":1,"max":9,"width":2}`,
+			bindings: `{}`,
+			value:    "01",
+		},
+		{
+			name:     "named range",
+			root:     `{"kind":"bind","name":"number","child":{"kind":"range","min":1,"max":9,"width":2}}`,
+			bindings: `{"number":"07"}`,
+			value:    "07",
+		},
+		{
+			name:  "choice",
+			root:  `{"kind":"choice","children":[{"kind":"literal","text":"RES"},{"kind":"literal","text":"CAP"}]}`,
+			value: "RES",
+		},
+		{
+			name:     "named choice",
+			root:     `{"kind":"bind","name":"category","child":{"kind":"choice","children":[{"kind":"literal","text":"RES"},{"kind":"literal","text":"CAP"}]}}`,
+			bindings: `{"category":"CAP"}`,
+			value:    "CAP",
+		},
+		{
+			name:  "places",
+			root:  `{"kind":"places","alphabets":["AB","012"]}`,
+			value: "A0",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			id := "crosswalk-" + strings.ReplaceAll(test.name, " ", "-")
+			create := httptest.NewRecorder()
+			body := `{"id":"` + id + `","root":` + test.root + `}`
+			server.Handler().ServeHTTP(create, httptest.NewRequest(http.MethodPost, "/api/seq-defs", strings.NewReader(body)))
+			if create.Code != http.StatusCreated {
+				t.Fatalf("create status = %d; body = %s", create.Code, create.Body)
+			}
+
+			bindings := test.bindings
+			if bindings == "" {
+				bindings = `{}`
+			}
+			preview := httptest.NewRecorder()
+			path := "/api/seq-defs/" + id + "/preview"
+			server.Handler().ServeHTTP(preview, httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"bindings":`+bindings+`}`)))
+			if preview.Code != http.StatusOK || !strings.Contains(preview.Body.String(), `"value":"`+test.value+`"`) {
+				t.Fatalf("preview = %d %s; want value %q", preview.Code, preview.Body, test.value)
+			}
+		})
+	}
+}
+
 func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	post := func(path, body string, wantStatus int) string {

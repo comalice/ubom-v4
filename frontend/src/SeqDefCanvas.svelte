@@ -25,6 +25,9 @@
 
   let editingIndex: number | null = null
   let editingInactive = false
+  let editingNew = false
+  let draft: SeqDefComponent | null = null
+  let insertPosition: number | null = null
   let draggedIndex: number | null = null
   let draggedInactive = false
   let dropPosition: number | null = null
@@ -45,10 +48,18 @@
   }
 
   function add(kind: SeqDefComponent['kind']) {
-    const next = [...components, template(kind)]
-    onComponentsChange(next)
-    onSelectedIndexChange(next.length - 1)
-    editingIndex = next.length - 1
+    draft = template(kind)
+    editingIndex = null
+    editingNew = true
+    insertPosition = components.length
+    editingInactive = false
+  }
+
+  function openNew(value: SeqDefComponent, position = components.length) {
+    draft = value
+    editingIndex = null
+    editingNew = true
+    insertPosition = position
     editingInactive = false
   }
 
@@ -68,17 +79,30 @@
     return null
   }
 
-  function update(index: number, value: SeqDefComponent) {
-    const next = [...(editingInactive ? inactiveComponents : components)]
-    next[index] = value
-    editingInactive ? onInactiveChange(next) : onComponentsChange(next)
+  function clone(value: SeqDefComponent): SeqDefComponent {
+    return { ...value, options: value.options ? [...value.options] : undefined, alphabets: value.alphabets ? [...value.alphabets] : undefined }
+  }
+
+  function edit(index: number, inactive = false) {
+    editingIndex = index
+    editingInactive = inactive
+    editingNew = false
+    insertPosition = null
+    draft = clone((inactive ? inactiveComponents : components)[index])
+  }
+
+  function closeEditor() {
+    draft = null
+    editingIndex = null
+    editingNew = false
+    insertPosition = null
   }
 
   function remove(index: number, inactive = false) {
     const next = (inactive ? inactiveComponents : components).filter((_, i) => i !== index)
     inactive ? onInactiveChange(next) : onComponentsChange(next)
     if (!inactive && selectedIndex === index) onSelectedIndexChange(null)
-    if (editingIndex === index) editingIndex = null
+    if (editingIndex === index) closeEditor()
   }
 
   function dragStart(event: DragEvent, index: number, inactive: boolean) {
@@ -98,13 +122,8 @@
     if (menuDragging) {
       const item = draggedTemplate(event)
       if (!item) { resetDrag(); return }
-      const next = [...components]
-      const target = Math.max(0, Math.min(next.length, position ?? next.length))
-      next.splice(target, 0, item)
-      onComponentsChange(next)
-      onSelectedIndexChange(target)
-      editingIndex = target
-      editingInactive = false
+      const target = Math.max(0, Math.min(components.length, position ?? components.length))
+      openNew(item, target)
       resetDrag()
       return
     }
@@ -131,6 +150,22 @@
     resetDrag()
   }
 
+  function commitDraft() {
+    if (!draft) return
+    if (editingNew) {
+      const next = [...components]
+      const target = Math.max(0, Math.min(next.length, insertPosition ?? next.length))
+      next.splice(target, 0, draft)
+      onComponentsChange(next)
+      onSelectedIndexChange(target)
+    } else if (editingIndex !== null) {
+      const next = [...(editingInactive ? inactiveComponents : components)]
+      next[editingIndex] = draft
+      editingInactive ? onInactiveChange(next) : onComponentsChange(next)
+    }
+    closeEditor()
+  }
+
   function resetDrag() { draggedIndex = null; draggedInactive = false; dropPosition = null; menuDragging = false }
   function display(component: SeqDefComponent, index: number): string {
     if (component.kind === 'literal') return component.text || ''
@@ -138,17 +173,14 @@
     if (component.kind === 'places') return (component.alphabets || []).map(alphabet => alphabet[0] || '').join('')
     return component.min || ''
   }
-  function edit(index: number, inactive = false) { editingIndex = index; editingInactive = inactive }
   function changeText(event: Event, key: string) {
-    if (editingIndex === null) return
-    const current = (editingInactive ? inactiveComponents : components)[editingIndex]
-    update(editingIndex, { ...current, [key]: (event.currentTarget as HTMLInputElement).value })
+    if (!draft) return
+    draft = { ...draft, [key]: (event.currentTarget as HTMLInputElement).value }
   }
   function numberChange(event: Event, key: string) {
-    if (editingIndex === null) return
-    const current = (editingInactive ? inactiveComponents : components)[editingIndex]
+    if (!draft) return
     const value = (event.currentTarget as HTMLInputElement).value
-    update(editingIndex, { ...current, [key]: value === '' ? undefined : Number(value) })
+    draft = { ...draft, [key]: value === '' ? undefined : Number(value) }
   }
 </script>
 
@@ -192,24 +224,23 @@
   </div>
 </div>
 
-{#if editingIndex !== null}
-  {@const current = (editingInactive ? inactiveComponents : components)[editingIndex]}
-  <div class="dialog-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && (editingIndex = null)}>
-    <div class="component-dialog" role="dialog" aria-modal="true" aria-labelledby="component-dialog-title">
-      <div class="dialog-heading"><h2 id="component-dialog-title">Configure Component</h2><button class="close-button" on:click={() => editingIndex = null}>×</button></div>
-      <label>Component type<select value={current.kind} on:change={(event) => { const kind = (event.currentTarget as HTMLSelectElement).value as SeqDefComponent['kind']; update(editingIndex!, { ...template(kind), fieldName: current.fieldName }) }}><option value="literal">Literal</option><option value="range">Range</option><option value="choice">Select</option><option value="places">Places</option></select></label>
-      <label>Field name (optional)<input value={current.fieldName || ''} placeholder="e.g. prefix, year, id" on:input={(event) => changeText(event, 'fieldName')} /></label>
-      {#if current.kind === 'literal'}
-        <label>Text value<input value={current.text || ''} on:input={(event) => changeText(event, 'text')} /></label>
-      {:else if current.kind === 'range'}
-        <div class="field-grid"><label>Min<input type="number" min="0" value={current.min || ''} on:input={(event) => changeText(event, 'min')} /></label><label>Max<input type="number" min="0" value={current.max || ''} on:input={(event) => changeText(event, 'max')} /></label><label>Width<input type="number" min="1" value={current.width ?? 1} on:input={(event) => numberChange(event, 'width')} /></label></div>
-      {:else if current.kind === 'places'}
-        <label>Alphabets <span class="muted">one alphabet per line</span><textarea rows="4" value={(current.alphabets || []).join('\n')} on:input={(event) => update(editingIndex!, { ...current, alphabets: (event.currentTarget as HTMLTextAreaElement).value.split('\n') })}></textarea></label>
-        <p class="semantic-note">Each position uses the first matching character during backend generation.</p>
-      {:else}
-        <label>Options <span class="muted">one option per line</span><textarea rows="4" value={(current.options || []).join('\n')} on:input={(event) => update(editingIndex!, { ...current, options: (event.currentTarget as HTMLTextAreaElement).value.split('\n') })}></textarea></label>
-      {/if}
-      <button class="primary-button" on:click={() => editingIndex = null}>Confirm</button>
+{#if draft}
+    <div class="dialog-backdrop" role="presentation" on:click={(event) => event.target === event.currentTarget && closeEditor()}>
+      <div class="component-dialog" role="dialog" aria-modal="true" aria-labelledby="component-dialog-title">
+       <div class="dialog-heading"><h2 id="component-dialog-title">Configure Component</h2><button class="close-button" on:click={closeEditor}>×</button></div>
+       <label>Component type<select value={draft.kind} on:change={(event) => { const kind = (event.currentTarget as HTMLSelectElement).value as SeqDefComponent['kind']; draft = { ...template(kind), fieldName: draft.fieldName } }}><option value="literal">Literal</option><option value="range">Range</option><option value="choice">Select</option><option value="places">Places</option></select></label>
+       <label>Field name (optional)<input value={draft.fieldName || ''} placeholder="e.g. prefix, year, id" on:input={(event) => changeText(event, 'fieldName')} /></label>
+       {#if draft.kind === 'literal'}
+         <label>Text value<input value={draft.text || ''} on:input={(event) => changeText(event, 'text')} /></label>
+       {:else if draft.kind === 'range'}
+         <div class="field-grid"><label>Min<input type="number" min="0" value={draft.min || ''} on:input={(event) => changeText(event, 'min')} /></label><label>Max<input type="number" min="0" value={draft.max || ''} on:input={(event) => changeText(event, 'max')} /></label><label>Width<input type="number" min="1" value={draft.width ?? 1} on:input={(event) => numberChange(event, 'width')} /></label></div>
+       {:else if draft.kind === 'places'}
+         <label>Alphabets <span class="muted">one alphabet per line</span><textarea rows="4" value={(draft.alphabets || []).join('\n')} on:input={(event) => draft = { ...draft, alphabets: (event.currentTarget as HTMLTextAreaElement).value.split('\n') }}></textarea></label>
+         <p class="semantic-note">Each position uses the first matching character during backend generation.</p>
+       {:else}
+         <label>Options <span class="muted">one option per line</span><textarea rows="4" value={(draft.options || []).join('\n')} on:input={(event) => draft = { ...draft, options: (event.currentTarget as HTMLTextAreaElement).value.split('\n') }}></textarea></label>
+       {/if}
+       <button class="primary-button" on:click={commitDraft}>Confirm</button>
     </div>
   </div>
 {/if}

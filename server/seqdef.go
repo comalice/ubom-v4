@@ -57,8 +57,6 @@ func validateSeqDefNode(node SeqDefNode) error {
 		return validateChildren(n.Children)
 	case ChoiceNode:
 		return validateChildren(n.Children)
-	case BranchNode:
-		return validateChildren(n.Children)
 	case RangeRadixNode:
 		return validateChildren(n.Children)
 	case BindNode:
@@ -118,10 +116,6 @@ func (d SeqDef) BindableFields() []BindableField {
 			for _, child := range n.Children {
 				visit(child)
 			}
-		case BranchNode:
-			for _, child := range n.Children {
-				visit(child)
-			}
 		case RangeRadixNode:
 			for _, child := range n.Children {
 				visit(child)
@@ -165,8 +159,6 @@ func generateSeqDefNode(node SeqDefNode, bindings map[string]string) (string, er
 	case RangeRadixNode:
 		return generateConcat(n.Children, bindings)
 	case ChoiceNode:
-		return generateAlternatives(n.Children, bindings)
-	case BranchNode:
 		return generateAlternatives(n.Children, bindings)
 	case BindNode:
 		value, ok := bindings[n.Name]
@@ -304,17 +296,6 @@ func (n ChoiceNode) parseAt(input string, offset int, bindings map[string]string
 
 func Choice(nodes ...SeqDefNode) SeqDefNode {
 	return ChoiceNode{Children: append([]SeqDefNode(nil), nodes...)}
-}
-
-type BranchNode struct{ Children []SeqDefNode }
-
-func (n BranchNode) parseAt(input string, offset int, bindings map[string]string) (string, int, error) {
-	return parseAlternatives(n.Children, input, offset, bindings)
-}
-
-// Branch chooses between complete grammar shapes.
-func Branch(nodes ...SeqDefNode) SeqDefNode {
-	return BranchNode{Children: append([]SeqDefNode(nil), nodes...)}
 }
 
 func parseAlternatives(nodes []SeqDefNode, input string, offset int, bindings map[string]string) (string, int, error) {

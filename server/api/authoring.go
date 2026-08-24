@@ -47,8 +47,6 @@ func (n sequenceNodeRequest) node() (ubom.SeqDefNode, error) {
 		return ubom.ConcatNode{Children: children}, nil
 	case "choice":
 		return ubom.ChoiceNode{Children: children}, nil
-	case "branch":
-		return ubom.BranchNode{Children: children}, nil
 	case "range_radix":
 		return ubom.RangeRadixNode{Children: children}, nil
 	case "bind":

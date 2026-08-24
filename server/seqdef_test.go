@@ -237,8 +237,8 @@ func TestSeqDefRangeRadix(t *testing.T) {
 	}
 }
 
-func TestSeqDefBranch(t *testing.T) {
-	definition := NewSeqDef(Branch(
+func TestSeqDefChoiceNestedGrammar(t *testing.T) {
+	definition := NewSeqDef(Choice(
 		Concat(Literal("RES-"), Range(0, 99).Width(2)),
 		Concat(Literal("CAP-"), Choice(Literal("X5R"), Literal("X7R"))),
 	))
@@ -276,8 +276,8 @@ func TestSeqDefBind(t *testing.T) {
 	}
 }
 
-func TestSeqDefBindDoesNotLeakFromFailedBranch(t *testing.T) {
-	definition := NewSeqDef(Branch(
+func TestSeqDefBindDoesNotLeakFromFailedChoice(t *testing.T) {
+	definition := NewSeqDef(Choice(
 		Concat(Bind("kind", Literal("OLD")), Literal("-"), Literal("bad")),
 		Concat(Bind("kind", Literal("NEW")), Literal("-"), Literal("good")),
 	))
@@ -291,8 +291,8 @@ func TestSeqDefBindDoesNotLeakFromFailedBranch(t *testing.T) {
 	}
 }
 
-func TestSeqDefBindableFields(t *testing.T) {
-	definition := NewSeqDef(Branch(
+func TestSeqDefBindableFieldsInChoice(t *testing.T) {
+	definition := NewSeqDef(Choice(
 		Concat(Bind("category", Literal("RES")), Bind("number", Range(0, 99).Width(2))),
 		Bind("category", Literal("CAP")),
 	))

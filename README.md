@@ -11,7 +11,7 @@ Unique ideas here are
 
 ## Sequences
 
-A sequence is a user generated grammar definition for arbitrary string sequences. It supports 'choice', for selectable literals within a string, 'branch' for a grammar that requires more than one definition, 'range' for values that span ranges such as 0-99 -- as well as padding out those ranges, 'rangeradix' for ranges that require position dependent radices (not radishes :D), and so on.
+A sequence is a user generated grammar definition for arbitrary string sequences. It supports 'choice' for alternatives within a string, 'range' for values that span ranges such as 0-99 -- as well as padding out those ranges, 'rangeradix' for ranges that require position dependent radices (not radishes :D), and so on.
 
 A sequence definition can parse a value OR generate a new value, something like `mySeq.Parse("a123")` or `mySeq.Next('a123') -> "a124"`.
 

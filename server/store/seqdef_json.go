@@ -39,8 +39,6 @@ func marshalSeqDefNode(node ubom.SeqDefNode) (seqDefRecord, error) {
 		return marshalChildren("concat", n.Children)
 	case ubom.ChoiceNode:
 		return marshalChildren("choice", n.Children)
-	case ubom.BranchNode:
-		return marshalChildren("branch", n.Children)
 	case ubom.RangeRadixNode:
 		return marshalChildren("range_radix", n.Children)
 	case ubom.BindNode:
@@ -107,9 +105,6 @@ func unmarshalSeqDefNode(record seqDefRecord) (ubom.SeqDefNode, error) {
 	case "choice":
 		value, err := children()
 		return ubom.ChoiceNode{Children: value}, err
-	case "branch":
-		value, err := children()
-		return ubom.BranchNode{Children: value}, err
 	case "range_radix":
 		value, err := children()
 		return ubom.RangeRadixNode{Children: value}, err

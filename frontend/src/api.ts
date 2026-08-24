@@ -115,7 +115,7 @@ export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
 export type SeqDefNode =
   | { kind: 'literal'; text: string }
   | { kind: 'range'; min: number; max: number; width?: number; pad?: number }
-  | { kind: 'choice' | 'concat' | 'branch' | 'range_radix'; children: SeqDefNode[] }
+  | { kind: 'choice' | 'concat' | 'range_radix'; children: SeqDefNode[] }
   | { kind: 'bind'; name: string; child: SeqDefNode }
   | { kind: 'places'; alphabets: string[] }
 export const createSeqDef = (id: string, root: SeqDefNode) => post<{ id: string }>('/api/seq-defs', { id, root })

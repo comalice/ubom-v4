@@ -21,7 +21,7 @@ without creating a second grammar.
 | Named literal | `BindNode{Name, Child: LiteralNode}` | Direct mapping. |
 | Numeric range | `RangeNode{Min, Max, WidthValue}` | Direct mapping when numeric. The editor names these `min`, `max`, and `width`; its UI labels remain reference-friendly. |
 | Named numeric range | `BindNode{Name, Child: RangeNode}` | Direct mapping and usable by part drafts. |
-| Select | `ChoiceNode` of `LiteralNode` children | The reference label is Select; the editor kind is `choice` and its options are adapted to AST children. |
+| Select | `ChoiceNode` of `LiteralNode` children | The reference label is Select; the editor kind is `choice` and its options are adapted to AST children. `ChoiceNode` is the sole AST representation for alternatives. |
 | Named select | `BindNode` around the `ChoiceNode` | Direct structural mapping. |
 | Places | `PlaceSequenceNode{Alphabets}` | Direct mapping. The editor exposes one alphabet per line. |
 | Sequence | No equivalent | Omitted from the builder until cycling semantics have a persistent model. |

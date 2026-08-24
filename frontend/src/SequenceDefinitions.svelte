@@ -16,6 +16,10 @@
 
   $: fieldNames = [...new Set(components.map(component => component.fieldName).filter(Boolean) as string[])]
   $: for (const field of fieldNames) if (!(field in bindings)) bindings[field] = ''
+  $: duplicateFieldName = components
+    .map(component => component.fieldName?.trim())
+    .filter((fieldName): fieldName is string => Boolean(fieldName))
+    .find((fieldName, index, names) => names.indexOf(fieldName) !== index)
 
   function validateComponent(component: SeqDefComponent, index: number): string | null {
     const label = `Component ${index + 1}`
@@ -35,7 +39,7 @@
     if (component.kind === 'places' && (!component.alphabets?.length || component.alphabets.some(alphabet => !alphabet.trim()))) return `${label}: places needs non-empty alphabets`
     return null
   }
-  $: validationError = components.length ? components.map(validateComponent).find(Boolean) || '' : 'Add at least one component'
+  $: validationError = components.length ? components.map(validateComponent).find(Boolean) || (duplicateFieldName ? `Duplicate field name: ${duplicateFieldName}` : '') : 'Add at least one component'
   // This is the explicit UI-to-backend adapter; editor metadata is not persisted.
   function ast(component: SeqDefComponent): SeqDefNode {
     let node: SeqDefNode

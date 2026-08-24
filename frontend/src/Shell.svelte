@@ -10,6 +10,7 @@
     <a class="brand" href="/parts">UBOM</a>
     <span class="header-caption">Parts and bills of material</span>
     <a class="header-artifacts" href="/artifacts">Artifacts</a>
+    <a class="header-settings" href="/settings">Settings</a>
   </div>
 </header>
 

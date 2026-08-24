@@ -151,6 +151,26 @@ func TestAuthoringFlow(t *testing.T) {
 	post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusMethodNotAllowed)
 }
 
+func TestSeqDefPreviewAndStrictRequest(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(path, body string) *httptest.ResponseRecorder {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+		return recording
+	}
+	if response := post("/api/seq-defs", `{"id":"preview-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"bind","name":"number","child":{"kind":"range","min":1,"max":9,"width":2}}]}}`); response.Code != http.StatusCreated {
+		t.Fatalf("create status = %d; body = %s", response.Code, response.Body)
+	}
+	response := post("/api/seq-defs/preview-v1/preview", `{"bindings":{"number":"07"}}`)
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"value":"PN-07"`) {
+		t.Fatalf("preview response = %d %s", response.Code, response.Body)
+	}
+	response = post("/api/seq-defs/preview-v1/preview", `{"bindings":{},"extra":true}`)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("strict preview status = %d; body = %s", response.Code, response.Body)
+	}
+}
+
 func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	post := func(path, body string, wantStatus int) string {

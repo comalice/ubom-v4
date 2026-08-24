@@ -182,6 +182,35 @@ func (s *Server) handleSeqDefFields(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, fields)
 }
 
+func (s *Server) handleSeqDefPath(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/seq-defs/")
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 || parts[0] == "" {
+		writeError(w, http.StatusBadRequest, "invalid sequence definition path")
+		return
+	}
+	if parts[1] == "fields" {
+		s.handleSeqDefFields(w, r)
+		return
+	}
+	if parts[1] != "preview" || r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var request struct {
+		Bindings map[string]string `json:"bindings"`
+	}
+	if !decodeBody(w, r, &request) {
+		return
+	}
+	preview, err := s.service.PreviewSeqDef(ubom.SeqDefID(parts[0]), request.Bindings)
+	if err != nil {
+		writeCreateError(w, err)
+		return
+	}
+	writeJSON(w, preview)
+}
+
 func (s *Server) handleTaxonomyDefs(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		views, err := s.service.ListTaxonomyDefSummaries()

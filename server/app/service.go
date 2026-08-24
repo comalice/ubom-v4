@@ -48,6 +48,26 @@ func (s *Service) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevis
 func (s *Service) GetSeqDefForAuthoring(id ubom.SeqDefID) (ubom.SeqDef, error) {
 	return s.store.GetSeqDef(id)
 }
+
+type SeqDefPreview struct {
+	ID       ubom.SeqDefID     `json:"id"`
+	Bindings map[string]string `json:"bindings"`
+	Value    string            `json:"value,omitempty"`
+	Error    string            `json:"error,omitempty"`
+}
+
+func (s *Service) PreviewSeqDef(id ubom.SeqDefID, bindings map[string]string) (SeqDefPreview, error) {
+	def, err := s.store.GetSeqDef(id)
+	if err != nil {
+		return SeqDefPreview{}, err
+	}
+	preview := SeqDefPreview{ID: id, Bindings: bindings}
+	preview.Value, err = def.Generate(bindings)
+	if err != nil {
+		preview.Error = err.Error()
+	}
+	return preview, nil
+}
 func (s *Service) GetTaxonomyDefForAuthoring(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	return s.store.GetTaxonomyDef(id)
 }

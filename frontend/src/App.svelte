@@ -8,6 +8,8 @@
   import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
   import Authoring from './Authoring.svelte'
+  import SequenceDefinitions from './SequenceDefinitions.svelte'
+  import Settings from './Settings.svelte'
   import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
@@ -38,6 +40,10 @@
             { label: revision.partNumber.value, href: partPath(revision.partNumber.value) },
             { label: `Revision ${revision.revision}` },
           ]
+      : route.kind === 'seq-defs' || route.kind === 'new-seq-def'
+        ? [{ label: 'Settings' }, { label: 'Sequence definitions' }]
+        : route.kind === 'settings'
+          ? [{ label: 'Settings' }]
         : []
 
   function taxonomyBreadcrumbs(view: TaxonomyNodeView): Breadcrumb[] {
@@ -66,12 +72,18 @@
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
+      else if (route.kind === 'settings' || route.kind === 'seq-defs' || route.kind === 'new-seq-def') return
       else error = 'Page not found'
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Unable to load page'
     } finally {
       loading = false
     }
+  }
+
+  function navigate(path: string) {
+    history.pushState({}, '', path)
+    load()
   }
 
   onMount(() => {
@@ -164,5 +176,11 @@
     <h2>Bill of Materials</h2>
     {#if revision.bom.length > 0}<BomTable nodes={revision.bom} />
     {:else}<p class="muted">No BOM entries.</p>{/if}
+  {:else if route.kind === 'seq-defs'}
+    <SequenceDefinitions creating={false} navigate={navigate} />
+  {:else if route.kind === 'new-seq-def'}
+    <SequenceDefinitions creating={true} navigate={navigate} />
+  {:else if route.kind === 'settings'}
+    <Settings />
   {/if}
 </Shell>

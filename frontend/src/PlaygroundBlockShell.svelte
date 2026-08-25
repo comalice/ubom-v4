@@ -1,5 +1,6 @@
 <script lang="ts">
   import { draggable } from '@thisux/sveltednd'
+  import PlaygroundControlButton from './PlaygroundControlButton.svelte'
 
   export let title = ''
   export let kind = ''
@@ -14,12 +15,12 @@
   let open = initiallyOpen
 </script>
 
-<article class:dnd-size-small={size === 'small'} class:playground-block-shell-draggable={container !== ''} class:playground-block-shell-collapsible={collapsible} class:playground-block-shell-open={open} class="playground-block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'playground-block-shell', dragData, disabled: container === '', callbacks: { onDragEnd } }}>
+<article class:dnd-size-small={size === 'small'} class:playground-block-shell-draggable={container !== ''} class:playground-block-shell-collapsible={collapsible} class:playground-block-shell-removable={onRemove !== undefined} class:playground-block-shell-open={open} class="playground-block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'playground-block-shell', dragData, disabled: container === '', callbacks: { onDragEnd } }}>
   <header class="playground-block-shell-header">
     <span class="grammar-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>
-    {#if collapsible}<button class="playground-block-shell-toggle" type="button" aria-label={open ? `Collapse ${title}` : `Expand ${title}`} aria-expanded={open} on:click={() => open = !open}><span aria-hidden="true"></span></button>{/if}
-    {#if onRemove}<button class="playground-block-shell-remove" type="button" aria-label="Remove {title}" on:click={onRemove}><span aria-hidden="true"></span></button>{/if}
+    {#if collapsible}<PlaygroundControlButton kind="chevron" className="playground-block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}
+    {#if onRemove}<PlaygroundControlButton kind="close" className="playground-block-shell-remove" label="Remove {title}" onClick={onRemove} />{/if}
   </header>
   {#if !collapsible || open}<div class="playground-block-shell-body"><slot /></div>{/if}
 </article>

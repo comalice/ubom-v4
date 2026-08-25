@@ -283,20 +283,27 @@ ul { line-height: 1.8; }
 .playground-block-shell { position: relative; min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
 .playground-block-shell-open { border-color: var(--accent); }
 .playground-block-shell-header { display: flex; align-items: center; gap: .4rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); cursor: grab; }
+.playground-block-shell-removable .playground-block-shell-header { padding-right: 3.5rem; }
 .playground-block-shell-header strong { font: .68rem ui-monospace, monospace; }
 .playground-block-shell-body { padding: .6rem; background: var(--surface); border-top: 1px solid var(--hairline); }
 .playground-block-shell-body:empty { display: none; }
 .playground-block-shell.dnd-size-small .playground-block-shell-header { min-height: 1.5rem; padding: .1rem 1.7rem .1rem .45rem; }
 .playground-block-shell-toggle, .playground-block-shell-remove { position: absolute; top: .65rem; display: grid; place-items: center; color: var(--accent); background: transparent; border: 1px solid transparent; border-radius: .2rem; cursor: pointer; }
+.playground-block-shell.dnd-size-small .playground-block-shell-toggle, .playground-block-shell.dnd-size-small .playground-block-shell-remove { top: .15rem; }
 .playground-block-shell-toggle { right: .55rem; width: 1.5rem; height: 1.5rem; }
+.playground-block-shell-removable .playground-block-shell-toggle { right: 2rem; }
 .playground-block-shell-remove { right: .3rem; padding: 0 .15rem; color: var(--muted); border: 0; font: .7rem ui-monospace, monospace; }
 .playground-block-shell-toggle:hover, .playground-block-shell-remove:hover { border-color: var(--accent); background: var(--surface); }
-.playground-block-shell-remove span, .sequence-example-remove-mark { position: relative; display: block; width: .65rem; height: .65rem; }
-.playground-block-shell-remove span::before, .playground-block-shell-remove span::after, .sequence-example-remove-mark::before, .sequence-example-remove-mark::after { position: absolute; top: 50%; left: 50%; width: .7rem; height: 1px; background: currentColor; content: ''; }
-.playground-block-shell-remove span::before, .sequence-example-remove-mark::before { transform: translate(-50%, -50%) rotate(45deg); }
-.playground-block-shell-remove span::after, .sequence-example-remove-mark::after { transform: translate(-50%, -50%) rotate(-45deg); }
-.playground-block-shell-toggle span { width: .45rem; height: .45rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: translateY(-.12rem) rotate(45deg); transition: transform .12s; }
-.playground-block-shell-open .playground-block-shell-toggle span { transform: translateY(.12rem) rotate(225deg); }
+.playground-control-close span { position: relative; display: block; width: .65rem; height: .65rem; }
+.playground-control-close span::before, .playground-control-close span::after { position: absolute; top: 50%; left: 50%; width: .7rem; height: 1px; background: currentColor; content: ''; }
+.playground-control-close span::before { transform: translate(-50%, -50%) rotate(45deg); }
+.playground-control-close span::after { transform: translate(-50%, -50%) rotate(-45deg); }
+.playground-control-chevron span { width: .45rem; height: .45rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: translateY(-.12rem) rotate(45deg); transition: transform .12s; }
+.playground-block-shell-open .playground-control-chevron span { transform: translateY(.12rem) rotate(225deg); }
+.playground-control-button { display: grid; width: 1.5rem; height: 1.5rem; padding: 0; place-items: center; color: var(--accent); background: transparent; border: 1px solid transparent; border-radius: .2rem; cursor: pointer; }
+.playground-control-button:hover { border-color: var(--accent); background: var(--surface); }
+.playground-block-shell-remove { font-size: 0; }
+.sequence-example-dropped-tile .playground-control-button { top: .25rem; right: .3rem; padding: 0; }
 .grammar-basic-example-list { display: grid; gap: .8rem; margin-top: .7rem; }
 .grammar-basic-example { display: grid; grid-template-columns: minmax(10rem, .7fr) minmax(16rem, 1.3fr); gap: .8rem; align-items: start; }
 .grammar-basic-example .sequence-example-tile { min-height: 100%; }
@@ -327,7 +334,6 @@ ul { line-height: 1.8; }
 .playground-nested-block-toggle { position: absolute; top: .65rem; right: .55rem; z-index: 1; display: grid; width: 1.5rem; height: 1.5rem; place-items: center; color: var(--accent); background: transparent; border: 1px solid transparent; border-radius: .2rem; cursor: pointer; }
 .playground-nested-block-toggle:hover { border-color: var(--accent); background: var(--surface); }
 .playground-nested-block-toggle span { width: .45rem; height: .45rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: translateY(-.12rem) rotate(45deg); transition: transform .12s; }
-.playground-nested-block-open .playground-nested-block-toggle span { transform: translateY(.12rem) rotate(225deg); }
 .example-expandable-block { overflow: hidden; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
 .example-expandable-block-open { border-color: var(--accent); }
 .example-expandable-header { display: flex; align-items: center; justify-content: space-between; min-height: 2.5rem; padding: .55rem .65rem; color: var(--accent); background: var(--accent-light); }
@@ -335,7 +341,7 @@ ul { line-height: 1.8; }
 .example-expandable-toggle { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; color: var(--accent); background: transparent; border: 1px solid transparent; border-radius: .2rem; cursor: pointer; }
 .example-expandable-toggle:hover { border-color: var(--accent); background: var(--surface); }
 .example-expandable-toggle span { width: .45rem; height: .45rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: translateY(-.12rem) rotate(45deg); transition: transform .12s; }
-.example-expandable-block-open .example-expandable-toggle span { transform: translateY(.12rem) rotate(225deg); }
+.example-expandable-block-open .playground-control-chevron span { transform: translateY(.12rem) rotate(225deg); }
 .example-expandable-body { min-height: 4.5rem; background: var(--surface); border-top: 1px solid var(--hairline); }
 .sequence-tile-example { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
 .sequence-example-layout { display: grid; grid-template-columns: minmax(10rem, .7fr) minmax(16rem, 1.3fr); gap: 1rem; }

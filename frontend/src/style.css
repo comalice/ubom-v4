@@ -266,6 +266,7 @@ ul { line-height: 1.8; }
 .grammar-alternative { display: flex; align-items: flex-start; gap: .3rem; }
 .grammar-alternative-label { padding-top: .45rem; color: var(--accent); font: .62rem ui-monospace, monospace; }
 .grammar-alternative .grammar-row { flex: 1; }
+.grammar-choice-block { display: grid; gap: .35rem; min-width: 0; flex: 1; }
 .grammar-remove-alternative { margin-top: .4rem; }
 .grammar-add, .grammar-add-row select { padding: .35rem .5rem; color: var(--accent); background: transparent; border: 1px solid var(--hairline); border-radius: .2rem; cursor: pointer; font: .62rem ui-monospace, monospace !important; }
 .grammar-add:hover { border-color: var(--accent); }

@@ -1,6 +1,15 @@
 <script lang="ts">
   import PlaygroundBlockShell from './PlaygroundBlockShell.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
+
+  type ChoiceBlock = { kind: 'literal' | 'number'; summary: string }
+  let choiceAlternatives: ChoiceBlock[][] = [
+    [{ kind: 'literal', summary: '"PN-"' }],
+    [{ kind: 'literal', summary: '"SN-"' }, { kind: 'number', summary: '00..99 / width 2 / pad 0' }],
+  ]
+
+  $: choiceSummary = choiceAlternatives.map((alternative) => alternative.length ? alternative.map((block) => block.summary).join(' + ') : 'empty').join(' | ')
+  function addChoiceAlternative() { choiceAlternatives = [...choiceAlternatives, []] }
 </script>
 
 <p class="eyebrow">Grammar blocks</p>
@@ -55,4 +64,37 @@
 </section>
 <section class="block-examples" aria-labelledby="choice-blocks-heading">
   <span class="mock-section-label" id="choice-blocks-heading">Choice blocks</span>
+  <div class="grammar-basic-example-list">
+    <article class="grammar-basic-example">
+      <SequenceExampleTile tile={{ kind: 'sequence-tile', type: 'choice', title: 'Choice', description: 'One alternative' }} variant="palette" container="grammar-examples:palette" />
+      <PlaygroundBlockShell title="choice" summary={choiceSummary} kind="choice" collapsible initiallyOpen={false} onRemove={() => {}}>
+        <div class="grammar-expr-body grammar-choice">
+          <div class="grammar-child-label">Alternatives</div>
+          {#each choiceAlternatives as alternative, alternativeIndex}
+            <div class="grammar-alternative">
+              <span class="grammar-alternative-label">{String.fromCharCode(65 + alternativeIndex)}</span>
+              <div class="grammar-choice-block">
+                {#if alternative.length}
+                  {#each alternative as block, blockIndex}
+                    {#if block.kind === 'literal'}
+                      <PlaygroundBlockShell title="literal" summary={block.summary} kind="literal" size="small" collapsible initiallyOpen={false} onRemove={() => {}}>
+                        <div class="grammar-expr-body"><label>Text<input value="{blockIndex === 0 ? 'PN-' : 'SN-'}" aria-label="Choice alternative literal text" /></label></div>
+                      </PlaygroundBlockShell>
+                    {:else}
+                      <PlaygroundBlockShell title="number" summary={block.summary} kind="number" size="small" collapsible initiallyOpen={false} onRemove={() => {}}>
+                        <div class="grammar-expr-body grammar-number-fields"><label>Min<input value="0" aria-label="Choice alternative number minimum" /></label><label>Max<input value="99" aria-label="Choice alternative number maximum" /></label><label>Width<input value="2" aria-label="Choice alternative number width" /></label><label>Pad<input value="0" aria-label="Choice alternative number padding" /></label></div>
+                      </PlaygroundBlockShell>
+                    {/if}
+                  {/each}
+                {:else}
+                  <span class="grammar-row-empty">Drop blocks here to create an alternative</span>
+                {/if}
+              </div>
+            </div>
+          {/each}
+          <button class="grammar-add" type="button" on:click={addChoiceAlternative}>+ add alternative</button>
+        </div>
+      </PlaygroundBlockShell>
+    </article>
+  </div>
 </section>

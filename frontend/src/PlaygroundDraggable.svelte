@@ -1,7 +1,8 @@
 <script lang="ts">
   import { draggable } from '@thisux/sveltednd'
 
-  export type DraggableComponent = { kind: 'component'; label: string; id?: number; nodeId?: number; sourceParentId?: number | null }
+  export type DraggableComponent = { kind: 'component'; label: string; blockType: 'basic' | 'nested'; id?: number; nodeId?: number; sourceParentId?: number | null }
+  export type ComponentNode = DraggableComponent & { id: number; children: ComponentNode[] }
   export let item: DraggableComponent
   export let container: string
   export let variant: 'palette' | 'placed'

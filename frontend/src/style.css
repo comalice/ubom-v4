@@ -302,6 +302,13 @@ ul { line-height: 1.8; }
 .playground-component-move { position: relative; width: 1.35rem; height: 1.35rem; background: #4d7fc4; border-radius: 50%; }
 .playground-component-move::after { width: .15rem; height: .8rem; background: white; border-radius: .15rem; content: ''; }
 .dnd-ops-playground { margin-top: 1.5rem; padding: 1rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.dnd-structure-preview { margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--hairline); }
+.dnd-structure-tree { margin: .45rem 0 0; padding-left: 1.1rem; color: var(--muted); font: .62rem ui-monospace, monospace; }
+.dnd-structure-tree ul { margin: .25rem 0 0; padding-left: 1.1rem; }
+.dnd-structure-tree li { padding: .12rem 0; }
+.dnd-structure-node { color: var(--ink); }
+.dnd-structure-node small { margin-left: .45rem; color: var(--muted); font-size: .56rem; }
+.dnd-structure-empty { color: var(--muted); }
 .dnd-ops-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .dnd-ops-heading h3 { margin: .3rem 0 0; color: var(--ink); font: 400 1.05rem Georgia, serif; }
 .dnd-reset { padding: .3rem .5rem; color: var(--muted); background: transparent; border: 1px solid var(--hairline); border-radius: .2rem; cursor: pointer; font: .62rem ui-monospace, monospace; }
@@ -323,6 +330,8 @@ ul { line-height: 1.8; }
 .dnd-new-drop-target { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; color: white; background: #4c9a68; border-radius: 50%; font: 1.5rem/1 ui-monospace, monospace; opacity: .35; transform: scale(.8); transition: opacity .12s, transform .12s; }
 .dnd-field-over .dnd-new-drop-target { opacity: 1; transform: scale(1.1); }
 .dnd-placed-list { display: grid; width: 100%; }
+.dnd-nested-list { margin: .5rem 0 0 1.5rem; padding: .65rem; background: var(--surface); border-left: 2px solid var(--hairline); }
+.dnd-nested-list > .mock-section-label { display: block; margin-bottom: .25rem; }
 .dnd-insert-zone { position: relative; display: grid; height: 3rem; place-items: center; cursor: copy; }
 .dnd-insert-zone-edge { height: 1.5rem; }
 .dnd-insert-zone.drop-before::before, .dnd-insert-zone.drop-after::after { display: none; }

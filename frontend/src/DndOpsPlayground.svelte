@@ -1,11 +1,14 @@
 <script lang="ts">
   import { droppable, type DragDropState } from '@thisux/sveltednd'
-  import PlaygroundComponentList, { type ComponentNode, type DropSlot } from './PlaygroundComponentList.svelte'
+  import PlaygroundComponentList, { type DropSlot } from './PlaygroundComponentList.svelte'
   import PlaygroundDraggable, { type DraggableComponent } from './PlaygroundDraggable.svelte'
+  import type { ComponentNode } from './PlaygroundDraggable.svelte'
+  import PlaygroundStructurePreview from './PlaygroundStructurePreview.svelte'
 
   type DragItem = DraggableComponent
   const rootListId = 'component-list:root'
-  const component: DraggableComponent = { kind: 'component', label: 'Literal' }
+  const component: DraggableComponent = { kind: 'component', label: 'Literal', blockType: 'basic' }
+  const nestedComponent: DraggableComponent = { kind: 'component', label: 'Container', blockType: 'nested' }
   let placedComponents: ComponentNode[] = []
   let nextComponentId = 1
   let newItemOver = false
@@ -21,7 +24,7 @@
     if (state.draggedItem?.kind !== 'component') return
     markerState.version += 1
     const target = (state.targetElement as HTMLElement | null)?.closest('.dnd-insert-zone')
-    const markerClass = state.sourceContainer === rootListId ? 'dnd-insert-zone-move' : 'dnd-insert-zone-new'
+    const markerClass = state.sourceContainer.startsWith('component-list:') ? 'dnd-insert-zone-move' : 'dnd-insert-zone-new'
     if (!target?.classList.contains(markerClass)) {
       clearDropMarker()
       target?.classList.add('dnd-insert-zone-active', markerClass)
@@ -35,16 +38,22 @@
   }
   function handleGapDrop(slot: DropSlot, state: DragDropState<DragItem>) {
     if (state.draggedItem?.kind === 'component') {
-      if (state.sourceContainer === rootListId && state.draggedItem.nodeId) {
-        const sourceIndex = placedComponents.findIndex((item) => item.id === state.draggedItem.nodeId)
+      if (state.sourceContainer.startsWith('component-list:') && state.draggedItem.nodeId) {
+        const sourceParentId = state.draggedItem.sourceParentId ?? null
+        const sourceList = findChildren(placedComponents, sourceParentId)
+        const sourceIndex = sourceList.findIndex((item) => item.id === state.draggedItem.nodeId)
         if (sourceIndex >= 0) {
-          const movingItem = placedComponents[sourceIndex]
-          const remaining = placedComponents.filter((item) => item.id !== state.draggedItem?.nodeId)
-          const insertIndex = sourceIndex < slot.index ? slot.index - 1 : slot.index
-          placedComponents = [...remaining.slice(0, insertIndex), movingItem, ...remaining.slice(insertIndex)]
+          const movingItem = sourceList[sourceIndex]
+          if (containsNode(movingItem, slot.parentId)) {
+            clearDropMarker()
+            return
+          }
+          const remaining = removeNode(placedComponents, movingItem.id)
+          const insertIndex = sourceParentId === slot.parentId && sourceIndex < slot.index ? slot.index - 1 : slot.index
+          placedComponents = insertNode(remaining, slot.parentId, insertIndex, movingItem)
         }
       } else {
-        placedComponents = [...placedComponents.slice(0, slot.index), { ...state.draggedItem, id: nextComponentId++, children: [] }, ...placedComponents.slice(slot.index)]
+        placedComponents = insertNode(placedComponents, slot.parentId, slot.index, { ...state.draggedItem, id: nextComponentId++, children: [] })
       }
     }
     clearDropMarker()
@@ -56,20 +65,46 @@
     newItemOver = false
     clearDropMarker()
   }
+  function findChildren(nodes: ComponentNode[], parentId: number | null): ComponentNode[] {
+    if (parentId === null) return nodes
+    for (const node of nodes) {
+      if (node.id === parentId) return node.children
+      const children = findChildren(node.children, parentId)
+      if (children.length) return children
+    }
+    return []
+  }
+  function removeNode(nodes: ComponentNode[], nodeId: number): ComponentNode[] {
+    return nodes.filter((node) => node.id !== nodeId).map((node) => ({ ...node, children: removeNode(node.children, nodeId) }))
+  }
+  function insertNode(nodes: ComponentNode[], parentId: number | null, index: number, node: ComponentNode): ComponentNode[] {
+    if (parentId === null) return [...nodes.slice(0, index), node, ...nodes.slice(index)]
+    return nodes.map((item) => item.id === parentId
+      ? { ...item, children: [...item.children.slice(0, index), node, ...item.children.slice(index)] }
+      : { ...item, children: insertNode(item.children, parentId, index, node) })
+  }
+  function containsNode(node: ComponentNode, nodeId: number | null): boolean {
+    return nodeId !== null && (node.id === nodeId || node.children.some((child) => containsNode(child, nodeId)))
+  }
 </script>
 
 <div class="dnd-ops-playground">
+  <section class="dnd-structure-preview" aria-labelledby="structure-preview-heading">
+    <span class="mock-section-label" id="structure-preview-heading">Current structure</span>
+    <PlaygroundStructurePreview nodes={placedComponents} />
+  </section>
   <div class="dnd-ops-heading"><div><span class="mock-section-label">Experiment</span><h3>Drop components into a field</h3></div>{#if placedComponents.length}<button class="dnd-reset" type="button" on:click={() => placedComponents = []}>Reset</button>{/if}</div>
   <div class="dnd-ops-stage">
     <section class="dnd-component-palette" aria-labelledby="component-palette-heading">
       <span class="mock-section-label" id="component-palette-heading">Component palette</span>
-      <PlaygroundDraggable item={component} container="component-palette" variant="palette" description="Drag into the field" onDragEnd={handleDragEnd} />
+      <PlaygroundDraggable item={component} container="component-palette" variant="palette" description="Leaf component" onDragEnd={handleDragEnd} />
+      <PlaygroundDraggable item={nestedComponent} container="component-palette" variant="palette" description="Component with nested field" onDragEnd={handleDragEnd} />
     </section>
 
     <section class="dnd-field-area" aria-labelledby="field-heading">
       <span class="mock-section-label" id="field-heading">Field</span>
       <div class="dnd-field" class:dnd-field-filled={placedComponents.length > 0} use:droppable={{ container: rootListId, disabled: placedComponents.length > 0, callbacks: { onDragEnter: handleDragEnter, onDragLeave: handleDragLeave, onDrop: handleDrop }, attributes: { dragOverClass: 'dnd-field-over' } }}>
-        {#if placedComponents.length}<PlaygroundComponentList nodes={placedComponents} parentId={null} container={rootListId} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onRemove={(id) => placedComponents = placedComponents.filter((item) => item.id !== id)} />{/if}
+        {#if placedComponents.length}<PlaygroundComponentList nodes={placedComponents} parentId={null} container={rootListId} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onRemove={(id) => placedComponents = removeNode(placedComponents, id)} />{/if}
         {#if newItemOver}<span class="dnd-new-drop-target" aria-hidden="true">+</span>{:else if !placedComponents.length}<span>Drop a component here</span>{/if}
       </div>
     </section>

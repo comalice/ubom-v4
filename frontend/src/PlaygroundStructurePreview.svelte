@@ -1,5 +1,5 @@
 <script lang="ts">
-  export type StructureNode = { id: number; label: string; blockType: string; children: StructureNode[] }
+  export type StructureNode = { id: string | number; label: string; blockType: string; summary?: string; children: StructureNode[] }
 
   export let nodes: StructureNode[] = []
   export let showIds = true
@@ -8,7 +8,7 @@
 <ul class="dnd-structure-tree">
   {#each nodes as node (node.id)}
     <li>
-       <span class="dnd-structure-node">{node.label}{#if showIds}<small>#{node.id} {node.blockType}</small>{/if}</span>
+       <span class="dnd-structure-node">{node.label}<small>{#if showIds}#{node.id} {node.blockType}{:else}{node.summary}{/if}</small></span>
       {#if node.children.length}<svelte:self nodes={node.children} />{/if}
     </li>
   {:else}

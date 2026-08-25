@@ -1,8 +1,9 @@
 <script lang="ts">
-  import PlaygroundBlockShell from './PlaygroundBlockShell.svelte'
+  import GrammarEditorBlock from './GrammarEditorBlock.svelte'
   import PlaygroundField from './PlaygroundField.svelte'
   import PlaygroundStructurePreview, { type StructureNode } from './PlaygroundStructurePreview.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
+  import type { Expr } from './grammarMock'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -13,17 +14,35 @@
     { type: 'choice', title: 'Choice', description: 'One alternative' },
   ]
 
-  const structureNodes: StructureNode[] = [
-    { id: 1, label: 'literal', blockType: 'literal', children: [] },
-    { id: 2, label: 'binding', blockType: 'bind', children: [{ id: 3, label: 'literal', blockType: 'literal', children: [] }] },
-    { id: 4, label: 'choice', blockType: 'choice', children: [
-      { id: 5, label: 'alternative A', blockType: 'row', children: [{ id: 6, label: 'literal', blockType: 'literal', children: [] }] },
-      { id: 7, label: 'alternative B', blockType: 'row', children: [
-        { id: 8, label: 'literal', blockType: 'literal', children: [] },
-        { id: 9, label: 'number', blockType: 'number', children: [] },
-      ] },
+  let rootSequence: Expr[] = [
+    { id: 'literal-1', kind: 'literal', text: 'PN-' },
+    { id: 'bind-1', kind: 'bind', name: 'family', child: { id: 'literal-2', kind: 'literal', text: 'SN-' } },
+    { id: 'choice-1', kind: 'choice', children: [
+      [{ id: 'literal-3', kind: 'literal', text: 'A' }],
+      [{ id: 'literal-4', kind: 'literal', text: 'B' }, { id: 'number-1', kind: 'number', min: 0, max: 9, width: 1, pad: '0' }],
     ] },
   ]
+  let structureNodes: StructureNode[] = []
+
+  function summary(expr: Expr): string {
+    if (expr.kind === 'literal') return JSON.stringify(expr.text)
+    if (expr.kind === 'number') return `${expr.min}..${expr.max}`
+    if (expr.kind === 'alpha') return `${expr.min}..${expr.max}`
+    if (expr.kind === 'chars') return expr.chars
+    if (expr.kind === 'bind') return `${expr.name || 'unnamed'} = ${expr.child ? summary(expr.child) : 'empty'}`
+    return expr.children.map((alternative) => alternative.length ? alternative.map(summary).join(' + ') : 'empty').join(' | ')
+  }
+
+  function toStructureNode(expr: Expr): StructureNode {
+    const children: StructureNode[] = expr.kind === 'bind'
+      ? (expr.child ? [toStructureNode(expr.child)] : [])
+      : expr.kind === 'choice'
+        ? expr.children.map((alternative, index) => ({ id: `${expr.id}-alternative-${index}`, label: `alternative ${String.fromCharCode(65 + index)}`, blockType: 'row', summary: alternative.map(summary).join(' + ') || 'empty', children: alternative.map(toStructureNode) }))
+        : []
+    return { id: expr.id, label: expr.kind, blockType: expr.kind, summary: summary(expr), children }
+  }
+
+  $: structureNodes = rootSequence.map(toStructureNode)
 </script>
 
 <p class="eyebrow">Grammar editor</p>
@@ -41,18 +60,9 @@
   <div class="grammar-editor-sketch-layout">
     <section class="grammar-editor-sketch-canvas" aria-labelledby="grammar-editor-canvas-heading">
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
-      <div class="grammar-editor-sketch-root-label">Root sequence</div>
       <PlaygroundField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
         <div class="grammar-editor-sketch-row">
-          <PlaygroundBlockShell title="literal" summary={'"PN-"'} kind="literal" collapsible initiallyOpen={false} onRemove={() => {}}>
-            <div class="grammar-editor-sketch-block-body">Text: "PN-"</div>
-          </PlaygroundBlockShell>
-          <PlaygroundBlockShell title="binding" summary={'family = "SN-"'} kind="bind" collapsible initiallyOpen={false} onRemove={() => {}}>
-            <div class="grammar-editor-sketch-block-body">Name: family · Captures: literal</div>
-          </PlaygroundBlockShell>
-          <PlaygroundBlockShell title="choice" summary={'"A" | "B"'} kind="choice" collapsible initiallyOpen={false} onRemove={() => {}}>
-            <div class="grammar-editor-sketch-block-body">2 alternatives</div>
-          </PlaygroundBlockShell>
+          {#each rootSequence as expr (expr.id)}<GrammarEditorBlock {expr} />{/each}
         </div>
         <div class="grammar-editor-sketch-drop-zone">Drop a block here to add it to the root sequence</div>
       </PlaygroundField>

@@ -236,6 +236,15 @@ ul { line-height: 1.8; }
 .grammar-drop-target-labeled.grammar-drop-target-palette.grammar-drop-target-dragging .grammar-drop-target-visual { transform: translate(-50%, -50%) scale(.9); }
 .grammar-drop-target-labeled.grammar-drop-target-palette.grammar-drop-target-over .grammar-drop-target-visual { transform: translate(-50%, -50%) scale(1.1); }
 .grammar-drop-target-over .grammar-drop-target-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
+.grammar-editor-drop-target { position: relative; display: grid; min-height: 2.25rem; place-items: center; color: var(--accent); }
+.grammar-editor-drop-target > .playground-component-mark { opacity: .28; transform: scale(.75); transition: opacity .12s, transform .12s; }
+.grammar-editor-drop-target-over > .playground-component-mark { opacity: 1; transform: scale(1); }
+.grammar-editor-drop-target > .playground-component-mark.playground-component-move { display: none; }
+.grammar-editor-drop-target:not(.grammar-editor-drop-target-palette) > .playground-component-mark.playground-component-new { display: none; }
+.grammar-editor-drop-target:not(.grammar-editor-drop-target-palette) > .playground-component-mark.playground-component-move { display: grid; }
+.grammar-editor-drop-target-labeled { display: block; }
+.grammar-editor-drop-target-label { display: block; width: 100%; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
+.grammar-editor-drop-target-over .grammar-editor-drop-target-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
 .grammar-dnd-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .grammar-binding-target { position: relative; padding: .25rem; border: 1px dashed var(--hairline); border-radius: .2rem; }
 .grammar-binding-target:hover { border-color: var(--accent); }
@@ -430,6 +439,7 @@ ul { line-height: 1.8; }
 .dnd-field-filled.dnd-field-over { border-color: var(--hairline); outline: none; }
 .dnd-field.drop-before::before, .dnd-field.drop-after::after { display: none; }
 .dnd-ops-playground .drop-before::before, .dnd-ops-playground .drop-after::after { display: none !important; content: none !important; }
+.grammar-editor-sketch .drop-before::before, .grammar-editor-sketch .drop-after::after { display: none !important; content: none !important; }
 .dnd-field-filled { place-items: stretch; border-style: solid; }
 .dnd-new-drop-target { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; color: white; background: #4c9a68; border-radius: 50%; font: 1.5rem/1 ui-monospace, monospace; opacity: .35; transform: scale(.8); transition: opacity .12s, transform .12s; }
 .dnd-field-over .dnd-new-drop-target { opacity: 1; transform: scale(1.1); }

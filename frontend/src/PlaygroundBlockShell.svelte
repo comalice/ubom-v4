@@ -12,11 +12,13 @@
   export let collapsible = false
   export let initiallyOpen = true
   export let onDragEnd: () => void = () => {}
+  export let dragHandle = ''
+  export let interactive: string[] = []
   export let onRemove: (() => void) | undefined = undefined
   let open = initiallyOpen
 </script>
 
-<article class:dnd-size-small={size === 'small'} class:playground-block-shell-draggable={container !== ''} class:playground-block-shell-collapsible={collapsible} class:playground-block-shell-removable={onRemove !== undefined} class:playground-block-shell-open={open} class="playground-block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'playground-block-shell', dragData, disabled: container === '', callbacks: { onDragEnd } }}>
+<article class:dnd-size-small={size === 'small'} class:playground-block-shell-draggable={container !== ''} class:playground-block-shell-collapsible={collapsible} class:playground-block-shell-removable={onRemove !== undefined} class:playground-block-shell-open={open} class="playground-block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'playground-block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
   <header class="playground-block-shell-header">
     <span class="grammar-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>

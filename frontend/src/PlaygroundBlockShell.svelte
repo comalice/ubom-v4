@@ -3,6 +3,7 @@
   import PlaygroundControlButton from './PlaygroundControlButton.svelte'
 
   export let title = ''
+  export let summary = ''
   export let kind = ''
   export let size: 'normal' | 'small' = 'normal'
   export let item: unknown = undefined
@@ -19,6 +20,7 @@
   <header class="playground-block-shell-header">
     <span class="grammar-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>
+    {#if summary}<span class="playground-block-shell-summary">{summary}</span>{/if}
     {#if collapsible}<PlaygroundControlButton kind="chevron" className="playground-block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}
     {#if onRemove}<PlaygroundControlButton kind="close" className="playground-block-shell-remove" label="Remove {title}" onClick={onRemove} />{/if}
   </header>

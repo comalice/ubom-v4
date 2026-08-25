@@ -285,6 +285,7 @@ ul { line-height: 1.8; }
 .playground-block-shell-header { display: flex; align-items: center; gap: .4rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); cursor: grab; }
 .playground-block-shell-removable .playground-block-shell-header { padding-right: 3.5rem; }
 .playground-block-shell-header strong { font: .68rem ui-monospace, monospace; }
+.playground-block-shell-summary { min-width: 0; overflow: hidden; color: var(--muted); font: .62rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .playground-block-shell-body { padding: .6rem; background: var(--surface); border-top: 1px solid var(--hairline); }
 .playground-block-shell-body:empty { display: none; }
 .playground-block-shell.dnd-size-small .playground-block-shell-header { min-height: 1.5rem; padding: .1rem 1.7rem .1rem .45rem; }

@@ -1,11 +1,15 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'dnd-ops'
+  export let page: 'dnd-ops' | 'block-examples'
+  import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
   import DndOpsPlayground from './DndOpsPlayground.svelte'
   import PlaygroundMoveMarker from './PlaygroundMoveMarker.svelte'
   import PlaygroundNewMarker from './PlaygroundNewMarker.svelte'
 
-  const links = [{ label: 'DnD operations', path: '/playground/dnd-ops' }]
+  const links = [
+    { label: 'DnD operations', path: '/playground/dnd-ops', page: 'dnd-ops' as const },
+    { label: 'Block examples', path: '/playground/block-examples', page: 'block-examples' as const },
+  ]
 </script>
 
 <div class="playground">
@@ -15,7 +19,7 @@
     <p class="muted playground-intro">Small isolated spaces for testing interaction ideas.</p>
     <nav>
       {#each links as link}
-        <a class:playground-nav-active={page === 'dnd-ops'} href={link.path} on:click|preventDefault={() => navigate(link.path)}>{link.label}<span aria-hidden="true">→</span></a>
+        <a class:playground-nav-active={page === link.page} href={link.path} on:click|preventDefault={() => navigate(link.path)}>{link.label}<span aria-hidden="true">→</span></a>
       {/each}
     </nav>
   </aside>
@@ -32,6 +36,8 @@
         </div>
       </section>
       <DndOpsPlayground />
+    {:else if page === 'block-examples'}
+      <BlockExamplesPlayground />
     {/if}
   </main>
 </div>

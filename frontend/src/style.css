@@ -291,6 +291,12 @@ ul { line-height: 1.8; }
 .playground-content { min-width: 0; padding: 1.5rem; }
 .playground-content h2 { margin: .35rem 0 1rem; color: var(--ink); font: 400 1.35rem Georgia, serif; }
 .playground-empty { display: grid; min-height: 18rem; place-items: center; color: var(--muted); border: 1px dashed var(--hairline); font: .68rem ui-monospace, monospace; }
+.block-examples { margin-top: 1.25rem; }
+.block-examples-heading { margin-bottom: .7rem; }
+.block-examples-heading p { margin: .35rem 0 0; color: var(--muted); font-size: .7rem; }
+.block-example-grid { display: grid; grid-template-columns: repeat(2, minmax(12rem, 1fr)); gap: 1rem; }
+.block-example-card { display: grid; align-content: start; gap: .6rem; min-height: 7rem; padding: .8rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
+.block-example-kind { color: var(--muted); font: .58rem ui-monospace, monospace; text-transform: uppercase; }
 .playground-components { margin-top: 1.2rem; padding: .8rem 1rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
 .playground-component-list { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-top: .6rem; }
 .playground-component-item { display: flex; align-items: center; gap: .6rem; color: var(--muted); }
@@ -349,6 +355,7 @@ ul { line-height: 1.8; }
 .dnd-placed-component button:hover { color: #f87171; }
 
 @media (max-width: 700px) {
+  .block-example-grid { grid-template-columns: 1fr; }
   .mock-workspace-header { flex-wrap: wrap; }
   .mock-name-separator { display: none; }
   .mock-name-input { width: min(16rem, 70vw); }

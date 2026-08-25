@@ -36,6 +36,22 @@
 </section>
 <section class="block-examples" aria-labelledby="binding-blocks-heading">
   <span class="mock-section-label" id="binding-blocks-heading">Binding blocks</span>
+  <div class="grammar-basic-example-list">
+    <article class="grammar-basic-example">
+      <SequenceExampleTile tile={{ kind: 'sequence-tile', type: 'bind', title: 'Binding', description: 'Capture a value' }} variant="palette" container="grammar-examples:palette" />
+      <PlaygroundBlockShell title="binding" summary={'family = "PN-"'} kind="bind" collapsible initiallyOpen={false} onRemove={() => {}}>
+        <div class="grammar-expr-body">
+          <label>Name<input value="family" aria-label="Binding name" /></label>
+          <div class="grammar-child-label">Captures</div>
+          <div class="grammar-binding-target">
+            <PlaygroundBlockShell title="literal" summary={'"PN-"'} kind="literal" size="small" collapsible initiallyOpen={false} onRemove={() => {}}>
+              <div class="grammar-expr-body"><label>Text<input value="PN-" aria-label="Captured literal text" /></label></div>
+            </PlaygroundBlockShell>
+          </div>
+        </div>
+      </PlaygroundBlockShell>
+    </article>
+  </div>
 </section>
 <section class="block-examples" aria-labelledby="choice-blocks-heading">
   <span class="mock-section-label" id="choice-blocks-heading">Choice blocks</span>

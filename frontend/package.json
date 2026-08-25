@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@thisux/sveltednd": "^0.7.0",
     "svelte": "^5.0.0"
   },
   "devDependencies": {

@@ -6,9 +6,9 @@ export type Route =
   | { kind: 'part'; id: string }
   | { kind: 'revision'; partNumber: string; id: string }
   | { kind: 'settings' }
-  | { kind: 'seq-defs' }
   | { kind: 'seq-def-mock' }
-  | { kind: 'new-seq-def' }
+  | { kind: 'grammar-mock' }
+  | { kind: 'playground'; page: 'dnd-ops' }
   | { kind: 'not-found' }
 
 export function parseRoute(pathname = window.location.pathname): Route {
@@ -16,6 +16,10 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 1 && parts[0] === 'parts') return { kind: 'parts' }
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
   if (parts.length === 1 && parts[0] === 'settings') return { kind: 'settings' }
+  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'mock') return { kind: 'seq-def-mock' }
+  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'grammar-mock') return { kind: 'grammar-mock' }
+  if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'dnd-ops') return { kind: 'playground', page: 'dnd-ops' }
+  if (parts.length === 1 && parts[0] === 'playground') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'artifacts') return { kind: 'artifact', id: parts[1] }
   if (parts.length >= 2 && parts[0] === 'parts') {
     return { kind: 'taxonomy', segments: parts.slice(1).length > 0 ? parts.slice(1) : ['components'] }
@@ -24,9 +28,6 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 4 && parts[0] === 'part' && parts[2] === 'revision') {
     return { kind: 'revision', partNumber: parts[1], id: parts[3] }
   }
-  if (parts.length === 2 && parts[0] === 'settings' && parts[1] === 'sequence-definitions') return { kind: 'seq-defs' }
-  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'mock') return { kind: 'seq-def-mock' }
-  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'new') return { kind: 'new-seq-def' }
   return { kind: 'not-found' }
 }
 

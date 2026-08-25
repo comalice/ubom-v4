@@ -60,7 +60,6 @@ export type SnapshotView = {
   mediaType: string
   size: number
 }
-export type SeqDefView = { id: string }
 export type TaxonomyDefSummary = { id: string; seqDef: string }
 
 async function get<T>(path: string): Promise<T> {
@@ -111,16 +110,6 @@ export const getSources = () => get<SourceView[]>('/api/artifact-sources')
 export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
 export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
-export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
-export type SeqDefNode =
-  | { kind: 'literal'; text: string }
-  | { kind: 'range'; min: number; max: number; width?: number; pad?: number }
-  | { kind: 'choice' | 'concat' | 'range_radix'; children: SeqDefNode[] }
-  | { kind: 'bind'; name: string; child: SeqDefNode }
-  | { kind: 'places'; alphabets: string[] }
-export const createSeqDef = (id: string, root: SeqDefNode) => post<{ id: string }>('/api/seq-defs', { id, root })
-export const previewSeqDef = (root: SeqDefNode, bindings: Record<string, string>) =>
-  post<{ id: string; bindings: Record<string, string>; value?: string; error?: string }>('/api/seq-defs/preview', { root, bindings })
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })

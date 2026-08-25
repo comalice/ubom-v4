@@ -291,6 +291,10 @@ ul { line-height: 1.8; }
 .playground-block-shell-toggle { right: .55rem; width: 1.5rem; height: 1.5rem; }
 .playground-block-shell-remove { right: .3rem; padding: 0 .15rem; color: var(--muted); border: 0; font: .7rem ui-monospace, monospace; }
 .playground-block-shell-toggle:hover, .playground-block-shell-remove:hover { border-color: var(--accent); background: var(--surface); }
+.playground-block-shell-remove span, .sequence-example-remove-mark { position: relative; display: block; width: .65rem; height: .65rem; }
+.playground-block-shell-remove span::before, .playground-block-shell-remove span::after, .sequence-example-remove-mark::before, .sequence-example-remove-mark::after { position: absolute; top: 50%; left: 50%; width: .7rem; height: 1px; background: currentColor; content: ''; }
+.playground-block-shell-remove span::before, .sequence-example-remove-mark::before { transform: translate(-50%, -50%) rotate(45deg); }
+.playground-block-shell-remove span::after, .sequence-example-remove-mark::after { transform: translate(-50%, -50%) rotate(-45deg); }
 .playground-block-shell-toggle span { width: .45rem; height: .45rem; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: translateY(-.12rem) rotate(45deg); transition: transform .12s; }
 .playground-block-shell-open .playground-block-shell-toggle span { transform: translateY(.12rem) rotate(225deg); }
 .grammar-basic-example-list { display: grid; gap: .8rem; margin-top: .7rem; }

@@ -19,7 +19,7 @@
     <span class="grammar-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>
     {#if collapsible}<button class="playground-block-shell-toggle" type="button" aria-label={open ? `Collapse ${title}` : `Expand ${title}`} aria-expanded={open} on:click={() => open = !open}><span aria-hidden="true"></span></button>{/if}
-    {#if onRemove}<button class="playground-block-shell-remove" type="button" aria-label="Remove {title}" on:click={onRemove}>x</button>{/if}
+    {#if onRemove}<button class="playground-block-shell-remove" type="button" aria-label="Remove {title}" on:click={onRemove}><span aria-hidden="true"></span></button>{/if}
   </header>
   {#if !collapsible || open}<div class="playground-block-shell-body"><slot /></div>{/if}
 </article>

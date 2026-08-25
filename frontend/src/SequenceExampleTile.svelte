@@ -15,5 +15,5 @@
     <strong>{tile.title}</strong>
     {#if variant === 'palette'}<small>{tile.description}</small>{/if}
   </span>
-  {#if onRemove}<button type="button" aria-label="Remove {tile.title}" on:click={onRemove}>x</button>{/if}
+  {#if onRemove}<button type="button" aria-label="Remove {tile.title}" on:click={onRemove}><span class="sequence-example-remove-mark" aria-hidden="true"></span></button>{/if}
 </div>

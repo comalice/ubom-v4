@@ -1,5 +1,6 @@
 <script lang="ts">
   import PlaygroundBasicBlock from './PlaygroundBasicBlock.svelte'
+  import PlaygroundExpandableBlock from './PlaygroundExpandableBlock.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
 
   const withoutRemove = { id: 101, kind: 'component' as const, label: 'Literal', blockType: 'basic' as const, children: [] }
@@ -13,6 +14,15 @@
 
 <p class="eyebrow">Block examples</p>
 <h2>Block examples</h2>
+<section class="block-examples" aria-labelledby="draggable-tile-components-heading">
+  <div class="block-examples-heading">
+    <span class="mock-section-label" id="draggable-tile-components-heading">Draggable tile components</span>
+    <p>Descriptions belong to the draggable tile and are not carried into a dropped block.</p>
+  </div>
+  <div class="block-example-tile-grid">
+    {#each tiles as tile}<SequenceExampleTile tile={tile} variant="palette" container="sequence-example:palette" />{/each}
+  </div>
+</section>
 <section class="block-examples" aria-labelledby="optional-remove-heading">
   <div class="block-examples-heading">
     <span class="mock-section-label" id="optional-remove-heading">Optional remove control</span>
@@ -26,6 +36,22 @@
     <article class="block-example-card">
       <span class="block-example-kind">With x</span>
       <PlaygroundBasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Literal" onRemove={() => {}} />
+    </article>
+  </div>
+</section>
+<section class="block-examples" aria-labelledby="expand-collapse-heading">
+  <div class="block-examples-heading">
+    <span class="mock-section-label" id="expand-collapse-heading">Expand / collapse</span>
+    <p>The top-right control toggles an empty body while keeping the header distinct.</p>
+  </div>
+  <div class="block-example-grid">
+    <article class="block-example-card">
+      <span class="block-example-kind">Expanded</span>
+      <PlaygroundExpandableBlock title="Literal" />
+    </article>
+    <article class="block-example-card">
+      <span class="block-example-kind">Collapsed</span>
+      <PlaygroundExpandableBlock title="Literal" initiallyOpen={false} />
     </article>
   </div>
 </section>
@@ -43,14 +69,5 @@
       <span class="block-example-kind">Long title</span>
       <PlaygroundBasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Reference value" />
     </article>
-  </div>
-</section>
-<section class="block-examples" aria-labelledby="sequence-tiles-heading">
-  <div class="block-examples-heading">
-    <span class="mock-section-label" id="sequence-tiles-heading">Sequence tiles</span>
-    <p>Descriptions belong to the draggable tile and are not carried into a dropped block.</p>
-  </div>
-  <div class="block-example-tile-grid">
-    {#each tiles as tile}<SequenceExampleTile tile={tile} variant="palette" container="sequence-example:palette" />{/each}
   </div>
 </section>

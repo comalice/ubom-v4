@@ -1,5 +1,6 @@
 <script lang="ts">
   import PlaygroundBlockShell from './PlaygroundBlockShell.svelte'
+  import PlaygroundField from './PlaygroundField.svelte'
   import PlaygroundStructurePreview, { type StructureNode } from './PlaygroundStructurePreview.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
 
@@ -41,18 +42,20 @@
     <section class="grammar-editor-sketch-canvas" aria-labelledby="grammar-editor-canvas-heading">
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
       <div class="grammar-editor-sketch-root-label">Root sequence</div>
-      <div class="grammar-editor-sketch-row">
-        <PlaygroundBlockShell title="literal" summary={'"PN-"'} kind="literal" collapsible initiallyOpen={false} onRemove={() => {}}>
-          <div class="grammar-editor-sketch-block-body">Text: "PN-"</div>
-        </PlaygroundBlockShell>
-        <PlaygroundBlockShell title="binding" summary={'family = "SN-"'} kind="bind" collapsible initiallyOpen={false} onRemove={() => {}}>
-          <div class="grammar-editor-sketch-block-body">Name: family · Captures: literal</div>
-        </PlaygroundBlockShell>
-        <PlaygroundBlockShell title="choice" summary={'"A" | "B"'} kind="choice" collapsible initiallyOpen={false} onRemove={() => {}}>
-          <div class="grammar-editor-sketch-block-body">2 alternatives</div>
-        </PlaygroundBlockShell>
-      </div>
-      <div class="grammar-editor-sketch-drop-zone">Drop a block here to add it to the root sequence</div>
+      <PlaygroundField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
+        <div class="grammar-editor-sketch-row">
+          <PlaygroundBlockShell title="literal" summary={'"PN-"'} kind="literal" collapsible initiallyOpen={false} onRemove={() => {}}>
+            <div class="grammar-editor-sketch-block-body">Text: "PN-"</div>
+          </PlaygroundBlockShell>
+          <PlaygroundBlockShell title="binding" summary={'family = "SN-"'} kind="bind" collapsible initiallyOpen={false} onRemove={() => {}}>
+            <div class="grammar-editor-sketch-block-body">Name: family · Captures: literal</div>
+          </PlaygroundBlockShell>
+          <PlaygroundBlockShell title="choice" summary={'"A" | "B"'} kind="choice" collapsible initiallyOpen={false} onRemove={() => {}}>
+            <div class="grammar-editor-sketch-block-body">2 alternatives</div>
+          </PlaygroundBlockShell>
+        </div>
+        <div class="grammar-editor-sketch-drop-zone">Drop a block here to add it to the root sequence</div>
+      </PlaygroundField>
     </section>
     <aside class="grammar-editor-sketch-map" aria-labelledby="grammar-editor-map-heading">
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-sketch-count">3 blocks</span></div>

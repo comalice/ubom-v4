@@ -1,14 +1,16 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'dnd-ops' | 'block-examples'
+  export let page: 'dnd-ops' | 'block-examples' | 'grammar-blocks'
   import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
   import DndOpsPlayground from './DndOpsPlayground.svelte'
+  import GrammarBlocksPlayground from './GrammarBlocksPlayground.svelte'
   import PlaygroundMoveMarker from './PlaygroundMoveMarker.svelte'
   import PlaygroundNewMarker from './PlaygroundNewMarker.svelte'
 
   const links = [
     { label: 'DnD operations', path: '/playground/dnd-ops', page: 'dnd-ops' as const },
     { label: 'Block examples', path: '/playground/block-examples', page: 'block-examples' as const },
+    { label: 'Grammar blocks', path: '/playground/grammar-blocks', page: 'grammar-blocks' as const },
   ]
 </script>
 
@@ -38,6 +40,8 @@
       <DndOpsPlayground />
     {:else if page === 'block-examples'}
       <BlockExamplesPlayground />
+    {:else if page === 'grammar-blocks'}
+      <GrammarBlocksPlayground />
     {/if}
   </main>
 </div>

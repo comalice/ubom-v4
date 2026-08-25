@@ -118,5 +118,27 @@
       </PlaygroundNestedBlock>
     </article>
   </div>
+  <div class="block-examples-heading nested-block-example-heading">
+    <span class="mock-section-label">Expand / collapse</span>
+    <p>A nested block can hide or reveal its child list.</p>
+  </div>
+  <div class="block-example-grid nested-block-example-grid">
+    <article class="block-example-card">
+      <span class="block-example-kind">Expanded</span>
+      <PlaygroundNestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples" collapsible>
+        <div class="nested-block-example-children">
+          {#each nestedWithChildren.children as child}<PlaygroundBasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
+        </div>
+      </PlaygroundNestedBlock>
+    </article>
+    <article class="block-example-card">
+      <span class="block-example-kind">Collapsed</span>
+      <PlaygroundNestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples" collapsible initiallyOpen={false}>
+        <div class="nested-block-example-children">
+          {#each nestedWithChildren.children as child}<PlaygroundBasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
+        </div>
+      </PlaygroundNestedBlock>
+    </article>
+  </div>
 </section>
 </section>

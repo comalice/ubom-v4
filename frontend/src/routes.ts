@@ -8,7 +8,7 @@ export type Route =
   | { kind: 'settings' }
   | { kind: 'seq-def-mock' }
   | { kind: 'grammar-mock' }
-  | { kind: 'playground'; page: 'dnd-ops' | 'block-examples' }
+  | { kind: 'playground'; page: 'dnd-ops' | 'block-examples' | 'grammar-blocks' }
   | { kind: 'not-found' }
 
 export function parseRoute(pathname = window.location.pathname): Route {
@@ -20,6 +20,7 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'grammar-mock') return { kind: 'grammar-mock' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'dnd-ops') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'block-examples') return { kind: 'playground', page: 'block-examples' }
+  if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'grammar-blocks') return { kind: 'playground', page: 'grammar-blocks' }
   if (parts.length === 1 && parts[0] === 'playground') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'artifacts') return { kind: 'artifact', id: parts[1] }
   if (parts.length >= 2 && parts[0] === 'parts') {

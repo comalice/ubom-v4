@@ -1,5 +1,6 @@
 <script lang="ts">
-  import PlaygroundDraggable, { type ComponentNode } from './PlaygroundDraggable.svelte'
+  import PlaygroundBlockShell from './PlaygroundBlockShell.svelte'
+  import { type ComponentNode } from './PlaygroundDraggable.svelte'
 
   export let item: ComponentNode
   export let parentId: number | null
@@ -10,4 +11,4 @@
   export let onRemove: (() => void) | undefined = undefined
 </script>
 
-<PlaygroundDraggable item={item} dragData={{ ...item, nodeId: item.id, sourceParentId: parentId }} {container} variant="placed" {size} {title} {onDragEnd} {onRemove} />
+<PlaygroundBlockShell item={item} dragData={{ ...item, nodeId: item.id, sourceParentId: parentId }} {container} {size} {title} kind={item.blockType} {onDragEnd} {onRemove} />

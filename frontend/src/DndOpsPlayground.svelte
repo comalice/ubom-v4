@@ -1,12 +1,9 @@
 <script lang="ts">
   import { droppable, type DragDropState } from '@thisux/sveltednd'
-  import PlaygroundMoveMarker from './PlaygroundMoveMarker.svelte'
-  import PlaygroundNewMarker from './PlaygroundNewMarker.svelte'
+  import PlaygroundComponentList, { type ComponentNode, type DropSlot } from './PlaygroundComponentList.svelte'
   import PlaygroundDraggable, { type DraggableComponent } from './PlaygroundDraggable.svelte'
 
-  type ComponentNode = DraggableComponent & { id: number; children: ComponentNode[] }
   type DragItem = DraggableComponent
-  type DropSlot = { parentId: number | null; index: number }
   const rootListId = 'component-list:root'
   const component: DraggableComponent = { kind: 'component', label: 'Literal' }
   let placedComponents: ComponentNode[] = []
@@ -72,12 +69,7 @@
     <section class="dnd-field-area" aria-labelledby="field-heading">
       <span class="mock-section-label" id="field-heading">Field</span>
       <div class="dnd-field" class:dnd-field-filled={placedComponents.length > 0} use:droppable={{ container: rootListId, disabled: placedComponents.length > 0, callbacks: { onDragEnter: handleDragEnter, onDragLeave: handleDragLeave, onDrop: handleDrop }, attributes: { dragOverClass: 'dnd-field-over' } }}>
-        {#if placedComponents.length}<div class="dnd-placed-list">{#each placedComponents as item, index (item.id)}
-          <div data-parent-id="root" data-slot-index={index} class:dnd-insert-zone-edge={index === 0} class="dnd-insert-zone" use:droppable={{ container: rootListId, callbacks: { onDragOver: handleGapDragOver, onDragLeave: handleGapDragLeave, onDrop: (state) => handleGapDrop({ parentId: null, index }, state) } }}><i aria-hidden="true"></i><PlaygroundNewMarker /><PlaygroundMoveMarker /></div>
-          <PlaygroundDraggable item={item} dragData={{ ...item, nodeId: item.id, sourceParentId: null }} container={rootListId} variant="placed" onDragEnd={handleDragEnd} onRemove={() => placedComponents = placedComponents.filter((existingItem) => existingItem.id !== item.id)} />
-        {/each}
-          <div data-parent-id="root" data-slot-index={placedComponents.length} class="dnd-insert-zone dnd-insert-zone-edge" use:droppable={{ container: rootListId, callbacks: { onDragOver: handleGapDragOver, onDragLeave: handleGapDragLeave, onDrop: (state) => handleGapDrop({ parentId: null, index: placedComponents.length }, state) } }}><i aria-hidden="true"></i><PlaygroundNewMarker /><PlaygroundMoveMarker /></div>
-        </div>{/if}
+        {#if placedComponents.length}<PlaygroundComponentList nodes={placedComponents} parentId={null} container={rootListId} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onRemove={(id) => placedComponents = placedComponents.filter((item) => item.id !== id)} />{/if}
         {#if newItemOver}<span class="dnd-new-drop-target" aria-hidden="true">+</span>{:else if !placedComponents.length}<span>Drop a component here</span>{/if}
       </div>
     </section>

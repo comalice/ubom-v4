@@ -6,6 +6,7 @@
   export let item: DraggableComponent
   export let container: string
   export let variant: 'palette' | 'placed'
+  export let size: 'normal' | 'small' = 'normal'
   export let title = item.label
   export let description = ''
   export let dragData: DraggableComponent = item
@@ -13,7 +14,7 @@
   export let onRemove: (() => void) | undefined = undefined
 </script>
 
-<div class={variant === 'palette' ? 'dnd-palette-card' : 'dnd-placed-component'} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
+<div class:dnd-size-small={size === 'small'} class={variant === 'palette' ? 'dnd-palette-card' : 'dnd-placed-component'} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
   <span class="dnd-grip" aria-hidden="true">::</span>
   <span>
     <strong>{title}</strong>

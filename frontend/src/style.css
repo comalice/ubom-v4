@@ -297,6 +297,11 @@ ul { line-height: 1.8; }
 .block-example-grid { display: grid; grid-template-columns: repeat(2, minmax(12rem, 1fr)); gap: 1rem; }
 .block-example-card { display: grid; align-content: start; gap: .6rem; min-height: 7rem; padding: .8rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
 .block-example-kind { color: var(--muted); font: .58rem ui-monospace, monospace; text-transform: uppercase; }
+.block-example-part { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+.block-example-part > h3 { margin: 0; color: var(--ink); font: 400 1rem Georgia, serif; }
+.nested-block-example-grid { grid-template-columns: repeat(2, minmax(12rem, 25rem)); }
+.nested-block-example-empty { display: block; padding: .8rem; color: var(--muted); background: var(--ground); border: 1px dashed var(--hairline); font: .62rem ui-monospace, monospace; }
+.nested-block-example-children { display: grid; gap: .4rem; }
 .example-expandable-block { overflow: hidden; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
 .example-expandable-block-open { border-color: var(--accent); }
 .example-expandable-header { display: flex; align-items: center; justify-content: space-between; min-height: 2.5rem; padding: .55rem .65rem; color: var(--accent); background: var(--accent-light); }
@@ -387,6 +392,7 @@ ul { line-height: 1.8; }
 .dnd-insert-zone-move > .dnd-insert-marker-new { display: none; }
 .dnd-insert-zone-move > .dnd-insert-marker-move { display: grid; opacity: 1; transform: scale(1); }
 .dnd-placed-component { position: relative; display: flex; align-items: center; gap: .5rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent); border-radius: .2rem; }
+.dnd-placed-component.dnd-size-small { min-height: 1.5rem; padding: .1rem 1.7rem .1rem .45rem; }
 .dnd-placed-component strong { font: .68rem ui-monospace, monospace; }
 .dnd-placed-component button { position: absolute; top: .25rem; right: .3rem; padding: 0 .15rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: .7rem ui-monospace, monospace; }
 .dnd-placed-component button:hover { color: #f87171; }

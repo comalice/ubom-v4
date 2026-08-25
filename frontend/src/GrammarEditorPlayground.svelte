@@ -3,7 +3,7 @@
   import PlaygroundField from './PlaygroundField.svelte'
   import PlaygroundStructurePreview, { type StructureNode } from './PlaygroundStructurePreview.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
-  import type { Expr } from './grammarMock'
+  import { generateSequence, parseSequence, type Expr } from './grammarMock'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -23,10 +23,11 @@
     ] },
   ]
   let structureNodes: StructureNode[] = []
+  let testInput = 'PN-SN-A'
 
   function summary(expr: Expr): string {
     if (expr.kind === 'literal') return JSON.stringify(expr.text)
-    if (expr.kind === 'number') return `${expr.min}..${expr.max}`
+    if (expr.kind === 'number') return `${expr.min}..${expr.max} / width ${expr.width} / pad ${expr.pad}`
     if (expr.kind === 'alpha') return `${expr.min}..${expr.max}`
     if (expr.kind === 'chars') return expr.chars
     if (expr.kind === 'bind') return `${expr.name || 'unnamed'} = ${expr.child ? summary(expr.child) : 'empty'}`
@@ -43,6 +44,8 @@
   }
 
   $: structureNodes = rootSequence.map(toStructureNode)
+  $: parsed = parseSequence(rootSequence, testInput)
+  $: generated = generateSequence(rootSequence)
 
   function updateRoot(index: number, value: Expr) { rootSequence = rootSequence.map((expr, exprIndex) => exprIndex === index ? value : expr) }
   function removeRoot(index: number) { rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
@@ -73,6 +76,12 @@
     <aside class="grammar-editor-sketch-map" aria-labelledby="grammar-editor-map-heading">
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
       <div class="grammar-editor-sketch-map-tree"><PlaygroundStructurePreview nodes={structureNodes} showIds={false} /></div>
+      <section class="grammar-editor-sketch-test" aria-labelledby="grammar-editor-test-heading">
+        <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>
+        <label class="grammar-input-label">Input to parse<input bind:value={testInput} placeholder="Type a candidate value" /></label>
+        {#if testInput}<div class:grammar-valid={!('error' in parsed)} class="grammar-parse-result">{#if 'error' in parsed}Invalid: {parsed.error}{:else}Valid input{#each Object.entries(parsed.bindings) as [name, value]}<span>{name} = {value}</span>{/each}{/if}</div>{/if}
+        <div class="grammar-output"><span>Canonical generated value</span><strong>{generated || '(empty)'}</strong></div>
+      </section>
     </aside>
   </div>
 </section>

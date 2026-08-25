@@ -7,27 +7,17 @@
   export let onRemove: () => void = () => {}
 
   function update(value: Partial<Expr>) { onChange({ ...expr, ...value } as Expr) }
-  function title() {
-    return expr.kind === 'number' ? 'number' : expr.kind
-  }
-
-  function summary() {
-    if (expr.kind === 'literal') return JSON.stringify(expr.text)
-    if (expr.kind === 'number') return `${expr.min}..${expr.max} / width ${expr.width} / pad ${expr.pad}`
-    if (expr.kind === 'alpha') return `${expr.min}..${expr.max}`
-    if (expr.kind === 'chars') return expr.chars
-    if (expr.kind === 'bind') return `${expr.name || 'unnamed'} = ${expr.child ? summaryFor(expr.child) : 'empty'}`
-    return expr.children.map((alternative) => alternative.length ? alternative.map(summaryFor).join(' + ') : 'empty').join(' | ')
-  }
-
   function summaryFor(value: Expr): string {
     if (value.kind === 'literal') return JSON.stringify(value.text)
-    if (value.kind === 'number') return `${value.min}..${value.max}`
+    if (value.kind === 'number') return `${value.min}..${value.max} / width ${value.width} / pad ${value.pad}`
     if (value.kind === 'alpha') return `${value.min}..${value.max}`
     if (value.kind === 'chars') return value.chars
-    if (value.kind === 'bind') return value.name || 'unnamed'
-    return 'choice'
+    if (value.kind === 'bind') return `${value.name || 'unnamed'} = ${value.child ? summaryFor(value.child) : 'empty'}`
+    return value.children.map((alternative) => alternative.length ? alternative.map(summaryFor).join(' + ') : 'empty').join(' | ')
   }
+
+  $: blockTitle = expr.kind === 'number' ? 'number' : expr.kind
+  $: blockSummary = summaryFor(expr)
 
   function removeChild(alternativeIndex: number, childIndex: number) {
     if (expr.kind !== 'choice') return
@@ -43,7 +33,7 @@
   }
 </script>
 
-<PlaygroundBlockShell title={title()} summary={summary()} kind={expr.kind} collapsible initiallyOpen={false} onRemove={onRemove}>
+<PlaygroundBlockShell title={blockTitle} summary={blockSummary} kind={expr.kind} collapsible initiallyOpen={false} onRemove={onRemove}>
   {#if expr.kind === 'literal'}
     <div class="grammar-expr-body"><label>Text<input value={expr.text} aria-label="Literal text" on:input={(event) => update({ text: (event.currentTarget as HTMLInputElement).value })} /></label></div>
   {:else if expr.kind === 'number'}

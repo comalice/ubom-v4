@@ -263,8 +263,8 @@ ul { line-height: 1.8; }
 .grammar-two-fields > span { padding-bottom: .35rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
 .grammar-child-label { color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .grammar-choice { gap: .45rem; }
-.grammar-alternative { display: flex; align-items: flex-start; gap: .3rem; }
-.grammar-alternative-label { padding-top: .45rem; color: var(--accent); font: .62rem ui-monospace, monospace; }
+.grammar-alternative { display: flex; align-items: flex-start; gap: .45rem; padding: .45rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.grammar-alternative-label { display: grid; min-width: 1.25rem; height: 1.25rem; place-items: center; color: var(--accent); background: var(--accent-light); border: 1px solid var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
 .grammar-alternative .grammar-row { flex: 1; }
 .grammar-choice-block { display: grid; gap: .35rem; min-width: 0; flex: 1; }
 .grammar-remove-alternative { margin-top: .4rem; }
@@ -329,6 +329,8 @@ ul { line-height: 1.8; }
 .grammar-editor-sketch-map-tree .dnd-structure-node { display: inline-block; padding: .25rem .3rem; border: 1px solid transparent; border-radius: .2rem; }
 .grammar-editor-sketch-map-tree .dnd-structure-node:hover { border-color: var(--hairline); background: var(--surface); }
 .grammar-editor-sketch-map-tree .dnd-structure-node small { margin-left: 0; }
+.grammar-editor-sketch-test { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+.grammar-editor-sketch-test .grammar-output { margin-top: .7rem; }
 .grammar-model-note strong { color: var(--ink); font: .62rem ui-monospace, monospace; }
 .playground { display: grid; grid-template-columns: 14rem minmax(0, 1fr); min-height: 72vh; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; overflow: hidden; }
 .playground-nav { padding: 1.25rem 1rem; border-right: 1px solid var(--hairline); }

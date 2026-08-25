@@ -43,6 +43,9 @@
   }
 
   $: structureNodes = rootSequence.map(toStructureNode)
+
+  function updateRoot(index: number, value: Expr) { rootSequence = rootSequence.map((expr, exprIndex) => exprIndex === index ? value : expr) }
+  function removeRoot(index: number) { rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
 </script>
 
 <p class="eyebrow">Grammar editor</p>
@@ -62,7 +65,7 @@
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
       <PlaygroundField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
         <div class="grammar-editor-sketch-row">
-          {#each rootSequence as expr (expr.id)}<GrammarEditorBlock {expr} />{/each}
+          {#each rootSequence as expr, index (expr.id)}<GrammarEditorBlock {expr} onChange={(value) => updateRoot(index, value)} onRemove={() => removeRoot(index)} />{/each}
         </div>
         <div class="grammar-editor-sketch-drop-zone">Drop a block here to add it to the root sequence</div>
       </PlaygroundField>

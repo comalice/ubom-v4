@@ -9,7 +9,7 @@
   {#each nodes as node (node.id)}
     <li>
        <span class="dnd-structure-node">{node.label}<small>{#if showIds}#{node.id} {node.blockType}{:else}{node.summary}{/if}</small></span>
-      {#if node.children.length}<svelte:self nodes={node.children} />{/if}
+      {#if node.children.length}<svelte:self nodes={node.children} showIds={showIds} />{/if}
     </li>
   {:else}
     <li class="dnd-structure-empty">Empty component list</li>

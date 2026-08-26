@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"strconv"
+	"sync"
 
 	ubom "ubom-v4"
 	"ubom-v4/artifact"
@@ -15,6 +16,7 @@ var (
 )
 
 type MemoryStore struct {
+	mu             sync.Mutex
 	sources        map[artifact.SourceID]artifact.Source
 	artifacts      map[artifact.ID]artifact.Artifact
 	snapshots      map[artifact.SnapshotID]artifact.Snapshot
@@ -206,6 +208,12 @@ func (s *MemoryStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
 }
 
 func (s *MemoryStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.createPartNumber(part)
+}
+
+func (s *MemoryStore) createPartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	if err := part.Validate(); err != nil {
 		return ubom.PartNumber{}, err
 	}
@@ -294,6 +302,8 @@ func (s *MemoryStore) GetPartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNu
 }
 
 func (s *MemoryStore) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := draft.Validate(); err != nil {
 		return err
 	}
@@ -309,6 +319,8 @@ func (s *MemoryStore) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
 }
 
 func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumber, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	draft, err := s.GetPartNumberDraft(id)
 	if err != nil {
 		return ubom.PartNumber{}, err
@@ -328,15 +340,14 @@ func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	part, err := ubom.NewPartNumber(value, seqDef, taxonomy)
+	part, err := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{}).NewPartNumber(value, draft.Attributes)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
 	if !taxonomyNodeIsAtOrBelow(taxonomy.Taxonomy.Root, draft.ContextNodeID, part.TaxonomyNodeID) {
-		return ubom.PartNumber{}, errors.New("part number does not match draft taxonomy context")
+		return ubom.PartNumber{}, ubom.NewDomainError(ubom.ErrorCategoryClassification, "part number does not match draft taxonomy context")
 	}
-	part.Attributes = draft.Attributes
-	created, err := s.CreatePartNumber(part)
+	created, err := s.createPartNumber(part)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}

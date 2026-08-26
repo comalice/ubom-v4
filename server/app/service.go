@@ -112,73 +112,12 @@ func (s *Service) PreviewPartNumberDraft(id ubom.PartNumberDraftID) (PartNumberD
 		return PartNumberDraftPreview{}, err
 	}
 	preview := PartNumberDraftPreview{ID: draft.ID, Status: draft.Status, Bindings: draft.Bindings}
-	seqDef, err := s.store.GetSeqDef(draft.SeqDefID)
-	if err != nil {
-		return PartNumberDraftPreview{}, err
-	}
-	bindings := map[string]string{}
-	for key, value := range draft.Bindings {
-		bindings[key] = value
-	}
-	value, err := seqDef.Generate(bindings)
+	allocation, err := s.AllocatePartNumberDraft(id)
 	if err != nil {
 		preview.Error = err.Error()
 		return preview, nil
 	}
-	preview.Value = value
-	taxonomy, err := s.store.GetTaxonomyDef(draft.TaxonomyDefID)
-	if err != nil {
-		return PartNumberDraftPreview{}, err
-	}
-	part, err := ubom.NewPartNumber(value, seqDef, taxonomy)
-	if err != nil {
-		preview.Error = err.Error()
-		return preview, nil
-	}
-	part.Attributes = draft.Attributes
-	assignments, err := taxonomy.Taxonomy.EffectiveAttributes(part.TaxonomyNodeID)
-	if err != nil {
-		preview.Error = err.Error()
-		return preview, nil
-	}
-	if err := ubom.ValidatePartNumberAttributes(part.Attributes, assignments, taxonomy.AttributeDefs); err != nil {
-		preview.Error = err.Error()
-		return preview, nil
-	}
-	for {
-		if _, lookupErr := s.store.GetPartNumber(value); errors.Is(lookupErr, store.ErrNotFound) {
-			break
-		} else if lookupErr != nil {
-			return PartNumberDraftPreview{}, lookupErr
-		}
-		advanced := false
-		fields := seqDef.Fields()
-		for i := len(fields) - 1; i >= 0; i-- {
-			rangeNode, ok := fields[i].Node.(ubom.RangeNode)
-			if !ok {
-				continue
-			}
-			current, parseErr := rangeNode.ParseValue(bindings[fields[i].Name])
-			if parseErr != nil || current >= rangeNode.Max {
-				continue
-			}
-			bindings[fields[i].Name], err = rangeNode.Format(current + 1)
-			if err != nil {
-				return PartNumberDraftPreview{}, err
-			}
-			value, err = seqDef.Generate(bindings)
-			if err != nil {
-				return PartNumberDraftPreview{}, err
-			}
-			advanced = true
-			break
-		}
-		if !advanced {
-			preview.Error = "no unused part number is available"
-			return preview, nil
-		}
-	}
-	preview.Value, preview.Bindings, preview.SuggestedBindings = value, bindings, bindings
+	preview.Value, preview.Bindings, preview.SuggestedBindings = allocation.Value, allocation.Bindings, allocation.Bindings
 	preview.Complete = true
 	return preview, nil
 }

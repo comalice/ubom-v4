@@ -798,12 +798,12 @@ func (s *SQLiteStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	part, err := ubom.NewPartNumber(value, seqDef, taxonomy)
+	part, err := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{}).NewPartNumber(value, draft.Attributes)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
 	if !taxonomyNodeIsAtOrBelow(taxonomy.Taxonomy.Root, draft.ContextNodeID, part.TaxonomyNodeID) {
-		return ubom.PartNumber{}, errors.New("part number does not match draft taxonomy context")
+		return ubom.PartNumber{}, ubom.NewDomainError(ubom.ErrorCategoryClassification, "part number does not match draft taxonomy context")
 	}
 	part.Attributes = draft.Attributes
 	if err := validatePartNumberReferences(s, part); err != nil {

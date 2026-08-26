@@ -30,6 +30,9 @@ var (
 	ErrNoOrdering        = ErrorCategoryOrdering
 	ErrAllocation        = ErrorCategoryAllocation
 	ErrConflict          = ErrorCategoryConflict
+	// ErrOrderingExhausted distinguishes a finite ordering from a definition
+	// that cannot be advanced at all; both retain their domain categories.
+	ErrOrderingExhausted = errors.New("ordering exhausted")
 )
 
 // DomainError reports a domain failure with a stable category and an

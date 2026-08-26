@@ -224,7 +224,7 @@ func (d SeqDef) Successor(input string) (string, error) {
 		copy(result[slot.offset:], formatted)
 		return string(result), nil
 	}
-	return "", WrapDomainError(ErrorCategoryOrdering, "sequence ordering is exhausted", nil)
+	return "", WrapDomainError(ErrorCategoryOrdering, "sequence ordering is exhausted", ErrOrderingExhausted)
 }
 
 type orderingSlot struct {

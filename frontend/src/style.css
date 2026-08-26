@@ -115,6 +115,9 @@ ul { line-height: 1.8; }
 .settings-item strong, .settings-item small { display: block; }
 .settings-item small { margin-top: .2rem; color: var(--muted); font-size: .78rem; }
 .settings-item-disabled { color: var(--muted); }
+.seq-def-list-header { display: flex; align-items: start; justify-content: space-between; gap: 1.5rem; max-width: 42rem; }
+.seq-def-new-link { display: inline-flex; align-items: center; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border-radius: .25rem; font-size: .85rem; }
+.seq-def-new-link:hover { color: var(--surface); background: var(--ink); text-decoration: none; }
 .authoring-panel button { display: inline-flex; align-items: center; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .25rem; cursor: pointer; font: inherit; }
 
 /* Temporary local sequence editor mock, using the application palette. */

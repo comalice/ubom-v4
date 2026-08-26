@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "modernc.org/sqlite"
 	ubom "ubom-v4"
@@ -13,6 +14,7 @@ import (
 )
 
 type SQLiteStore struct {
+	mu sync.Mutex
 	db *sql.DB
 }
 
@@ -855,6 +857,9 @@ func isSQLiteConstraint(err error) bool {
 }
 
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	var nextID int64
 	if err := s.db.QueryRow("SELECT COALESCE(MAX(id), 0) + 1 FROM part_revisions").Scan(&nextID); err != nil {
 		return ubom.PartRevision{}, err
@@ -881,6 +886,9 @@ func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 	result, err := tx.Exec("INSERT INTO part_revisions (part_number_id, revision, revision_seq_def_id) VALUES (?, ?, ?)", partNumberID, revision.Revision, revision.RevisionSeqDefID)
 	if err != nil {
 		tx.Rollback()
+		if isSQLiteConstraint(err) {
+			return ubom.PartRevision{}, ErrAlreadyExists
+		}
 		return ubom.PartRevision{}, err
 	}
 	id, err := result.LastInsertId()
@@ -899,6 +907,9 @@ func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 			(parent_revision_id, position, child_part_number_id, child_revision_id)
 			VALUES (?, ?, ?, ?)`, id, position, childPartID, childRevisionID); err != nil {
 			tx.Rollback()
+			if isSQLiteConstraint(err) {
+				return ubom.PartRevision{}, ErrNotFound
+			}
 			return ubom.PartRevision{}, err
 		}
 	}

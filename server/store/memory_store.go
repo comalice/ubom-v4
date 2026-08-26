@@ -358,6 +358,9 @@ func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 }
 
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	prospectiveID := ubom.PartRevisionID(strconv.FormatInt(s.nextRevisionID, 10))
 	if err := revision.Validate(); err != nil {
 		return ubom.PartRevision{}, err
@@ -371,7 +374,10 @@ func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartR
 	part, _ := s.partNumbersByID(revision.PartNumberID)
 	part = clonePartNumber(part)
 	for _, existingID := range part.PartRevisionID {
-		existing, _ := s.GetPartRevision(existingID)
+		existing, ok := s.partRevisions[existingID]
+		if !ok {
+			return ubom.PartRevision{}, ErrNotFound
+		}
 		if existing.Revision == revision.Revision {
 			return ubom.PartRevision{}, ErrAlreadyExists
 		}

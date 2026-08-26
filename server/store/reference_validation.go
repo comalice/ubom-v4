@@ -1,7 +1,6 @@
 package store
 
 import (
-	"errors"
 	"fmt"
 
 	ubom "ubom-v4"
@@ -79,7 +78,7 @@ func validatePartRevisionReferences(s Store, revision ubom.PartRevision) error {
 		return err
 	}
 	if _, err := revisionSeqDef.Parse(revision.Revision); err != nil {
-		return fmt.Errorf("invalid revision value: %w", err)
+		return ubom.WrapDomainError(ubom.ErrorCategorySyntax, "invalid revision value", err)
 	}
 	for _, item := range revision.BOM {
 		if _, err := s.GetPartNumberByID(item.PartNumberID); err != nil {
@@ -90,7 +89,7 @@ func validatePartRevisionReferences(s Store, revision ubom.PartRevision) error {
 			return err
 		}
 		if childRevision.PartNumberID != item.PartNumberID {
-			return fmt.Errorf("line item revision does not belong to line item part number")
+			return ubom.NewDomainError(ubom.ErrorCategoryConflict, "line item revision does not belong to line item part number")
 		}
 	}
 	return nil
@@ -101,7 +100,7 @@ func validatePartRevisionCycles(s Store, revision ubom.PartRevision, prospective
 	var visit func(ubom.PartRevisionID) error
 	visit = func(id ubom.PartRevisionID) error {
 		if id == prospectiveID {
-			return fmt.Errorf("part revision BOM contains a cycle")
+			return ubom.NewDomainError(ubom.ErrorCategoryConflict, "part revision BOM contains a cycle")
 		}
 		if visited[id] {
 			return nil
@@ -120,9 +119,6 @@ func validatePartRevisionCycles(s Store, revision ubom.PartRevision, prospective
 	}
 	for _, item := range revision.BOM {
 		if err := visit(item.PartRevisionID); err != nil {
-			if errors.Is(err, ErrNotFound) {
-				continue
-			}
 			return err
 		}
 	}

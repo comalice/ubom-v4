@@ -38,12 +38,12 @@ func LoadSampleData(s store.Store) (ubom.PartNumber, error) {
 			Label:      "Components",
 			Attributes: []ubom.AttributeAssignment{{AttributeDefID: "footprint", Required: true}},
 			Children: []ubom.TaxonomyNode{
-				{ID: "resistors", Label: "Resistors", Matches: map[string]string{"category": "A"}, Attributes: []ubom.AttributeAssignment{
+				{ID: "resistors", Label: "Resistors", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("category", "A")}, Attributes: []ubom.AttributeAssignment{
 					{AttributeDefID: "resistance", Required: true},
 					{AttributeDefID: "tolerance"},
 					{AttributeDefID: "power_rating"},
 				}},
-				{ID: "capacitors", Label: "Capacitors", Matches: map[string]string{"category": "B"}},
+				{ID: "capacitors", Label: "Capacitors", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("category", "B")}},
 			},
 		}},
 	}

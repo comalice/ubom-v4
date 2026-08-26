@@ -107,11 +107,11 @@ func TestNewPartNumber(t *testing.T) {
 		Taxonomy: Taxonomy{Root: TaxonomyNode{
 			ID: "components",
 			Children: []TaxonomyNode{{
-				ID:      "resistors",
-				Matches: map[string]string{"category": "001"},
+				ID:         "resistors",
+				Predicates: []TaxonomyPredicate{ExactPredicate("category", "001")},
 				Children: []TaxonomyNode{{
-					ID:      "thick-film",
-					Matches: map[string]string{"family": "00042"},
+					ID:         "thick-film",
+					Predicates: []TaxonomyPredicate{ExactPredicate("family", "00042")},
 				}},
 			}},
 		}},
@@ -150,11 +150,11 @@ func TestPartNumberIdentityFlow(t *testing.T) {
 		Taxonomy: Taxonomy{Root: TaxonomyNode{
 			ID: "components",
 			Children: []TaxonomyNode{{
-				ID:      "resistors",
-				Matches: map[string]string{"category": "001"},
+				ID:         "resistors",
+				Predicates: []TaxonomyPredicate{ExactPredicate("category", "001")},
 				Children: []TaxonomyNode{{
-					ID:      "thick-film",
-					Matches: map[string]string{"family": "00042"},
+					ID:         "thick-film",
+					Predicates: []TaxonomyPredicate{ExactPredicate("family", "00042")},
 				}},
 			}},
 		}},

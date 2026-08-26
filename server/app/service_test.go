@@ -59,7 +59,7 @@ func TestTaxonomyNodeViewUsesExactNodeMembership(t *testing.T) {
 	metadata := store.NewMemoryStore()
 	seq := ubom.NewSeqDef(ubom.Bind("kind", ubom.Choice(ubom.Literal("A"), ubom.Literal("B")))).WithID("exact-seq")
 	taxonomy := ubom.TaxonomyDef{ID: "exact-taxonomy", SeqDef: seq.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
-		ID: "root", Label: "Root", Children: []ubom.TaxonomyNode{{ID: "a", Label: "A", Matches: map[string]string{"kind": "A"}}},
+		ID: "root", Label: "Root", Children: []ubom.TaxonomyNode{{ID: "a", Label: "A", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "A")}}},
 	}}}
 	if err := metadata.CreateSeqDef(seq); err != nil {
 		t.Fatal(err)

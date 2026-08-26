@@ -70,7 +70,7 @@ func TestAllocateDraftReportsExhaustionAndNoOrdering(t *testing.T) {
 	if err := metadata.CreateSeqDef(choice); err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.CreateTaxonomyDef(ubom.TaxonomyDef{ID: "choice-taxonomy", SeqDef: choice.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Children: []ubom.TaxonomyNode{{ID: "a", Matches: map[string]string{"kind": "A"}}, {ID: "b", Matches: map[string]string{"kind": "B"}}}}}}); err != nil {
+	if err := metadata.CreateTaxonomyDef(ubom.TaxonomyDef{ID: "choice-taxonomy", SeqDef: choice.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Children: []ubom.TaxonomyNode{{ID: "a", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "A")}}, {ID: "b", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "B")}}}}}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := metadata.CreatePartNumberDraft(ubom.PartNumberDraft{ID: "choice-draft", SeqDefID: choice.ID, TaxonomyDefID: "choice-taxonomy", ContextNodeID: "b", Bindings: map[string]string{"kind": "A"}, Status: ubom.DraftStatusDraft}); err != nil {

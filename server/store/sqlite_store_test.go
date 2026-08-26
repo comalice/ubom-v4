@@ -28,8 +28,8 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
 			ID: "components",
 			Children: []ubom.TaxonomyNode{{
-				ID:      "resistors",
-				Matches: map[string]string{"category": "001"},
+				ID:         "resistors",
+				Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("category", "001")},
 			}},
 		}},
 	}

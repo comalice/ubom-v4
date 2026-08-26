@@ -12,13 +12,13 @@ func TestMemoryStoreCopiesMutableValues(t *testing.T) {
 	if err := store.CreateSeqDef(seqDef); err != nil {
 		t.Fatal(err)
 	}
-	taxonomy := ubom.TaxonomyDef{ID: "tax", SeqDef: seqDef.ID, AttributeDefs: []ubom.AttributeDef{{ID: "x", Label: "X", ValueType: ubom.AttributeValueString}}, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Matches: map[string]string{"kind": "one"}, Attributes: []ubom.AttributeAssignment{{AttributeDefID: "x"}}}}}
+	taxonomy := ubom.TaxonomyDef{ID: "tax", SeqDef: seqDef.ID, AttributeDefs: []ubom.AttributeDef{{ID: "x", Label: "X", ValueType: ubom.AttributeValueString}}, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "one")}, Attributes: []ubom.AttributeAssignment{{AttributeDefID: "x"}}}}}
 	if err := store.CreateTaxonomyDef(taxonomy); err != nil {
 		t.Fatal(err)
 	}
-	taxonomy.Taxonomy.Root.Matches["kind"] = "mutated"
+	taxonomy.Taxonomy.Root.Predicates[0].Value = "mutated"
 	gotTaxonomy, err := store.GetTaxonomyDef(taxonomy.ID)
-	if err != nil || gotTaxonomy.Taxonomy.Root.Matches["kind"] != "one" {
+	if err != nil || gotTaxonomy.Taxonomy.Root.Predicates[0].Value != "one" {
 		t.Fatalf("taxonomy was not isolated: %#v, %v", gotTaxonomy, err)
 	}
 	part, err := store.CreatePartNumber(ubom.PartNumber{Value: "PN-one", SeqDefID: seqDef.ID, TaxonomyDefID: taxonomy.ID, TaxonomyNodeID: "root", Attributes: []ubom.PartNumberAttribute{{AttributeDefID: "x", Value: "y"}}})

@@ -65,8 +65,8 @@ func TestPartNumberPersistenceInvariant(t *testing.T) {
 			taxonomy := ubom.TaxonomyDef{ID: "pn-invariant-taxonomy", SeqDef: seqDef.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
 				ID: "root",
 				Children: []ubom.TaxonomyNode{
-					{ID: "a", Matches: map[string]string{"family": "A"}},
-					{ID: "b", Matches: map[string]string{"family": "B"}},
+					{ID: "a", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "A")}},
+					{ID: "b", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "B")}},
 				},
 			}}}
 			if err := store.CreateSeqDef(seqDef); err != nil {

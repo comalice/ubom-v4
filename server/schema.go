@@ -67,6 +67,47 @@ func (s Schema) Interpret(value string) (InterpretedValue, error) {
 	return s.Parse(value)
 }
 
+// NewPartNumber materializes a durable part number from the schema's
+// interpretation and caller-supplied attributes. Structural validation is
+// performed by Parse and schema validation; attribute validation is semantic
+// and uses the effective assignments on the selected taxonomy path.
+//
+// An open schema may interpret an unmatched value, but such a value has no
+// durable classification node and cannot be materialized as a PartNumber.
+func (s Schema) NewPartNumber(value string, attributes []PartNumberAttribute) (PartNumber, error) {
+	return s.materializePartNumber(value, attributes, true)
+}
+
+func (s Schema) materializePartNumber(value string, attributes []PartNumberAttribute, validateAttributes bool) (PartNumber, error) {
+	interpreted, err := s.Parse(value)
+	if err != nil {
+		return PartNumber{}, err
+	}
+	if interpreted.Classification == nil || interpreted.Classification.NodeID == "" {
+		return PartNumber{}, WrapDomainError(ErrorCategoryClassification, "part number requires a taxonomy classification", nil)
+	}
+
+	if validateAttributes {
+		assignments, err := s.Taxonomy.Taxonomy.EffectiveAttributes(interpreted.Classification.NodeID)
+		if err != nil {
+			return PartNumber{}, WrapDomainError(ErrorCategoryClassification, "classification has no materializable taxonomy node", err)
+		}
+		if err := ValidatePartNumberAttributes(attributes, assignments, s.Taxonomy.AttributeDefs); err != nil {
+			return PartNumber{}, err
+		}
+	}
+
+	// Copy caller-owned data so the materialized value is stable after return.
+	ownedAttributes := append([]PartNumberAttribute(nil), attributes...)
+	return PartNumber{
+		Value:          interpreted.Parsed.Value,
+		SeqDefID:       s.SeqDef.ID,
+		TaxonomyDefID:  s.Taxonomy.ID,
+		TaxonomyNodeID: interpreted.Classification.NodeID,
+		Attributes:     ownedAttributes,
+	}, nil
+}
+
 // Generate renders bindings and interprets the generated canonical value,
 // ensuring generation and parsing/classification cannot disagree.
 func (s Schema) Generate(bindings map[string]string) (InterpretedValue, error) {

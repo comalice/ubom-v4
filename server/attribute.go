@@ -80,27 +80,27 @@ func ValidatePartNumberAttributes(values []PartNumberAttribute, assignments []At
 	seen := make(map[AttributeDefID]bool, len(values))
 	for _, value := range values {
 		if value.AttributeDefID == "" {
-			return fmt.Errorf("part number attribute has no definition ID")
+			return attributeValueError("part number attribute has no definition ID")
 		}
 		if value.Value == "" {
-			return fmt.Errorf("part number attribute %q has no value", value.AttributeDefID)
+			return attributeValueError("part number attribute %q has no value", value.AttributeDefID)
 		}
 		if seen[value.AttributeDefID] {
-			return fmt.Errorf("duplicate part number attribute %q", value.AttributeDefID)
+			return attributeValueError("duplicate part number attribute %q", value.AttributeDefID)
 		}
 		seen[value.AttributeDefID] = true
 		definition, ok := defs[value.AttributeDefID]
 		if !ok {
-			return fmt.Errorf("part number attribute %q references unknown definition", value.AttributeDefID)
+			return attributeValueError("part number attribute %q references unknown definition", value.AttributeDefID)
 		}
 		if _, ok := assigned[value.AttributeDefID]; !ok {
-			return fmt.Errorf("part number attribute %q is not assigned by taxonomy", value.AttributeDefID)
+			return attributeValueError("part number attribute %q is not assigned by taxonomy", value.AttributeDefID)
 		}
 		switch definition.ValueType {
 		case AttributeValueString:
 		case AttributeValueDecimal:
 			if _, ok := new(big.Rat).SetString(value.Value); !ok {
-				return fmt.Errorf("part number attribute %q is not a decimal", value.AttributeDefID)
+				return attributeValueError("part number attribute %q is not a decimal", value.AttributeDefID)
 			}
 		case AttributeValueEnum:
 			valid := false
@@ -111,14 +111,18 @@ func ValidatePartNumberAttributes(values []PartNumberAttribute, assignments []At
 				}
 			}
 			if !valid {
-				return fmt.Errorf("part number attribute %q has invalid enum value %q", value.AttributeDefID, value.Value)
+				return attributeValueError("part number attribute %q has invalid enum value %q", value.AttributeDefID, value.Value)
 			}
 		}
 	}
 	for _, assignment := range assignments {
 		if assignment.Required && !seen[assignment.AttributeDefID] {
-			return fmt.Errorf("required part number attribute %q is missing", assignment.AttributeDefID)
+			return attributeValueError("required part number attribute %q is missing", assignment.AttributeDefID)
 		}
 	}
 	return nil
+}
+
+func attributeValueError(format string, args ...any) error {
+	return WrapDomainError(ErrorCategoryValue, fmt.Sprintf(format, args...), nil)
 }

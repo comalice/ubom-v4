@@ -131,33 +131,14 @@ func (p PartNumber) Validate() error {
 	return nil
 }
 
-// NewPartNumber validates value against seqDef and permanently links the
-// resulting part number to both definition IDs.
+// NewPartNumber is the legacy adapter for Schema.NewPartNumber. Durable part
+// numbers require a taxonomy classification node, even though callers of this
+// adapter do not provide an explicit open/closed policy.
 func NewPartNumber(value string, seqDef SeqDef, taxonomy TaxonomyDef) (PartNumber, error) {
-	if seqDef.ID == "" {
-		return PartNumber{}, fmt.Errorf("sequence definition has no ID")
-	}
-	if taxonomy.ID == "" {
-		return PartNumber{}, fmt.Errorf("taxonomy definition has no ID")
-	}
-	if taxonomy.SeqDef != seqDef.ID {
-		return PartNumber{}, fmt.Errorf("taxonomy does not belong to sequence definition")
-	}
-	parsed, err := seqDef.ParseValues(value)
-	if err != nil {
-		return PartNumber{}, err
-	}
-	nodeID, err := taxonomy.Taxonomy.ProjectNode(parsed)
-	if err != nil {
-		return PartNumber{}, err
-	}
-
-	return PartNumber{
-		Value:          parsed.Value,
-		SeqDefID:       seqDef.ID,
-		TaxonomyDefID:  taxonomy.ID,
-		TaxonomyNodeID: nodeID,
-	}, nil
+	// The historical API has no attribute parameter and callers commonly fill
+	// attributes immediately afterward. Keep that construction behavior while
+	// sharing all schema parsing and classification logic.
+	return NewSchema(seqDef, taxonomy, SchemaPolicy{}).materializePartNumber(value, nil, false)
 }
 
 // Next generates the next part number from the part number's SeqDef.

@@ -2,6 +2,7 @@ package artifact
 
 import (
 	"context"
+	"fmt"
 	"io"
 )
 
@@ -11,6 +12,16 @@ type Stored struct {
 	Digest    string
 	MediaType string
 	Size      int64
+}
+
+func (s Stored) Validate() error {
+	if !validContentKey(s.Key) || s.Key != s.Digest {
+		return fmt.Errorf("%w: key and digest do not identify the same SHA-256 content", ErrInvalidContentKey)
+	}
+	if s.Size < 0 || s.Size > MaxSnapshotSize {
+		return fmt.Errorf("%w: invalid stored size %d", ErrSnapshotTooLarge, s.Size)
+	}
+	return nil
 }
 
 // SnapshotStore retains and reopens artifact content. It does not persist

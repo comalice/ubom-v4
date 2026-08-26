@@ -18,13 +18,13 @@ type Source struct {
 
 func (s Source) Validate() error {
 	if strings.TrimSpace(string(s.ID)) == "" {
-		return fmt.Errorf("artifact source has no ID")
+		return fmt.Errorf("%w: no ID", ErrInvalidSource)
 	}
 	if strings.TrimSpace(s.Name) == "" {
-		return fmt.Errorf("artifact source %q has no name", s.ID)
+		return fmt.Errorf("%w %q: no name", ErrInvalidSource, s.ID)
 	}
 	if strings.TrimSpace(s.Kind) == "" {
-		return fmt.Errorf("artifact source %q has no kind", s.ID)
+		return fmt.Errorf("%w %q: no kind", ErrInvalidSource, s.ID)
 	}
 	return nil
 }
@@ -40,19 +40,19 @@ type Artifact struct {
 
 func (a Artifact) Validate() error {
 	if strings.TrimSpace(string(a.ID)) == "" {
-		return fmt.Errorf("artifact has no ID")
+		return fmt.Errorf("%w: no ID", ErrInvalidArtifact)
 	}
 	if strings.TrimSpace(a.Name) == "" {
-		return fmt.Errorf("artifact %q has no name", a.ID)
+		return fmt.Errorf("%w %q: no name", ErrInvalidArtifact, a.ID)
 	}
 	if strings.TrimSpace(a.Kind) == "" {
-		return fmt.Errorf("artifact %q has no kind", a.ID)
+		return fmt.Errorf("%w %q: no kind", ErrInvalidArtifact, a.ID)
 	}
 	if strings.TrimSpace(string(a.SourceID)) == "" {
-		return fmt.Errorf("artifact %q has no source ID", a.ID)
+		return fmt.Errorf("%w %q: no source ID", ErrInvalidArtifact, a.ID)
 	}
 	if strings.TrimSpace(a.Path) == "" {
-		return fmt.Errorf("artifact %q has no source path", a.ID)
+		return fmt.Errorf("%w %q: no source path", ErrInvalidArtifact, a.ID)
 	}
 	return nil
 }
@@ -71,16 +71,16 @@ type Snapshot struct {
 
 func (s Snapshot) Validate() error {
 	if strings.TrimSpace(string(s.ID)) == "" {
-		return fmt.Errorf("artifact snapshot has no ID")
+		return fmt.Errorf("%w: no ID", ErrInvalidSnapshot)
 	}
 	if strings.TrimSpace(string(s.ArtifactID)) == "" {
-		return fmt.Errorf("artifact snapshot %q has no artifact ID", s.ID)
+		return fmt.Errorf("%w %q: no artifact ID", ErrInvalidSnapshot, s.ID)
 	}
 	if strings.TrimSpace(s.Commit) == "" && strings.TrimSpace(s.Digest) == "" && strings.TrimSpace(s.SnapshotKey) == "" {
-		return fmt.Errorf("artifact snapshot %q has no immutable identity", s.ID)
+		return fmt.Errorf("%w %q: no immutable identity", ErrInvalidSnapshot, s.ID)
 	}
 	if s.Size < 0 {
-		return fmt.Errorf("artifact snapshot %q has a negative size", s.ID)
+		return fmt.Errorf("%w %q: negative size", ErrInvalidSnapshot, s.ID)
 	}
 	return nil
 }

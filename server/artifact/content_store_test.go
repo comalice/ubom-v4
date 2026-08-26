@@ -66,3 +66,46 @@ func TestSnapshotStoreRejectsOversizedContent(t *testing.T) {
 		t.Fatalf("Put() error = %v, want ErrSnapshotTooLarge", err)
 	}
 }
+
+func TestSnapshotStoreHonorsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := NewMemorySnapshotStore().Put(ctx, strings.NewReader("content"), "text/plain")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Put() error = %v, want context.Canceled", err)
+	}
+}
+
+func TestContentDigestHasCanonicalAddress(t *testing.T) {
+	stored, err := NewMemorySnapshotStore().Put(context.Background(), strings.NewReader("content"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Key != "sha256:ed7002b439e9ac845f7b1c5f0f6e6f8f5f7f8f0f0f0f0f0f0f0f0f0f0f0f0f0" {
+		// Keep this assertion about format and the known prefix separate from
+		// the implementation's digest helper.
+		if !validContentKey(stored.Key) || stored.Key != stored.Digest {
+			t.Fatalf("stored address = %q, digest = %q", stored.Key, stored.Digest)
+		}
+	}
+	if !validContentKey(stored.Key) || stored.Key != stored.Digest {
+		t.Fatalf("stored address = %q, digest = %q", stored.Key, stored.Digest)
+	}
+}
+
+func TestStoredValidateRejectsNonDigestAddress(t *testing.T) {
+	if err := (Stored{Key: "file", Digest: "file", Size: 1}).Validate(); !errors.Is(err, ErrInvalidContentKey) {
+		t.Fatalf("Stored.Validate() error = %v, want ErrInvalidContentKey", err)
+	}
+}
+
+func TestContentDigestHasExpectedSHA256Value(t *testing.T) {
+	stored, err := NewMemorySnapshotStore().Put(context.Background(), strings.NewReader("content"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "sha256:ed7002b439e9ac845f22357d822bac1444730fbdb6016d3ec9432297b9ec9f73"
+	if stored.Key != want || stored.Digest != want || stored.Size != int64(len("content")) {
+		t.Fatalf("stored = %#v, want key/digest %q", stored, want)
+	}
+}

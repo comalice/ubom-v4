@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ubom-v4/artifact"
@@ -106,5 +108,25 @@ func TestSnapshotServiceRejectsEmptyReference(t *testing.T) {
 	_, err = NewSnapshotService(metadata, artifact.NewMemorySnapshotStore(), adapter).Capture(context.Background(), item.ID, "")
 	if err == nil {
 		t.Fatal("Capture() accepted an empty reference")
+	}
+}
+
+func TestLocalFileAdapterRejectsWrongSource(t *testing.T) {
+	source := artifact.Source{ID: "local", Name: "Local", Kind: "filesystem"}
+	adapter, err := NewLocalFileAdapter(LocalFileAdapterConfig{Source: source, Root: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = adapter.Resolve(context.Background(), artifact.Artifact{ID: "x", Name: "x", Kind: "file", SourceID: "other", Path: "x"}, "ref")
+	if !errors.Is(err, artifact.ErrSourceOwnership) {
+		t.Fatalf("Resolve() error = %v, want ErrSourceOwnership", err)
+	}
+}
+
+func TestSnapshotServiceRejectsMissingContentStore(t *testing.T) {
+	service := NewSnapshotService(store.NewMemoryStore(), nil)
+	_, err := service.Capture(context.Background(), "missing", "ref")
+	if err == nil || !strings.Contains(err.Error(), "snapshot store is not configured") {
+		t.Fatalf("Capture() error = %v, want missing store error", err)
 	}
 }

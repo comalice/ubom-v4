@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"ubom-v4/artifact"
 	"ubom-v4/store"
@@ -20,12 +21,27 @@ type SnapshotService struct {
 func NewSnapshotService(metadata store.Store, content artifact.SnapshotStore, adapters ...artifact.SourceAdapter) *SnapshotService {
 	bySource := make(map[artifact.SourceID]artifact.SourceAdapter, len(adapters))
 	for _, adapter := range adapters {
+		if adapter == nil {
+			continue
+		}
 		bySource[adapter.Source().ID] = adapter
 	}
 	return &SnapshotService{metadata: metadata, content: content, adapters: bySource}
 }
 
 func (s *SnapshotService) Capture(ctx context.Context, artifactID artifact.ID, reference string) (artifact.Snapshot, error) {
+	if s == nil || s.metadata == nil {
+		return artifact.Snapshot{}, errors.New("artifact metadata store is not configured")
+	}
+	if s.content == nil {
+		return artifact.Snapshot{}, errors.New("artifact snapshot store is not configured")
+	}
+	if err := ctx.Err(); err != nil {
+		return artifact.Snapshot{}, err
+	}
+	if strings.TrimSpace(reference) == "" {
+		return artifact.Snapshot{}, artifact.ErrInvalidReference
+	}
 	item, err := s.metadata.GetArtifact(artifactID)
 	if err != nil {
 		return artifact.Snapshot{}, err
@@ -34,17 +50,27 @@ func (s *SnapshotService) Capture(ctx context.Context, artifactID artifact.ID, r
 	if !ok {
 		return artifact.Snapshot{}, fmt.Errorf("no adapter for source %q", item.SourceID)
 	}
+	if adapter.Source().ID != item.SourceID {
+		return artifact.Snapshot{}, fmt.Errorf("adapter source %q does not own artifact source %q", adapter.Source().ID, item.SourceID)
+	}
 	resolved, err := adapter.Resolve(ctx, item, reference)
 	if err != nil {
 		return artifact.Snapshot{}, err
 	}
 	if resolved.Content == nil {
-		return artifact.Snapshot{}, errors.New("source returned no artifact content")
+		return artifact.Snapshot{}, artifact.ErrSnapshotContentNil
+	}
+	if strings.TrimSpace(resolved.Reference) == "" {
+		resolved.Content.Close()
+		return artifact.Snapshot{}, artifact.ErrInvalidReference
 	}
 	defer resolved.Content.Close()
 	stored, err := s.content.Put(ctx, resolved.Content, resolved.MediaType)
 	if err != nil {
 		return artifact.Snapshot{}, err
+	}
+	if err := stored.Validate(); err != nil {
+		return artifact.Snapshot{}, fmt.Errorf("invalid snapshot store result: %w", err)
 	}
 	snapshot := artifact.Snapshot{
 		ID: snapshotID(artifactID, resolved.Reference, stored.Digest), ArtifactID: artifactID,

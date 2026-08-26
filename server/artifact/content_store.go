@@ -6,10 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const MaxSnapshotSize int64 = 64 << 20
@@ -18,6 +20,7 @@ var ErrSnapshotTooLarge = errors.New("artifact snapshot exceeds maximum size")
 
 // MemorySnapshotStore is a content-only SnapshotStore for tests and ephemeral use.
 type MemorySnapshotStore struct {
+	mu       sync.RWMutex
 	contents map[string][]byte
 }
 
@@ -31,6 +34,8 @@ func (s *MemorySnapshotStore) Put(ctx context.Context, r io.Reader, mediaType st
 		return Stored{}, err
 	}
 	digest := contentDigest(data)
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, ok := s.contents[digest]; !ok {
 		s.contents[digest] = data
 	}
@@ -42,8 +47,10 @@ func (s *MemorySnapshotStore) Open(ctx context.Context, key string) (io.ReadClos
 		return nil, err
 	}
 	if !validContentKey(key) {
-		return nil, os.ErrNotExist
+		return nil, errors.Join(ErrInvalidContentKey, os.ErrNotExist)
 	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	data, ok := s.contents[key]
 	if !ok {
 		return nil, os.ErrNotExist
@@ -62,15 +69,19 @@ type FileSnapshotStoreConfig struct {
 }
 
 func NewFileSnapshotStore(config FileSnapshotStoreConfig) (*FileSnapshotStore, error) {
-	if config.Root == "" {
-		return nil, errors.New("snapshot store root is empty")
+	if strings.TrimSpace(config.Root) == "" {
+		return nil, fmt.Errorf("%w: root is empty", ErrSnapshotStoreConfig)
 	}
 	root, err := filepath.Abs(config.Root)
 	if err != nil {
 		return nil, err
 	}
 	if err := os.MkdirAll(root, 0o755); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: create root: %v", ErrSnapshotStoreConfig, err)
+	}
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() {
+		return nil, fmt.Errorf("%w: root is not a directory", ErrSnapshotStoreConfig)
 	}
 	return &FileSnapshotStore{root: root}, nil
 }
@@ -110,7 +121,7 @@ func (s *FileSnapshotStore) Open(ctx context.Context, key string) (io.ReadCloser
 		return nil, err
 	}
 	if !validContentKey(key) {
-		return nil, os.ErrNotExist
+		return nil, errors.Join(ErrInvalidContentKey, os.ErrNotExist)
 	}
 	return os.Open(filepath.Join(s.root, key))
 }
@@ -124,6 +135,9 @@ func readContent(ctx context.Context, r io.Reader) ([]byte, error) {
 	}
 	data, err := io.ReadAll(io.LimitReader(contextReader{ctx: ctx, reader: r}, MaxSnapshotSize+1))
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if int64(len(data)) > MaxSnapshotSize {

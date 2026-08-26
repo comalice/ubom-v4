@@ -118,6 +118,13 @@ ul { line-height: 1.8; }
 .seq-def-list-header { display: flex; align-items: start; justify-content: space-between; gap: 1.5rem; max-width: 42rem; }
 .seq-def-new-link { display: inline-flex; align-items: center; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border-radius: .25rem; font-size: .85rem; }
 .seq-def-new-link:hover { color: var(--surface); background: var(--ink); text-decoration: none; }
+.seq-def-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: .75rem; max-width: 42rem; margin: 1rem 0 .6rem; padding: .8rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; }
+.seq-def-toolbar label { display: grid; min-width: 0; gap: .3rem; color: var(--muted); font: .65rem ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.seq-def-toolbar input { min-width: 0; width: 100%; padding: .6rem .7rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; outline: none; font: .8rem ui-monospace, monospace; letter-spacing: normal; text-transform: none; }
+.seq-def-toolbar input:focus { border-color: var(--accent); }
+.seq-def-toolbar button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.25rem; padding: .6rem 1rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .25rem; cursor: pointer; font: .8rem ui-monospace, monospace; white-space: nowrap; }
+.seq-def-toolbar button:hover:not(:disabled) { background: var(--ink); }
+.seq-def-toolbar button:disabled { opacity: .5; cursor: default; }
 .authoring-panel button { display: inline-flex; align-items: center; padding: .65rem 1rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .25rem; cursor: pointer; font: inherit; }
 
 /* Temporary local sequence editor mock, using the application palette. */
@@ -466,4 +473,6 @@ ul { line-height: 1.8; }
   .playground-nav nav a:hover, .playground-nav nav a.playground-nav-active { border-bottom-color: var(--accent); border-left-color: transparent; }
   .playground-content { padding: 1rem; }
   .dnd-ops-stage { grid-template-columns: 1fr; }
+  .seq-def-toolbar { grid-template-columns: 1fr; }
+  .seq-def-toolbar button { width: 100%; }
 }

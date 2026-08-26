@@ -160,22 +160,7 @@ export const createSeqDef = (definition: SeqDefDefinition) => post<{ id: string 
 export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
   post<SeqDefPreview>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })
 export const previewSeqDefRoot = (root: SeqDefNode, bindings: Record<string, string>) =>
-  post<SeqDefPreview>('/api/seq-defs/preview', { root: previewWireNode(root), bindings })
-
-type SeqDefPreviewNode = Omit<SeqDefNode, 'pad' | 'children' | 'child'> & {
-  pad?: number
-  children?: SeqDefPreviewNode[]
-  child?: SeqDefPreviewNode
-}
-
-function previewWireNode(node: SeqDefNode): SeqDefPreviewNode {
-  const { pad: _pad, children: _children, child: _child, ...fields } = node
-  const wireNode: SeqDefPreviewNode = { ...fields }
-  if (node.pad !== undefined) wireNode.pad = node.pad.charCodeAt(0)
-  if (node.children) wireNode.children = node.children.map(previewWireNode)
-  if (node.child) wireNode.child = previewWireNode(node.child)
-  return wireNode
-}
+  post<SeqDefPreview>('/api/seq-defs/preview', { root, bindings })
 export const createTaxonomyDef = (definition: TaxonomyDefinition) => post<{ id: string }>('/api/taxonomy-defs', definition)
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })

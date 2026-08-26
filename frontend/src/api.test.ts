@@ -18,13 +18,19 @@ describe('previewSeqDefRoot', () => {
     })
   })
 
-  it('encodes range padding for the backend byte contract', async () => {
-    const rangeRoot: SeqDefNode = { kind: 'range', min: 0, max: 9, width: 1, pad: '0' }
+  it('preserves string padding in nested range nodes', async () => {
+    const rangeRoot: SeqDefNode = {
+      kind: 'concat',
+      children: [
+        { kind: 'range_radix', children: [{ kind: 'range', min: 0, max: 9, width: 2, pad: ' ' }] },
+        { kind: 'bind', name: 'suffix', child: { kind: 'range', min: 0, max: 9, width: 2, pad: 'X' } },
+      ],
+    }
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 'preview', bindings: {} }), { status: 200 }))
 
     await previewSeqDefRoot(rangeRoot, {})
 
-    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string).root.pad).toBe(48)
+    expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ root: rangeRoot, bindings: {} })
   })
 
   it('uses the server error message for failed requests', async () => {

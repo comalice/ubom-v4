@@ -20,7 +20,7 @@ type sequenceNodeRequest struct {
 	Min       int                   `json:"min,omitempty"`
 	Max       int                   `json:"max,omitempty"`
 	Width     int                   `json:"width,omitempty"`
-	Pad       byte                  `json:"pad,omitempty"`
+	Pad       string                `json:"pad,omitempty"`
 	Alphabets []string              `json:"alphabets,omitempty"`
 	Children  []sequenceNodeRequest `json:"children,omitempty"`
 	Child     *sequenceNodeRequest  `json:"child,omitempty"`
@@ -29,6 +29,16 @@ type sequenceNodeRequest struct {
 type sequenceDefinitionRequest struct {
 	ID   ubom.SeqDefID       `json:"id"`
 	Root sequenceNodeRequest `json:"root"`
+}
+
+func (n sequenceNodeRequest) rangePad() (byte, error) {
+	if n.Pad == "" {
+		return 0, nil
+	}
+	if len(n.Pad) != 1 {
+		return 0, errors.New("range padding must be one character")
+	}
+	return n.Pad[0], nil
 }
 
 func (n sequenceNodeRequest) node() (ubom.SeqDefNode, error) {
@@ -61,7 +71,11 @@ func (n sequenceNodeRequest) node() (ubom.SeqDefNode, error) {
 	case "places":
 		return ubom.PlaceSequenceNode{Alphabets: n.Alphabets}, nil
 	case "range":
-		return ubom.RangeNode{Min: n.Min, Max: n.Max, WidthValue: n.Width, Pad: n.Pad}, nil
+		pad, err := n.rangePad()
+		if err != nil {
+			return nil, err
+		}
+		return ubom.RangeNode{Min: n.Min, Max: n.Max, WidthValue: n.Width, Pad: pad}, nil
 	default:
 		return nil, errors.New("unknown sequence node kind")
 	}

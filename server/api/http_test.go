@@ -271,6 +271,35 @@ func TestSeqDefPreviewAndStrictRequest(t *testing.T) {
 	}
 }
 
+func TestSeqDefAuthoringPadWireContract(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(body string) *httptest.ResponseRecorder {
+		response := httptest.NewRecorder()
+		server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/seq-defs", strings.NewReader(body)))
+		return response
+	}
+
+	body := `{"id":"pad-wire-v1","root":{"kind":"concat","children":[{"kind":"range_radix","children":[{"kind":"range","min":0,"max":9,"width":2,"pad":" "}]},{"kind":"bind","name":"number","child":{"kind":"range","min":0,"max":9,"width":2,"pad":"X"}}]}}`
+	if response := post(body); response.Code != http.StatusCreated {
+		t.Fatalf("create status = %d; body = %s", response.Code, response.Body)
+	}
+	preview := httptest.NewRecorder()
+	server.Handler().ServeHTTP(preview, httptest.NewRequest(http.MethodPost, "/api/seq-defs/pad-wire-v1/preview", strings.NewReader(`{"bindings":{"number":"X7"}}`)))
+	if preview.Code != http.StatusOK || !strings.Contains(preview.Body.String(), `"value":" 0X7"`) {
+		t.Fatalf("preview = %d %s; want nested padding preserved", preview.Code, preview.Body)
+	}
+
+	for _, pad := range []string{`"XX"`, `"12"`} {
+		response := post(`{"id":"invalid-pad","root":{"kind":"range","min":0,"max":9,"width":2,"pad":` + pad + `}}`)
+		if response.Code != http.StatusBadRequest {
+			t.Errorf("pad %s status = %d; body = %s", pad, response.Code, response.Body)
+		}
+	}
+	if response := post(`{"id":"default-pad","root":{"kind":"range","min":0,"max":9,"width":2}}`); response.Code != http.StatusCreated {
+		t.Fatalf("omitted pad status = %d; body = %s", response.Code, response.Body)
+	}
+}
+
 func TestSeqDefFrontendASTCrosswalk(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	tests := []struct {

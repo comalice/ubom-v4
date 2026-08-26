@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"errors"
 	"reflect"
 	"testing"
@@ -129,18 +130,66 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSQLiteStoreRejectsTypedTaxonomyPredicatesUntilPersisted(t *testing.T) {
+func TestSQLiteStoreRoundTripsTypedTaxonomyPredicates(t *testing.T) {
 	store, err := OpenSQLiteStore(":memory:")
 	if err != nil {
 		t.Fatalf("OpenSQLiteStore() error = %v", err)
 	}
 	defer store.Close()
-	definition := ubom.TaxonomyDef{ID: "taxonomy-range-v1", SeqDef: "pn-v1", Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
-		ID: "root", Predicates: []ubom.TaxonomyPredicate{ubom.NumericRangePredicate("group", 100, 199)},
+	seqDef := ubom.NewSeqDef(ubom.Concat(
+		ubom.Bind("group", ubom.Range(100, 999).Width(3)), ubom.Literal("-"),
+		ubom.Bind("code", ubom.Range(0, 9).Width(1)),
+	)).WithID("pn-range-v1")
+	definition := ubom.TaxonomyDef{ID: "taxonomy-range-v1", SeqDef: seqDef.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+		ID: "root", Children: []ubom.TaxonomyNode{{ID: "mid", Predicates: []ubom.TaxonomyPredicate{
+			ubom.NumericRangePredicate("group", 100, 199), ubom.ExactPredicate("code", "4"),
+		}}},
 	}}}
-	if err := store.CreateTaxonomyDef(definition); err == nil {
-		t.Fatal("CreateTaxonomyDef() accepted a predicate it cannot round-trip")
-	} else if !errors.Is(err, ubom.ErrInvalidDefinition) {
-		t.Fatalf("CreateTaxonomyDef() error = %v, want definition error", err)
+	if err := store.CreateSeqDef(seqDef); err != nil {
+		t.Fatalf("CreateSeqDef() error = %v", err)
+	}
+	if err := store.CreateTaxonomyDef(definition); err != nil {
+		t.Fatalf("CreateTaxonomyDef() error = %v", err)
+	}
+	got, err := store.GetTaxonomyDef(definition.ID)
+	if err != nil {
+		t.Fatalf("GetTaxonomyDef() error = %v", err)
+	}
+	if !reflect.DeepEqual(got, definition) {
+		t.Fatalf("GetTaxonomyDef() = %#v, want %#v", got, definition)
+	}
+}
+
+func TestSQLiteStoreMigratesLegacyTaxonomyNodes(t *testing.T) {
+	// A legacy exact-match database is upgraded in place and keeps Matches.
+	// This is deliberately tested separately from typed predicate persistence.
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE seq_defs (id TEXT PRIMARY KEY, ast TEXT NOT NULL);
+		CREATE TABLE taxonomy_defs (id TEXT PRIMARY KEY, seq_def_id TEXT NOT NULL, attribute_defs TEXT NOT NULL);
+		CREATE TABLE taxonomy_nodes (taxonomy_def_id TEXT NOT NULL, id TEXT NOT NULL, parent_id TEXT, label TEXT NOT NULL, matches TEXT NOT NULL, attributes TEXT NOT NULL, position INTEGER NOT NULL, PRIMARY KEY (taxonomy_def_id, id));`); err != nil {
+		t.Fatal(err)
+	}
+	// NewSQLiteStore creates the rest of the schema and performs the column migration.
+	store, err := NewSQLiteStore(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if _, err := db.Exec(`INSERT INTO seq_defs(id, ast) VALUES ('legacy-seq', ?)`, `{"id":"legacy-seq","root":{"kind":"literal","text":"X"}}`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO taxonomy_defs(id, seq_def_id, attribute_defs) VALUES ('legacy-tax', 'legacy-seq', '[]')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO taxonomy_nodes(taxonomy_def_id,id,parent_id,label,matches,attributes,position) VALUES ('legacy-tax','root',NULL,'Root','{"field":"value"}','[]',0)`); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.GetTaxonomyDef("legacy-tax")
+	if err != nil || got.Taxonomy.Root.Matches["field"] != "value" {
+		t.Fatalf("legacy taxonomy = %#v, error = %v", got, err)
 	}
 }

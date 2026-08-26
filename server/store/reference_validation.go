@@ -17,10 +17,22 @@ func validatePartNumberReferences(s Store, part ubom.PartNumber) error {
 		return err
 	}
 	if taxonomyDef.SeqDef != part.SeqDefID {
-		return fmt.Errorf("taxonomy definition does not belong to sequence definition")
+		return ubom.WrapDomainError(ubom.ErrorCategoryDefinition, "taxonomy definition does not belong to sequence definition", nil)
 	}
 	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
 		return ErrNotFound
+	}
+	if taxonomyHasTypedPredicates(taxonomyDef.Taxonomy.Root) {
+		// Typed predicates use the composed schema contract, including field
+		// references and semantic attribute validation.
+		materialized, err := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{}).NewPartNumber(part.Value, part.Attributes)
+		if err != nil {
+			return err
+		}
+		if materialized.TaxonomyNodeID != part.TaxonomyNodeID {
+			return fmt.Errorf("part number value projects to taxonomy node %q, not %q", materialized.TaxonomyNodeID, part.TaxonomyNodeID)
+		}
+		return nil
 	}
 	parsed, err := seqDef.ParseValues(part.Value)
 	if err != nil {
@@ -44,6 +56,18 @@ func validatePartNumberReferences(s Store, part ubom.PartNumber) error {
 		return err
 	}
 	return nil
+}
+
+func taxonomyHasTypedPredicates(node ubom.TaxonomyNode) bool {
+	if len(node.Predicates) > 0 {
+		return true
+	}
+	for _, child := range node.Children {
+		if taxonomyHasTypedPredicates(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func validatePartRevisionReferences(s Store, revision ubom.PartRevision) error {

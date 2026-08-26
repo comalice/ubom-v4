@@ -172,8 +172,14 @@ func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err := def.Validate(); err != nil {
 		return err
 	}
-	if _, err := s.GetSeqDef(def.SeqDef); err != nil {
+	seqDef, err := s.GetSeqDef(def.SeqDef)
+	if err != nil {
 		return err
+	}
+	if taxonomyHasTypedPredicates(def.Taxonomy.Root) {
+		if err := def.ValidateAgainst(seqDef); err != nil {
+			return err
+		}
 	}
 	if _, ok := s.taxonomyDefs[def.ID]; ok {
 		return ErrAlreadyExists
@@ -426,6 +432,7 @@ func cloneTaxonomyNode(node ubom.TaxonomyNode) ubom.TaxonomyNode {
 			clone.Matches[key] = value
 		}
 	}
+	clone.Predicates = append([]ubom.TaxonomyPredicate(nil), node.Predicates...)
 	clone.Attributes = append([]ubom.AttributeAssignment(nil), node.Attributes...)
 	if node.Children != nil {
 		clone.Children = make([]ubom.TaxonomyNode, len(node.Children))

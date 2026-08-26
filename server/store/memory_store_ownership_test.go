@@ -32,3 +32,22 @@ func TestMemoryStoreCopiesMutableValues(t *testing.T) {
 		t.Fatalf("part number was not isolated: %#v, %v", gotPart, err)
 	}
 }
+
+func TestMemoryStoreCopiesTypedPredicates(t *testing.T) {
+	store := NewMemoryStore()
+	seqDef := ubom.NewSeqDef(ubom.Bind("kind", ubom.Literal("one"))).WithID("predicate-seq")
+	if err := store.CreateSeqDef(seqDef); err != nil {
+		t.Fatal(err)
+	}
+	taxonomy := ubom.TaxonomyDef{ID: "predicate-tax", SeqDef: seqDef.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+		ID: "root", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "one")},
+	}}}
+	if err := store.CreateTaxonomyDef(taxonomy); err != nil {
+		t.Fatal(err)
+	}
+	taxonomy.Taxonomy.Root.Predicates[0].Value = "mutated"
+	got, err := store.GetTaxonomyDef(taxonomy.ID)
+	if err != nil || got.Taxonomy.Root.Predicates[0].Value != "one" {
+		t.Fatalf("typed predicates were not isolated: %#v, %v", got, err)
+	}
+}

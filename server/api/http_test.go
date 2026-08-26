@@ -135,6 +135,34 @@ func TestPartNumberViewNotFound(t *testing.T) {
 	}
 }
 
+func TestSeqDefDefinitionEndpoint(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	created := httptest.NewRecorder()
+	server.Handler().ServeHTTP(created, httptest.NewRequest(http.MethodPost, "/api/seq-defs", strings.NewReader(`{"id":"full-view","root":{"kind":"range","min":0,"max":9,"width":2,"pad":" "}}`)))
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create status = %d", created.Code)
+	}
+
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/seq-defs/full-view", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("GET status = %d; body = %s", response.Code, response.Body)
+	}
+	var definition app.SeqDefDefinitionView
+	if err := json.NewDecoder(response.Body).Decode(&definition); err != nil {
+		t.Fatal(err)
+	}
+	if definition.ID != "full-view" || definition.Root.Kind != "range" || definition.Root.Pad != " " {
+		t.Fatalf("definition = %#v", definition)
+	}
+
+	notFound := httptest.NewRecorder()
+	server.Handler().ServeHTTP(notFound, httptest.NewRequest(http.MethodGet, "/api/seq-defs/missing", nil))
+	if notFound.Code != http.StatusNotFound {
+		t.Fatalf("missing status = %d, want %d", notFound.Code, http.StatusNotFound)
+	}
+}
+
 func TestAuthoringFlow(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	post := func(path, body string, wantStatus int) string {

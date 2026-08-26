@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
+import { getSeqDef, getSeqDefs, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -37,6 +37,19 @@ describe('previewSeqDefRoot', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: 'invalid sequence' }), { status: 400, statusText: 'Bad Request' }))
 
     await expect(previewSeqDefRoot(root, {})).rejects.toThrow('invalid sequence')
+  })
+})
+
+describe('sequence definition authoring API', () => {
+  it('lists definitions and fetches the complete authoring document', async () => {
+    const definition = { id: 'full-view', root: { kind: 'range' as const, min: 0, max: 9, width: 2, pad: ' ' } }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: definition.id }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(definition), { status: 200 }))
+
+    await expect(getSeqDefs()).resolves.toEqual([{ id: definition.id }])
+    await expect(getSeqDef(definition.id)).resolves.toEqual(definition)
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(['/api/seq-defs', '/api/seq-defs/full-view'])
   })
 })
 

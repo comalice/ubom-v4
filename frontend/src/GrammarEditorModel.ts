@@ -240,3 +240,18 @@ export function toSeqDefNode(expr: GrammarExpr): SeqDefNode {
 export function toSeqDefRoot(exprs: GrammarExpr[]): SeqDefNode {
   return { kind: 'concat', children: exprs.map(toSeqDefNode) }
 }
+
+export function fromSeqDefRoot(root: SeqDefNode): GrammarExpr[] {
+  const fromNode = (node: SeqDefNode): GrammarExpr => {
+    const id = makeGrammarId()
+    if (node.kind === 'literal') return { id, kind: node.kind, text: node.text ?? '' }
+    if (node.kind === 'range') return { id, kind: node.kind, min: node.min ?? 0, max: node.max ?? 0, width: node.width ?? 1, pad: node.pad ?? '0' }
+    if (node.kind === 'places') return { id, kind: node.kind, alphabets: node.alphabets ?? [] }
+    if (node.kind === 'bind') return { id, kind: node.kind, name: node.name ?? '', child: node.child ? fromNode(node.child) : undefined }
+    if (node.kind === 'choice') return { id, kind: node.kind, children: (node.children ?? []).map(child => child.kind === 'concat' ? (child.children ?? []).map(fromNode) : [fromNode(child)]) }
+    if (node.kind === 'concat') return { id, kind: 'range_radix', children: (node.children ?? []).map(fromNode) }
+    return { id, kind: node.kind, children: (node.children ?? []).map(fromNode) }
+  }
+  if (root.kind === 'concat') return (root.children ?? []).map(fromNode)
+  return [fromNode(root)]
+}

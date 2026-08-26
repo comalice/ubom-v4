@@ -158,6 +158,9 @@ export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
 export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
+export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
+export type SeqDefView = { id: string }
+export const getSeqDef = (id: string) => get<SeqDefDefinition>(`/api/seq-defs/${encodeURIComponent(id)}`)
 export const createSeqDef = (definition: SeqDefDefinition) => post<{ id: string }>('/api/seq-defs', definition)
 export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
   post<SeqDefPreview>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })

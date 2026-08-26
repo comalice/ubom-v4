@@ -10,6 +10,7 @@
   import Authoring from './Authoring.svelte'
   import Settings from './Settings.svelte'
   import GrammarEditor from './GrammarEditor.svelte'
+  import SeqDefEditorPage from './SeqDefEditorPage.svelte'
   import Playground from './Playground.svelte'
   import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
@@ -43,6 +44,8 @@
           ]
       : route.kind === 'grammar-editor'
         ? [{ label: 'Settings', href: '/settings' }, { label: 'Grammar editor' }]
+      : (route.kind === 'seq-def-new' || route.kind === 'seq-def')
+        ? [{ label: 'Settings', href: '/settings' }, { label: 'Sequence definitions' }]
       : route.kind === 'playground'
         ? [{ label: 'Playground' }]
         : route.kind === 'settings'
@@ -75,7 +78,7 @@
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
-        else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'playground') return
+        else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'seq-def-new' || route.kind === 'seq-def' || route.kind === 'playground') return
       else error = 'Page not found'
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Unable to load page'
@@ -181,6 +184,10 @@
     {:else}<p class="muted">No BOM entries.</p>{/if}
   {:else if route.kind === 'grammar-editor'}
     <GrammarEditor />
+  {:else if route.kind === 'seq-def-new'}
+    <SeqDefEditorPage />
+  {:else if route.kind === 'seq-def'}
+    <SeqDefEditorPage id={route.id} />
   {:else if route.kind === 'playground'}
     <Playground navigate={navigate} page={route.page} />
   {:else if route.kind === 'settings'}

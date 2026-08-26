@@ -55,6 +55,25 @@ func TestPartNumberViewUsesTypedClassificationAndEffectiveAttributes(t *testing.
 	}
 }
 
+func TestGetSeqDefDefinitionViewSerializesAuthoringRoot(t *testing.T) {
+	metadata := store.NewMemoryStore()
+	definition := ubom.NewSeqDef(ubom.Concat(ubom.Literal("PN-"), ubom.Range(0, 9).Width(2, ' '))).WithID("authoring-view")
+	if err := metadata.CreateSeqDef(definition); err != nil {
+		t.Fatal(err)
+	}
+
+	view, err := NewService(metadata).GetSeqDefDefinitionView(definition.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.ID != definition.ID || view.Root.Kind != "concat" || len(view.Root.Children) != 2 {
+		t.Fatalf("view = %#v, want complete root", view)
+	}
+	if view.Root.Children[1].Pad != " " {
+		t.Fatalf("pad = %q, want one-character string", view.Root.Children[1].Pad)
+	}
+}
+
 func TestTaxonomyNodeViewUsesExactNodeMembership(t *testing.T) {
 	metadata := store.NewMemoryStore()
 	seq := ubom.NewSeqDef(ubom.Bind("kind", ubom.Choice(ubom.Literal("A"), ubom.Literal("B")))).WithID("exact-seq")

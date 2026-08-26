@@ -283,7 +283,7 @@ ul { line-height: 1.8; }
 .grammar-editor-palette-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .45rem; margin-top: .55rem; }
 .grammar-editor-palette-grid .sequence-example-tile { min-width: 0; }
 .grammar-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; min-height: 25rem; }
-.grammar-editor-canvas { min-width: 0; padding: 1rem; }
+.grammar-editor-canvas { min-width: 0; margin: 0; padding: 1rem; border: 0; }
 .grammar-editor-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
 .grammar-editor-count { color: var(--muted); font-size: .58rem; }
 .grammar-editor-root-label { margin: 1.2rem 0 .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }

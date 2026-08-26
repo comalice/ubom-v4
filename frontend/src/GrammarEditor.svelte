@@ -4,8 +4,12 @@
   import DndField from './DndField.svelte'
   import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
-  import { previewSeqDefCandidate, type SeqDefCandidatePreview } from './api'
-  import { createGrammarExpr as createExpr, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
+  import { previewSeqDefCandidate, type SeqDefCandidatePreview, type SeqDefNode } from './api'
+  import { createGrammarExpr as createExpr, fromSeqDefRoot, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
+
+  export let initialRoot: SeqDefNode | undefined = undefined
+  export let readOnly = false
+  export let onChange: ((root: SeqDefNode) => void) | undefined = undefined
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -16,7 +20,7 @@
     { type: 'choice', title: 'Choice', description: 'One alternative' },
   ]
 
-  let rootSequence: Expr[] = [
+  let rootSequence: Expr[] = initialRoot ? fromSeqDefRoot(initialRoot) : [
     { id: 'literal-1', kind: 'literal', text: 'PN-' },
     { id: 'bind-1', kind: 'bind', name: 'family', child: { id: 'literal-2', kind: 'literal', text: 'SN-' } },
     { id: 'choice-1', kind: 'choice', children: [
@@ -61,6 +65,7 @@
   $: currentCandidatePreview = candidatePreviewKey === candidateKey ? candidatePreview : null
   $: currentCandidateError = candidateErrorKey === candidateKey ? candidateError : ''
   $: candidatePending = candidatePreviewing && candidateRequestKey === candidateKey
+  $: onChange?.(toSeqDefRoot(rootSequence))
 
   async function requestCandidatePreview() {
     const requestKey = candidateKey
@@ -104,6 +109,7 @@
   }
   function handleGapDrop(state: DragDropState<GrammarDragItem>, target: GrammarDropSlot) { handleGrammarDrop(state, target) }
   function handleGrammarDrop(state: DragDropState<DragPayload>, target: DropTarget) {
+    if (readOnly) return
     const item = state.draggedItem
     if (!item) return
     if (item.kind === 'palette') {
@@ -193,26 +199,27 @@
 <p class="eyebrow">Grammar editor</p>
 <h2>Grammar editor</h2>
 <p class="grammar-editor-intro">Build a sequence by dragging blocks from the palette into the editor. Use the structure map to move through nested blocks.</p>
+{#if readOnly}<p class="muted" role="status">This immutable definition is read-only.</p>{/if}
 <section class="grammar-editor" aria-label="Grammar editor layout sketch">
-  <div class="grammar-editor-palette">
+  {#if !readOnly}<div class="grammar-editor-palette">
     <span class="mock-section-label">Block palette</span>
     <div class="grammar-editor-palette-grid">
       {#each paletteTiles as tile}
         <SequenceExampleTile tile={{ kind: 'sequence-tile', ...tile }} variant="palette" container="grammar-editor:palette" dragData={{ kind: 'palette', exprKind: tile.type as ExprKind }} onDragEnd={handleDragEnd} />
       {/each}
     </div>
-  </div>
+  </div>{/if}
   <div class="grammar-editor-layout">
-    <section class="grammar-editor-canvas" aria-labelledby="grammar-editor-canvas-heading">
+    <fieldset class="grammar-editor-canvas" disabled={readOnly}>
       <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
       {#if validationErrors.length}<section class="grammar-validation" aria-labelledby="grammar-validation-heading" role="alert"><strong id="grammar-validation-heading">Fix editor structure</strong><ul>{#each validationErrors as validationError}<li><code>{validationError.path}</code> {validationError.message}</li>{/each}</ul></section>{/if}
       <DndField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
         <div class="grammar-editor-sequence-row">
           <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" validationErrors={validationErrors} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
         </div>
-        <div class="grammar-editor-drop-zone">Drop a block here to add it to the root sequence</div>
+        {#if !readOnly}<div class="grammar-editor-drop-zone">Drop a block here to add it to the root sequence</div>{/if}
       </DndField>
-    </section>
+    </fieldset>
     <aside class="grammar-editor-map" aria-labelledby="grammar-editor-map-heading">
       <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
       <div class="grammar-editor-map-tree"><StructureTree nodes={structureNodes} showIds={false} /></div>

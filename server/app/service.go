@@ -20,6 +20,24 @@ type SeqDefView struct {
 	ID ubom.SeqDefID `json:"id"`
 }
 
+type SeqDefDefinitionView struct {
+	ID   ubom.SeqDefID  `json:"id"`
+	Root SeqDefNodeView `json:"root"`
+}
+
+type SeqDefNodeView struct {
+	Kind      string           `json:"kind"`
+	Text      string           `json:"text,omitempty"`
+	Name      string           `json:"name,omitempty"`
+	Min       int              `json:"min,omitempty"`
+	Max       int              `json:"max,omitempty"`
+	Width     int              `json:"width,omitempty"`
+	Pad       string           `json:"pad,omitempty"`
+	Alphabets []string         `json:"alphabets,omitempty"`
+	Children  []SeqDefNodeView `json:"children,omitempty"`
+	Child     *SeqDefNodeView  `json:"child,omitempty"`
+}
+
 type SeqDefFieldView struct {
 	Name    string   `json:"name"`
 	Kind    string   `json:"kind"`
@@ -46,6 +64,71 @@ func (s *Service) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevis
 }
 func (s *Service) GetSeqDefForAuthoring(id ubom.SeqDefID) (ubom.SeqDef, error) {
 	return s.store.GetSeqDef(id)
+}
+
+func (s *Service) GetSeqDefDefinitionView(id ubom.SeqDefID) (SeqDefDefinitionView, error) {
+	def, err := s.store.GetSeqDef(id)
+	if err != nil {
+		return SeqDefDefinitionView{}, err
+	}
+	root, err := seqDefNodeView(def.Root())
+	if err != nil {
+		return SeqDefDefinitionView{}, err
+	}
+	return SeqDefDefinitionView{ID: def.ID, Root: root}, nil
+}
+
+func seqDefNodeView(node ubom.SeqDefNode) (SeqDefNodeView, error) {
+	view := SeqDefNodeView{}
+	children := func(nodes []ubom.SeqDefNode) ([]SeqDefNodeView, error) {
+		result := make([]SeqDefNodeView, 0, len(nodes))
+		for _, child := range nodes {
+			converted, err := seqDefNodeView(child)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, converted)
+		}
+		return result, nil
+	}
+	switch n := node.(type) {
+	case ubom.LiteralNode:
+		view.Kind, view.Text = "literal", n.Text
+	case ubom.ConcatNode:
+		converted, err := children(n.Children)
+		if err != nil {
+			return SeqDefNodeView{}, err
+		}
+		view.Kind, view.Children = "concat", converted
+	case ubom.ChoiceNode:
+		converted, err := children(n.Children)
+		if err != nil {
+			return SeqDefNodeView{}, err
+		}
+		view.Kind, view.Children = "choice", converted
+	case ubom.RangeRadixNode:
+		converted, err := children(n.Children)
+		if err != nil {
+			return SeqDefNodeView{}, err
+		}
+		view.Kind, view.Children = "range_radix", converted
+	case ubom.BindNode:
+		child, err := seqDefNodeView(n.Child)
+		if err != nil {
+			return SeqDefNodeView{}, err
+		}
+		view.Kind, view.Name, view.Child = "bind", n.Name, &child
+	case ubom.PlaceSequenceNode:
+		view.Kind, view.Alphabets = "places", n.Alphabets
+	case ubom.RangeNode:
+		view.Kind, view.Min, view.Max, view.Width = "range", n.Min, n.Max, n.WidthValue
+		if n.Pad != 0 {
+			view.Pad = string(n.Pad)
+		}
+	default:
+		return SeqDefNodeView{}, errors.New("cannot serialize unknown sequence node")
+	}
+	return view, nil
 }
 
 type SeqDefPreview struct {

@@ -247,12 +247,29 @@ func (s *Server) handleSeqDefFields(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSeqDefPath(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/seq-defs/")
 	parts := strings.Split(path, "/")
+	if len(parts) == 1 && parts[0] != "" && r.Method == http.MethodGet {
+		definition, err := s.service.GetSeqDefDefinitionView(ubom.SeqDefID(parts[0]))
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "sequence definition not found")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not load sequence definition")
+			return
+		}
+		writeJSON(w, definition)
+		return
+	}
 	if len(parts) != 2 || parts[0] == "" {
 		writeError(w, http.StatusBadRequest, "invalid sequence definition path")
 		return
 	}
 	if parts[1] == "fields" {
 		s.handleSeqDefFields(w, r)
+		return
+	}
+	if parts[1] == "definition" {
+		writeError(w, http.StatusBadRequest, "invalid sequence definition path")
 		return
 	}
 	if parts[1] != "preview" || r.Method != http.MethodPost {

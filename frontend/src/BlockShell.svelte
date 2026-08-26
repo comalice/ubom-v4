@@ -15,6 +15,7 @@
   export let dragHandle = ''
   export let interactive: string[] = []
   export let onRemove: (() => void) | undefined = undefined
+  export let errors: string[] = []
   let open = initiallyOpen
 
   function stopNestedDragEvent(event: Event) { event.stopPropagation() }
@@ -26,7 +27,9 @@
     <strong>{title}</strong>
     {#if summary}<span class="block-shell-summary">{summary}</span>{/if}
     {#if collapsible}<ControlButton kind="chevron" className="block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}
+    {#if errors.length}<span class="block-shell-error-count">{errors.length} error{errors.length === 1 ? '' : 's'}</span>{/if}
     {#if onRemove}<ControlButton kind="close" className="block-shell-remove" label="Remove {title}" onClick={onRemove} />{/if}
   </header>
+  {#if errors.length}<ul class="block-shell-errors">{#each errors as error}<li>{error}</li>{/each}</ul>{/if}
   {#if !collapsible || open}<div class="block-shell-body"><slot /></div>{/if}
 </article>

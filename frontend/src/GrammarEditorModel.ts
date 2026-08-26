@@ -9,6 +9,79 @@ export type GrammarExpr =
   | { id: string; kind: 'bind'; name: string; child?: GrammarExpr }
 
 export type GrammarExprKind = GrammarExpr['kind']
+export type GrammarValidationError = {
+  code: string
+  message: string
+  path: string
+  nodeId?: string
+}
+
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
+
+export function validateGrammarSequence(exprs: unknown): GrammarValidationError[] {
+  const errors: GrammarValidationError[] = []
+  const bindingNames = new Map<string, string>()
+
+  function add(code: string, message: string, path: string, nodeId?: string) {
+    errors.push({ code, message, path, ...(nodeId ? { nodeId } : {}) })
+  }
+
+  function visit(value: unknown, path: string, nodeId?: string) {
+    if (!isObject(value) || typeof value.kind !== 'string') {
+      add('unsupported-node', 'Unsupported or incomplete grammar node', path, nodeId)
+      return
+    }
+    const kind = value.kind
+    const id = typeof value.id === 'string' ? value.id : nodeId
+    const nodePath = `${path}.${kind}`
+    if (kind === 'literal') {
+      if (typeof value.text !== 'string') add('incomplete-node', 'Literal text is required', nodePath, id)
+    } else if (kind === 'range') {
+      const min = value.min
+      const max = value.max
+      const width = value.width
+      if (typeof min !== 'number' || !Number.isInteger(min) || min < 0 || typeof max !== 'number' || !Number.isInteger(max) || max < min) {
+        add('invalid-range-bounds', 'Range bounds must be non-negative integers with min no greater than max', nodePath, id)
+      }
+      if (typeof width !== 'number' || !Number.isInteger(width) || width < 1) {
+        add('invalid-width', 'Range width must be a positive integer', nodePath, id)
+      } else if (typeof max === 'number' && Number.isInteger(max) && String(max).length > width) {
+        add('invalid-width', 'Range width is too small for the maximum value', nodePath, id)
+      }
+      if (typeof value.pad !== 'string' || [...value.pad].length > 1 || (value.pad.length === 1 && value.pad >= '1' && value.pad <= '9')) {
+        add('invalid-range-definition', 'Range padding must be one character and cannot be a digit from 1 to 9', nodePath, id)
+      }
+    } else if (kind === 'places') {
+      if (!Array.isArray(value.alphabets) || value.alphabets.length === 0 || value.alphabets.some((alphabet) => typeof alphabet !== 'string' || alphabet.length === 0)) {
+        add('invalid-character-definition', 'Places must contain one or more non-empty character alphabets', nodePath, id)
+      }
+    } else if (kind === 'bind') {
+      if (typeof value.name !== 'string' || !value.name.trim()) add('empty-binding-name', 'Binding name cannot be empty', nodePath, id)
+      else if (/\s/.test(value.name)) add('invalid-binding-name', 'Binding name cannot contain whitespace', nodePath, id)
+      else if (bindingNames.has(value.name)) add('duplicate-binding-name', `Binding name "${value.name}" is already used`, nodePath, id)
+      else bindingNames.set(value.name, nodePath)
+      if (!('child' in value) || value.child === undefined || value.child === null) add('missing-bind-child', 'Binding needs an expression', nodePath, id)
+      else visit(value.child, nodePath, id)
+    } else if (kind === 'range_radix') {
+      if (!Array.isArray(value.children) || value.children.length === 0) add('invalid-radix-definition', 'Radix range must contain one or more fields', nodePath, id)
+      else value.children.forEach((child, index) => visit(child, `${nodePath}[${index}]`))
+    } else if (kind === 'choice') {
+      if (!Array.isArray(value.children) || value.children.length === 0) add('empty-choice', 'Choice must contain one or more alternatives', nodePath, id)
+      else value.children.forEach((alternative, index) => {
+        const alternativePath = `${nodePath}[${index}]`
+        if (!Array.isArray(alternative) || alternative.length === 0) add('empty-choice-alternative', 'Choice alternatives cannot be empty', alternativePath, id)
+        else alternative.forEach((child, childIndex) => visit(child, `${alternativePath}[${childIndex}]`))
+      })
+    } else {
+      add('unsupported-node', `Unsupported grammar node kind "${kind}"`, nodePath, id)
+    }
+  }
+
+  if (!Array.isArray(exprs)) add('incomplete-node', 'Grammar root must be a sequence', 'root')
+  else exprs.forEach((expr, index) => visit(expr, `root[${index}]`))
+  return errors
+}
+
 export type GrammarDropTarget =
   | { type: 'row'; path: string[]; index: number }
   | { type: 'binding-child'; path: string[] }

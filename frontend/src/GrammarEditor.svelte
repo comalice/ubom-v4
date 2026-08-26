@@ -4,7 +4,7 @@
   import DndField from './DndField.svelte'
   import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
-  import { createGrammarExpr as createExpr, generateGrammarSequence as generateSequence, parseGrammarSequence as parseSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
+  import { createGrammarExpr as createExpr, generateGrammarSequence as generateSequence, parseGrammarSequence as parseSequence, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -47,6 +47,7 @@
   }
 
   $: structureNodes = rootSequence.map(toStructureNode)
+  $: validationErrors = validateSequence(rootSequence)
   $: parsed = parseSequence(rootSequence, testInput)
   $: generated = generateSequence(rootSequence)
 
@@ -166,16 +167,17 @@
   </div>
   <div class="grammar-editor-layout">
     <section class="grammar-editor-canvas" aria-labelledby="grammar-editor-canvas-heading">
-      <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-count">3 blocks</span></div>
+      <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
+      {#if validationErrors.length}<section class="grammar-validation" aria-labelledby="grammar-validation-heading" role="alert"><strong id="grammar-validation-heading">Fix editor structure</strong><ul>{#each validationErrors as validationError}<li><code>{validationError.path}</code> {validationError.message}</li>{/each}</ul></section>{/if}
       <DndField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
         <div class="grammar-editor-sequence-row">
-          <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
+          <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" validationErrors={validationErrors} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
         </div>
         <div class="grammar-editor-drop-zone">Drop a block here to add it to the root sequence</div>
       </DndField>
     </section>
     <aside class="grammar-editor-map" aria-labelledby="grammar-editor-map-heading">
-      <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-count">3 blocks</span></div>
+      <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
       <div class="grammar-editor-map-tree"><StructureTree nodes={structureNodes} showIds={false} /></div>
       <section class="grammar-editor-test" aria-labelledby="grammar-editor-test-heading">
         <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>

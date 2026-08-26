@@ -270,6 +270,8 @@ ul { line-height: 1.8; }
 .control-button { display: grid; width: 1.5rem; height: 1.5rem; padding: 0; place-items: center; color: var(--accent); background: transparent; border: 1px solid transparent; border-radius: .2rem; cursor: pointer; }
 .control-button:hover { border-color: var(--accent); background: var(--surface); }
 .block-shell-remove { font-size: 0; }
+.block-shell-error-count { margin-left: auto; color: #a33b32; font: .58rem ui-monospace, monospace; }
+.block-shell-errors { margin: 0; padding: .45rem .7rem .45rem 1.8rem; color: #a33b32; background: #fff4f1; border-top: 1px solid #e8b9b0; font: .62rem ui-monospace, monospace; }
 .sequence-example-dropped-tile .control-button { top: .25rem; right: .3rem; padding: 0; }
 .grammar-basic-example-list { display: grid; gap: .8rem; margin-top: .7rem; }
 .grammar-basic-example { display: grid; grid-template-columns: minmax(10rem, .7fr) minmax(16rem, 1.3fr); gap: .8rem; align-items: start; }
@@ -297,6 +299,10 @@ ul { line-height: 1.8; }
 .grammar-editor-map-tree .dnd-structure-node small { margin-left: 0; }
 .grammar-editor-test { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
 .grammar-editor-test .grammar-output { margin-top: .7rem; }
+.grammar-validation { margin: .75rem 0; padding: .65rem .8rem; color: #7d2d26; background: #fff4f1; border: 1px solid #e8b9b0; border-radius: .25rem; font-size: .68rem; }
+.grammar-validation strong { font: .65rem ui-monospace, monospace; }
+.grammar-validation ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+.grammar-validation code { font: .62rem ui-monospace, monospace; }
 .playground { display: grid; grid-template-columns: 14rem minmax(0, 1fr); min-height: 72vh; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; overflow: hidden; }
 .playground-nav { padding: 1.25rem 1rem; border-right: 1px solid var(--hairline); }
 .playground-nav h1 { margin: .35rem 0 .5rem; color: var(--ink); font: 400 1.25rem Georgia, serif; }

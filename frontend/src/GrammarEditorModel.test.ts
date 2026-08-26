@@ -5,6 +5,7 @@ import {
   toSeqDefNode,
   toSeqDefRoot,
   type GrammarExpr,
+  validateGrammarSequence,
 } from './GrammarEditorModel'
 
 const literal = (id: string, text: string): GrammarExpr => ({ id, kind: 'literal', text })
@@ -114,5 +115,41 @@ describe('GrammarEditorModel generation', () => {
     expect(generateGrammarExpr({ id: 'empty-places', kind: 'places', alphabets: ['', 'ABC'] })).toBe('A')
     expect(generateGrammarExpr({ id: 'empty-choice', kind: 'choice', children: [] })).toBe('')
     expect(generateGrammarExpr({ id: 'empty-bind', kind: 'bind', name: 'value' })).toBe('')
+  })
+})
+
+describe('GrammarEditorModel structural validation', () => {
+  it('reports structural errors with document paths without changing the model', () => {
+    const expressions: GrammarExpr[] = [
+      { id: 'choice', kind: 'choice', children: [[]] },
+      { id: 'first', kind: 'bind', name: 'value' },
+      { id: 'second', kind: 'bind', name: 'value', child: literal('child', 'x') },
+      { id: 'range', kind: 'range', min: 9, max: 2, width: 0, pad: '1' },
+      { id: 'places', kind: 'places', alphabets: ['', 'AB'] },
+      { id: 'radix', kind: 'range_radix', children: [] },
+    ]
+
+    const errors = validateGrammarSequence(expressions)
+    expect(errors.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: 'empty-choice-alternative', path: 'root[0].choice[0]' },
+      { code: 'missing-bind-child', path: 'root[1].bind' },
+      { code: 'duplicate-binding-name', path: 'root[2].bind' },
+      { code: 'invalid-range-bounds', path: 'root[3].range' },
+      { code: 'invalid-width', path: 'root[3].range' },
+      { code: 'invalid-range-definition', path: 'root[3].range' },
+      { code: 'invalid-character-definition', path: 'root[4].places' },
+      { code: 'invalid-radix-definition', path: 'root[5].range_radix' },
+    ])
+    expect(expressions[3]).toEqual({ id: 'range', kind: 'range', min: 9, max: 2, width: 0, pad: '1' })
+  })
+
+  it('rejects unsupported and incomplete runtime nodes', () => {
+    expect(validateGrammarSequence([{ id: 'unknown', kind: 'future' }])).toEqual([
+      { code: 'unsupported-node', message: 'Unsupported grammar node kind "future"', path: 'root[0].future', nodeId: 'unknown' },
+    ])
+    expect(validateGrammarSequence([null, { id: 'literal', kind: 'literal' }])).toEqual([
+      { code: 'unsupported-node', message: 'Unsupported or incomplete grammar node', path: 'root[0]' },
+      { code: 'incomplete-node', message: 'Literal text is required', path: 'root[1].literal', nodeId: 'literal' },
+    ])
   })
 })

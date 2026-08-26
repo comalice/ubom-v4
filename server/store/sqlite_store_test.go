@@ -128,3 +128,19 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 		t.Fatalf("GetPartRevision() with BOM = %#v, want %#v", gotParent, parent)
 	}
 }
+
+func TestSQLiteStoreRejectsTypedTaxonomyPredicatesUntilPersisted(t *testing.T) {
+	store, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenSQLiteStore() error = %v", err)
+	}
+	defer store.Close()
+	definition := ubom.TaxonomyDef{ID: "taxonomy-range-v1", SeqDef: "pn-v1", Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+		ID: "root", Predicates: []ubom.TaxonomyPredicate{ubom.NumericRangePredicate("group", 100, 199)},
+	}}}
+	if err := store.CreateTaxonomyDef(definition); err == nil {
+		t.Fatal("CreateTaxonomyDef() accepted a predicate it cannot round-trip")
+	} else if !errors.Is(err, ubom.ErrInvalidDefinition) {
+		t.Fatalf("CreateTaxonomyDef() error = %v, want definition error", err)
+	}
+}

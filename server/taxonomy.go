@@ -1,6 +1,11 @@
 package ubom
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"unicode"
+)
 
 /* # Taxonomy: a tree/DAG of catgories, where 'PartNumber' inhabits the leaves.
 
@@ -23,6 +28,33 @@ type TaxonomyDef struct {
 	Taxonomy      Taxonomy
 }
 
+// PredicateKind identifies the value comparison made by a taxonomy predicate.
+type PredicateKind string
+
+const (
+	PredicateExact        PredicateKind = "exact"
+	PredicateNumericRange PredicateKind = "numeric-range"
+)
+
+// TaxonomyPredicate is a typed condition over one captured SeqDef field.
+// NumericRange is inclusive at both ends. Exact values intentionally compare
+// the captured source text, preserving significant padding and case.
+type TaxonomyPredicate struct {
+	Field FieldName
+	Kind  PredicateKind
+	Value string
+	Min   int64
+	Max   int64
+}
+
+func ExactPredicate(field FieldName, value string) TaxonomyPredicate {
+	return TaxonomyPredicate{Field: field, Kind: PredicateExact, Value: value}
+}
+
+func NumericRangePredicate(field FieldName, min, max int64) TaxonomyPredicate {
+	return TaxonomyPredicate{Field: field, Kind: PredicateNumericRange, Min: min, Max: max}
+}
+
 // Taxonomy is a tree that projects parsed bindings into labels.
 type Taxonomy struct {
 	Root TaxonomyNode
@@ -32,17 +64,18 @@ type TaxonomyNode struct {
 	ID         TaxonomyNodeID
 	Label      string
 	Matches    map[string]string
+	Predicates []TaxonomyPredicate
 	Attributes []AttributeAssignment
 	Children   []TaxonomyNode
 }
 
 // Validate checks that taxonomy nodes are well formed.
 func (d TaxonomyDef) Validate() error {
-	if d.ID == "" {
-		return fmt.Errorf("taxonomy definition has no ID")
+	if err := validateTaxonomyID(string(d.ID), "taxonomy definition"); err != nil {
+		return err
 	}
-	if d.SeqDef == "" {
-		return fmt.Errorf("taxonomy definition has no sequence definition ID")
+	if err := validateTaxonomyID(string(d.SeqDef), "sequence definition"); err != nil {
+		return err
 	}
 	seen := map[TaxonomyNodeID]bool{}
 	attributeDefs := map[AttributeDefID]bool{}
@@ -55,20 +88,84 @@ func (d TaxonomyDef) Validate() error {
 		}
 		attributeDefs[attribute.ID] = true
 	}
-	if err := validateTaxonomyNode(d.Taxonomy.Root, seen, attributeDefs); err != nil {
+	if err := validateTaxonomyNode(d.Taxonomy.Root, seen, attributeDefs, nil); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attributeDefs map[AttributeDefID]bool) error {
-	if node.ID == "" {
-		return fmt.Errorf("taxonomy node has no ID")
+// ValidateAgainst validates field references at the taxonomy/SeqDef boundary.
+// Keeping this explicit avoids making taxonomy validation depend on a store.
+func (d TaxonomyDef) ValidateAgainst(seqDef SeqDef) error {
+	if err := d.Validate(); err != nil {
+		return err
+	}
+	if err := seqDef.Validate(); err != nil {
+		return err
+	}
+	if d.SeqDef != seqDef.ID {
+		return taxonomyValidation("taxonomy references sequence definition %q, got %q", d.SeqDef, seqDef.ID)
+	}
+	fields := make(map[string]SeqDefNode)
+	for _, field := range seqDef.BindableFields() {
+		fields[field.Name] = field.Node
+	}
+	return validateTaxonomyFields(d.Taxonomy.Root, fields)
+}
+
+// ValidateWithSeqDef is a descriptive alias for ValidateAgainst.
+func (d TaxonomyDef) ValidateWithSeqDef(seqDef SeqDef) error { return d.ValidateAgainst(seqDef) }
+
+func validateTaxonomyID(value, kind string) error {
+	if value == "" || strings.IndexFunc(value, unicode.IsSpace) >= 0 {
+		return taxonomyValidation("%s has invalid ID %q", kind, value)
+	}
+	return nil
+}
+
+func taxonomyValidation(format string, args ...any) error {
+	return WrapDomainError(ErrorCategoryDefinition, fmt.Sprintf(format, args...), nil)
+}
+
+func validateTaxonomyFields(node TaxonomyNode, fields map[string]SeqDefNode) error {
+	for _, predicate := range taxonomyPredicates(node) {
+		fieldNode, ok := fields[predicate.Field.String()]
+		if !ok {
+			return taxonomyValidation("taxonomy node %q references unknown field %q", node.ID, predicate.Field)
+		}
+		if predicate.Kind == PredicateNumericRange {
+			if _, ok := fieldNode.(RangeNode); !ok {
+				return taxonomyValidation("numeric predicate for field %q requires a numeric RangeNode binding", predicate.Field)
+			}
+		}
+	}
+	for _, child := range node.Children {
+		if err := validateTaxonomyFields(child, fields); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attributeDefs map[AttributeDefID]bool, ancestors []TaxonomyPredicate) error {
+	if err := validateTaxonomyID(string(node.ID), "taxonomy node"); err != nil {
+		return err
 	}
 	if seen[node.ID] {
 		return fmt.Errorf("duplicate taxonomy node ID %q", node.ID)
 	}
 	seen[node.ID] = true
+	predicates, err := validatedTaxonomyPredicates(node)
+	if err != nil {
+		return err
+	}
+	for _, predicate := range predicates {
+		for _, ancestor := range ancestors {
+			if !predicatesCompatible(ancestor, predicate) {
+				return taxonomyValidation("taxonomy node %q is unreachable because its predicate conflicts with an ancestor", node.ID)
+			}
+		}
+	}
 	assignments := map[AttributeDefID]bool{}
 	for _, assignment := range node.Attributes {
 		if assignment.AttributeDefID == "" {
@@ -82,12 +179,106 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 		}
 		assignments[assignment.AttributeDefID] = true
 	}
-	for _, child := range node.Children {
-		if err := validateTaxonomyNode(child, seen, attributeDefs); err != nil {
+	for i, child := range node.Children {
+		for j := i + 1; j < len(node.Children); j++ {
+			left, right := taxonomyPredicates(child), taxonomyPredicates(node.Children[j])
+			if predicatesOverlap(left, right) {
+				return taxonomyValidation("taxonomy node %q has ambiguous overlapping siblings %q and %q", node.ID, child.ID, node.Children[j].ID)
+			}
+		}
+		if err := validateTaxonomyNode(child, seen, attributeDefs, append(append([]TaxonomyPredicate{}, ancestors...), predicates...)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func validatedTaxonomyPredicates(node TaxonomyNode) ([]TaxonomyPredicate, error) {
+	result := append([]TaxonomyPredicate{}, node.Predicates...)
+	for field, value := range node.Matches {
+		result = append(result, ExactPredicate(FieldName(field), value))
+	}
+	seen := map[FieldName]bool{}
+	for _, predicate := range result {
+		if err := predicate.Validate(); err != nil {
+			return nil, fmt.Errorf("taxonomy node %q: %w", node.ID, err)
+		}
+		if seen[predicate.Field] {
+			return nil, taxonomyValidation("taxonomy node %q has multiple predicates for field %q", node.ID, predicate.Field)
+		}
+		seen[predicate.Field] = true
+	}
+	return result, nil
+}
+
+func taxonomyPredicates(node TaxonomyNode) []TaxonomyPredicate {
+	result, _ := validatedTaxonomyPredicates(node)
+	return result
+}
+
+func (p TaxonomyPredicate) Validate() error {
+	if err := p.Field.Validate(); err != nil {
+		return err
+	}
+	switch p.Kind {
+	case PredicateExact:
+		if p.Value == "" {
+			return taxonomyValidation("exact predicate for field %q has an empty value", p.Field)
+		}
+	case PredicateNumericRange:
+		if p.Min > p.Max {
+			return taxonomyValidation("numeric predicate for field %q has invalid bounds %d..%d", p.Field, p.Min, p.Max)
+		}
+	default:
+		return taxonomyValidation("predicate for field %q has unsupported kind %q", p.Field, p.Kind)
+	}
+	return nil
+}
+
+func predicatesCompatible(a, b TaxonomyPredicate) bool {
+	if a.Field != b.Field {
+		return true
+	}
+	if a.Kind == PredicateExact && b.Kind == PredicateExact {
+		return a.Value == b.Value
+	}
+	if a.Kind == PredicateExact {
+		n, err := strconv.ParseInt(a.Value, 10, 64)
+		return err == nil && n >= b.Min && n <= b.Max
+	}
+	if b.Kind == PredicateExact {
+		n, err := strconv.ParseInt(b.Value, 10, 64)
+		return err == nil && n >= a.Min && n <= a.Max
+	}
+	return a.Min <= b.Max && b.Min <= a.Max
+}
+
+func predicatesOverlap(a, b []TaxonomyPredicate) bool {
+	for _, left := range a {
+		for _, right := range b {
+			if !predicatesCompatible(left, right) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (p TaxonomyPredicate) matches(value string) bool {
+	if p.Kind == PredicateExact {
+		return value == p.Value
+	}
+	n, err := strconv.ParseInt(value, 10, 64)
+	return err == nil && n >= p.Min && n <= p.Max
+}
+
+func (n TaxonomyNode) predicatesMatch(bindings map[string]string) bool {
+	for _, predicate := range taxonomyPredicates(n) {
+		if !predicate.matches(bindings[predicate.Field.String()]) {
+			return false
+		}
+	}
+	return true
 }
 
 // EffectiveAttributes returns assignments from root to node. A child replaces
@@ -149,7 +340,7 @@ func projectTaxonomyNode(node TaxonomyNode, bindings map[string]string) []string
 	}
 
 	for _, child := range node.Children {
-		if taxonomyMatches(child.Matches, bindings) {
+		if child.predicatesMatch(bindings) {
 			return append(labels, projectTaxonomyNode(child, bindings)...)
 		}
 	}
@@ -160,7 +351,7 @@ func projectTaxonomyNodeID(node TaxonomyNode, bindings map[string]string) (Taxon
 	best := node.ID
 	found := node.ID != ""
 	for _, child := range node.Children {
-		if !taxonomyMatches(child.Matches, bindings) {
+		if !child.predicatesMatch(bindings) {
 			continue
 		}
 		if childBest, childFound := projectTaxonomyNodeID(child, bindings); childFound {

@@ -71,6 +71,7 @@ type taxonomyNodeRequest struct {
 	ID         ubom.TaxonomyNodeID        `json:"id"`
 	Label      string                     `json:"label"`
 	Matches    map[string]string          `json:"matches,omitempty"`
+	Predicates []ubom.TaxonomyPredicate   `json:"predicates,omitempty"`
 	Attributes []ubom.AttributeAssignment `json:"attributes,omitempty"`
 	Children   []taxonomyNodeRequest      `json:"children,omitempty"`
 }
@@ -80,7 +81,7 @@ func (n taxonomyNodeRequest) node() ubom.TaxonomyNode {
 	for _, child := range n.Children {
 		children = append(children, child.node())
 	}
-	return ubom.TaxonomyNode{ID: n.ID, Label: n.Label, Matches: n.Matches, Attributes: n.Attributes, Children: children}
+	return ubom.TaxonomyNode{ID: n.ID, Label: n.Label, Matches: n.Matches, Predicates: n.Predicates, Attributes: n.Attributes, Children: children}
 }
 
 type taxonomyDefinitionRequest struct {

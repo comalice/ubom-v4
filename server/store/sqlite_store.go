@@ -324,6 +324,9 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	if err := def.Validate(); err != nil {
 		return err
 	}
+	if taxonomyHasTypedPredicates(def.Taxonomy.Root) {
+		return ubom.WrapDomainError(ubom.ErrorCategoryDefinition, "SQLite taxonomy persistence does not support typed predicates yet", nil)
+	}
 	if _, err := s.GetSeqDef(def.SeqDef); err != nil {
 		return err
 	}
@@ -349,6 +352,18 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+func taxonomyHasTypedPredicates(node ubom.TaxonomyNode) bool {
+	if len(node.Predicates) != 0 {
+		return true
+	}
+	for _, child := range node.Children {
+		if taxonomyHasTypedPredicates(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {

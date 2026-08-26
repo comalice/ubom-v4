@@ -146,7 +146,10 @@ func (d SeqDef) Fields() []BindableField { return d.BindableFields() }
 // Generate renders the canonical value represented by bindings.
 func (d SeqDef) Generate(bindings map[string]string) (string, error) {
 	if d.root == nil {
-		return "", fmt.Errorf("sequence definition has no root")
+		return "", invalidSeqDef("sequence definition has no root", nil)
+	}
+	if err := validateSeqDefNode(d.root); err != nil {
+		return "", err
 	}
 	known := map[string]bool{}
 	for _, field := range d.BindableFields() {
@@ -154,14 +157,137 @@ func (d SeqDef) Generate(bindings map[string]string) (string, error) {
 	}
 	for name := range bindings {
 		if !known[name] {
-			return "", fmt.Errorf("unknown binding %q", name)
+			return "", WrapDomainError(ErrorCategoryValue, fmt.Sprintf("unknown binding %q", name), nil)
 		}
 	}
 	value, err := generateSeqDefNode(d.root, bindings)
 	if err != nil {
-		return "", err
+		return "", WrapDomainError(ErrorCategoryValue, "bindings do not match sequence definition", err)
+	}
+	// Rendering alone is not enough for choices: a branch could render while
+	// silently ignoring a supplied binding. Parse the result and require an
+	// exact binding set so generation is validated by the actual AST path.
+	parsed, err := d.ParseValues(value)
+	if err != nil {
+		return "", WrapDomainError(ErrorCategoryValue, "generated value does not match sequence definition", err)
+	}
+	if len(parsed.Bindings) != len(bindings) {
+		return "", WrapDomainError(ErrorCategoryValue, "bindings do not match selected sequence alternative", nil)
+	}
+	for name, supplied := range bindings {
+		if parsed.Bindings[name] != supplied {
+			return "", WrapDomainError(ErrorCategoryValue, fmt.Sprintf("binding %q does not match generated value", name), nil)
+		}
 	}
 	return value, nil
+}
+
+// Successor returns the next value in the definition's ordering. Ordering is
+// intentionally narrow: the root may contain only LiteralNode, ConcatNode,
+// RangeRadixNode, and RangeNode values, with BindNode wrapping a RangeNode.
+// Range fields are fixed-width decimal fields and are ordered left to right,
+// with the rightmost field changing fastest. Choices and place sequences do
+// not have an implicit ordering and return ErrNoOrdering.
+func (d SeqDef) Successor(input string) (string, error) {
+	if d.root == nil {
+		return "", invalidSeqDef("sequence definition has no root", nil)
+	}
+	if err := validateSeqDefNode(d.root); err != nil {
+		return "", err
+	}
+	if _, err := d.ParseValues(input); err != nil {
+		return "", err
+	}
+	slots, err := orderingSlots(d.root, 0)
+	if err != nil {
+		return "", err
+	}
+	if len(slots) == 0 {
+		return "", WrapDomainError(ErrorCategoryOrdering, "sequence definition has no meaningful ordering", nil)
+	}
+	result := []byte(input)
+	for i := len(slots) - 1; i >= 0; i-- {
+		slot := slots[i]
+		value, err := slot.node.ParseValue(input[slot.offset : slot.offset+slot.node.WidthValue])
+		if err != nil {
+			return "", WrapDomainError(ErrorCategorySyntax, "sequence input is invalid", err)
+		}
+		if value >= slot.node.Max {
+			formatted, _ := slot.node.Format(slot.node.Min)
+			copy(result[slot.offset:], formatted)
+			continue
+		}
+		formatted, err := slot.node.Format(value + 1)
+		if err != nil {
+			return "", WrapDomainError(ErrorCategoryOrdering, "cannot advance sequence", err)
+		}
+		copy(result[slot.offset:], formatted)
+		return string(result), nil
+	}
+	return "", WrapDomainError(ErrorCategoryOrdering, "sequence ordering is exhausted", nil)
+}
+
+type orderingSlot struct {
+	offset int
+	node   RangeNode
+}
+
+func orderingSlots(node SeqDefNode, offset int) ([]orderingSlot, error) {
+	switch n := node.(type) {
+	case LiteralNode:
+		return nil, nil
+	case RangeNode:
+		return []orderingSlot{{offset: offset, node: n}}, nil
+	case BindNode:
+		if _, ok := n.Child.(RangeNode); !ok {
+			return nil, WrapDomainError(ErrorCategoryOrdering, "binding is not a fixed-width decimal range", nil)
+		}
+		return orderingSlots(n.Child, offset)
+	case ConcatNode:
+		return orderingChildSlots(n.Children, offset)
+	case RangeRadixNode:
+		return orderingChildSlots(n.Children, offset)
+	default:
+		return nil, WrapDomainError(ErrorCategoryOrdering, fmt.Sprintf("sequence node %T has no meaningful ordering", node), nil)
+	}
+}
+
+func orderingChildSlots(children []SeqDefNode, offset int) ([]orderingSlot, error) {
+	var slots []orderingSlot
+	for _, child := range children {
+		childSlots, err := orderingSlots(child, offset)
+		if err != nil {
+			return nil, err
+		}
+		slots = append(slots, childSlots...)
+		offset += nodeWidth(child)
+	}
+	return slots, nil
+}
+
+func nodeWidth(node SeqDefNode) int {
+	switch n := node.(type) {
+	case LiteralNode:
+		return len(n.Text)
+	case RangeNode:
+		return n.WidthValue
+	case BindNode:
+		return nodeWidth(n.Child)
+	case ConcatNode:
+		width := 0
+		for _, child := range n.Children {
+			width += nodeWidth(child)
+		}
+		return width
+	case RangeRadixNode:
+		width := 0
+		for _, child := range n.Children {
+			width += nodeWidth(child)
+		}
+		return width
+	default:
+		return 0
+	}
 }
 
 func generateSeqDefNode(node SeqDefNode, bindings map[string]string) (string, error) {
@@ -222,11 +348,20 @@ func generateConcat(nodes []SeqDefNode, bindings map[string]string) (string, err
 }
 
 func generateAlternatives(nodes []SeqDefNode, bindings map[string]string) (string, error) {
+	choiceNames := map[string]bool{}
+	for _, node := range nodes {
+		for name := range seqDefBindingNames(node) {
+			choiceNames[name] = true
+		}
+	}
 	var lastErr error
 	for _, child := range nodes {
 		value, err := generateSeqDefNode(child, bindings)
 		if err == nil {
-			return value, nil
+			if matchesBindings(value, child, bindings, choiceNames) {
+				return value, nil
+			}
+			err = fmt.Errorf("alternative does not use the supplied bindings")
 		}
 		lastErr = err
 	}
@@ -234,6 +369,55 @@ func generateAlternatives(nodes []SeqDefNode, bindings map[string]string) (strin
 		return "", fmt.Errorf("no sequence alternative can be generated: %w", lastErr)
 	}
 	return "", fmt.Errorf("sequence has no alternatives")
+}
+
+func matchesBindings(value string, node SeqDefNode, bindings map[string]string, names map[string]bool) bool {
+	state := newCaptureState()
+	_, next, err := parseCapturedNode(node, value, 0, state)
+	if err != nil || next != len(value) {
+		return false
+	}
+	expected := 0
+	for name := range names {
+		if _, supplied := bindings[name]; supplied {
+			expected++
+		}
+	}
+	if len(state.fields) != expected {
+		return false
+	}
+	for _, field := range state.fields {
+		if !names[field.Name] || bindings[field.Name] != field.Source {
+			return false
+		}
+	}
+	return true
+}
+
+func seqDefBindingNames(node SeqDefNode) map[string]bool {
+	names := map[string]bool{}
+	var visit func(SeqDefNode)
+	visit = func(node SeqDefNode) {
+		switch n := node.(type) {
+		case BindNode:
+			names[n.Name] = true
+			visit(n.Child)
+		case ConcatNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		case ChoiceNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		case RangeRadixNode:
+			for _, child := range n.Children {
+				visit(child)
+			}
+		}
+	}
+	visit(node)
+	return names
 }
 
 func (d SeqDef) WithID(id SeqDefID) SeqDef {

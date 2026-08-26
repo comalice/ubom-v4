@@ -489,8 +489,64 @@ func TestSeqDefGenerateRejectsInvalidBindings(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := definition.Generate(test.bindings); err == nil {
 				t.Fatal("Generate() accepted invalid bindings")
+			} else if !errors.Is(err, ErrInvalidValue) {
+				t.Fatalf("Generate() error = %v, want invalid value", err)
 			}
 		})
+	}
+}
+
+func TestSeqDefGenerateRejectsBindingsIgnoredByChoice(t *testing.T) {
+	definition := NewSeqDef(Choice(Literal("A"), Bind("value", Literal("B"))))
+	if got, err := definition.Generate(map[string]string{"value": "B"}); err != nil || got != "B" {
+		t.Fatalf("Generate() = %q, %v; want B", got, err)
+	}
+}
+
+func TestSeqDefGenerateRejectsNoCompatibleChoiceAlternative(t *testing.T) {
+	definition := NewSeqDef(Choice(Bind("value", Literal("A")), Bind("value", Literal("B"))))
+	if _, err := definition.Generate(map[string]string{"value": "C"}); err == nil || !errors.Is(err, ErrInvalidValue) {
+		t.Fatalf("Generate() error = %v, want invalid value", err)
+	}
+}
+
+func TestSeqDefSuccessorUsesRangeRadixOrdering(t *testing.T) {
+	definition := NewSeqDef(Concat(
+		Literal("PN-"),
+		RangeRadix(Bind("major", Range(0, 1).Width(2)), Bind("minor", Range(0, 2).Width(2))),
+	))
+	tests := map[string]string{
+		"PN-0000": "PN-0001",
+		"PN-0001": "PN-0002",
+		"PN-0002": "PN-0100",
+	}
+	for input, want := range tests {
+		if got, err := definition.Successor(input); err != nil || got != want {
+			t.Errorf("Successor(%q) = %q, %v; want %q", input, got, err, want)
+		}
+	}
+}
+
+func TestSeqDefSuccessorExhaustion(t *testing.T) {
+	definition := NewSeqDef(Concat(Literal("PN-"), RangeRadix(Range(0, 1).Width(1), Range(0, 1).Width(1))))
+	if _, err := definition.Successor("PN-11"); err == nil || !errors.Is(err, ErrNoOrdering) {
+		t.Fatalf("Successor() error = %v, want ordering exhaustion", err)
+	}
+}
+
+func TestSeqDefSuccessorRequiresMeaningfulOrdering(t *testing.T) {
+	tests := []struct {
+		definition SeqDef
+		input      string
+	}{
+		{definition: NewSeqDef(Literal("PN-1")), input: "PN-1"},
+		{definition: NewSeqDef(PlaceSequence("ABC")), input: "A"},
+		{definition: NewSeqDef(Choice(Literal("A"), Literal("B"))), input: "A"},
+	}
+	for _, test := range tests {
+		if _, err := test.definition.Successor(test.input); err == nil || !errors.Is(err, ErrNoOrdering) {
+			t.Errorf("Successor() error = %v, want no-ordering error", err)
+		}
 	}
 }
 

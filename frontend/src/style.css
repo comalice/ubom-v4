@@ -306,6 +306,7 @@ ul { line-height: 1.8; }
 .grammar-preview-result { display: grid; gap: .3rem; margin-top: .7rem; padding: .6rem; color: #39724a; background: #f1faf3; border: 1px solid #b8d8bf; border-radius: .2rem; font: .65rem ui-monospace, monospace; overflow-wrap: anywhere; }
 .grammar-preview-result strong { font-size: .85rem; }
 .grammar-preview-failed { color: #a34d4d; background: #fff3f3; border-color: #e4bcbc; }
+.grammar-preview-pending { color: #705d2d; background: #fff9e8; border-color: #e6d59d; }
 .grammar-validation { margin: .75rem 0; padding: .65rem .8rem; color: #7d2d26; background: #fff4f1; border: 1px solid #e8b9b0; border-radius: .25rem; font-size: .68rem; }
 .grammar-validation strong { font: .65rem ui-monospace, monospace; }
 .grammar-validation ul { margin: .4rem 0 0; padding-left: 1.2rem; }

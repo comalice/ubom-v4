@@ -94,6 +94,38 @@ export type GrammarDragPayload =
 
 export type GrammarParseResult = { value: string; bindings: Record<string, string> } | { error: string }
 
+export type GrammarPreviewStatus =
+  | { kind: 'not-previewed'; label: 'Not previewed'; message: string }
+  | { kind: 'previewing'; label: 'Preview in progress'; message: string }
+  | { kind: 'success'; label: 'Preview successful'; message: string }
+  | { kind: 'server-rejected'; label: 'Server rejected preview'; message: string }
+  | { kind: 'request-failed'; label: 'Preview request failed'; message: string }
+
+export type GrammarPreviewStatusInput = {
+  currentKey: string
+  previewedKey: string | null
+  preview: { error?: string } | null
+  requestKey: string | null
+  requestError: string
+  previewing: boolean
+}
+
+export function getGrammarPreviewStatus(input: GrammarPreviewStatusInput): GrammarPreviewStatus {
+  if (input.requestKey === input.currentKey && input.previewing) {
+    return { kind: 'previewing', label: 'Preview in progress', message: 'Waiting for the server preview.' }
+  }
+  if (input.requestKey === input.currentKey && input.requestError) {
+    return { kind: 'request-failed', label: 'Preview request failed', message: input.requestError }
+  }
+  if (input.previewedKey !== input.currentKey || !input.preview) {
+    return { kind: 'not-previewed', label: 'Not previewed', message: 'Preview this sequence on the server to see the canonical value.' }
+  }
+  if (input.preview.error) {
+    return { kind: 'server-rejected', label: 'Server rejected preview', message: input.preview.error }
+  }
+  return { kind: 'success', label: 'Preview successful', message: 'The server returned a canonical value.' }
+}
+
 export function makeGrammarId() { return `${Date.now()}-${Math.random().toString(36).slice(2)}` }
 
 export function createGrammarExpr(kind: GrammarExprKind): GrammarExpr {

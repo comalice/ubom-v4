@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   generateGrammarExpr,
   generateGrammarSequence,
+  getGrammarPreviewStatus,
   grammarPreviewKey,
   toSeqDefNode,
   toSeqDefRoot,
@@ -127,6 +128,16 @@ describe('GrammarEditorModel preview inputs', () => {
     expect(grammarPreviewKey(expressions, { family: 'SN-' })).toBe(initial)
     expect(grammarPreviewKey([literal('literal', 'PN-2')], { family: 'SN-' })).not.toBe(initial)
     expect(grammarPreviewKey(expressions, { family: 'SN-2' })).not.toBe(initial)
+  })
+
+  it('classifies current preview lifecycle states without allowing stale results', () => {
+    const base = { currentKey: 'current', previewedKey: null, preview: null, requestKey: null, requestError: '', previewing: false }
+    expect(getGrammarPreviewStatus(base).kind).toBe('not-previewed')
+    expect(getGrammarPreviewStatus({ ...base, requestKey: 'current', previewing: true }).kind).toBe('previewing')
+    expect(getGrammarPreviewStatus({ ...base, previewedKey: 'current', preview: {} }).kind).toBe('success')
+    expect(getGrammarPreviewStatus({ ...base, previewedKey: 'current', preview: { error: 'bad binding' } }).kind).toBe('server-rejected')
+    expect(getGrammarPreviewStatus({ ...base, requestKey: 'current', requestError: 'Network unavailable' }).kind).toBe('request-failed')
+    expect(getGrammarPreviewStatus({ ...base, previewedKey: 'old', preview: {}, requestKey: 'old', requestError: 'old error' }).kind).toBe('not-previewed')
   })
 })
 

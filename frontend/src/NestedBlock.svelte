@@ -1,6 +1,6 @@
 <script lang="ts">
-  import PlaygroundBlockShell from './PlaygroundBlockShell.svelte'
-  import type { ComponentNode } from './PlaygroundDraggable.svelte'
+  import BlockShell from './BlockShell.svelte'
+  import type { ComponentNode } from './DndDraggable.svelte'
 
   export let item: ComponentNode
   export let parentId: number | null
@@ -11,9 +11,9 @@
   export let onRemove: () => void
 </script>
 
-<PlaygroundBlockShell item={item} dragData={{ ...item, nodeId: item.id, sourceParentId: parentId }} {container} title={item.label} kind={item.blockType} {collapsible} {initiallyOpen} {onDragEnd} {onRemove}>
+<BlockShell item={item} dragData={{ ...item, nodeId: item.id, sourceParentId: parentId }} {container} title={item.label} kind={item.blockType} {collapsible} {initiallyOpen} {onDragEnd} {onRemove}>
   <div class="dnd-nested-list">
   <span class="mock-section-label">Nested components</span>
   <slot />
   </div>
-</PlaygroundBlockShell>
+</BlockShell>

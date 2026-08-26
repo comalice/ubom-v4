@@ -1,8 +1,8 @@
 <script lang="ts">
   import GrammarEditorRow, { type GrammarDragItem, type GrammarDropSlot } from './GrammarEditorRow.svelte'
   import { type DragDropState } from '@thisux/sveltednd'
-  import PlaygroundField from './PlaygroundField.svelte'
-  import PlaygroundStructurePreview, { type StructureNode } from './PlaygroundStructurePreview.svelte'
+  import DndField from './DndField.svelte'
+  import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
   import { playgroundCreateExpr as createExpr, playgroundGenerateSequence as generateSequence, playgroundParseSequence as parseSequence, type PlaygroundDragPayload as DragPayload, type PlaygroundDropTarget as DropTarget, type PlaygroundExpr as Expr, type PlaygroundExprKind as ExprKind } from './PlaygroundGrammar'
 
@@ -159,16 +159,16 @@
   <div class="grammar-editor-sketch-layout">
     <section class="grammar-editor-sketch-canvas" aria-labelledby="grammar-editor-canvas-heading">
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
-      <PlaygroundField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
+      <DndField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
         <div class="grammar-editor-sketch-row">
           <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
         </div>
         <div class="grammar-editor-sketch-drop-zone">Drop a block here to add it to the root sequence</div>
-      </PlaygroundField>
+      </DndField>
     </section>
     <aside class="grammar-editor-sketch-map" aria-labelledby="grammar-editor-map-heading">
       <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
-      <div class="grammar-editor-sketch-map-tree"><PlaygroundStructurePreview nodes={structureNodes} showIds={false} /></div>
+      <div class="grammar-editor-sketch-map-tree"><StructureTree nodes={structureNodes} showIds={false} /></div>
       <section class="grammar-editor-sketch-test" aria-labelledby="grammar-editor-test-heading">
         <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>
         <label class="grammar-input-label">Input to parse<input bind:value={testInput} placeholder="Type a candidate value" /></label>

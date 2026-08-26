@@ -5,8 +5,8 @@
   import DndOpsPlayground from './DndOpsPlayground.svelte'
   import GrammarBlocksPlayground from './GrammarBlocksPlayground.svelte'
   import GrammarEditorPlayground from './GrammarEditorPlayground.svelte'
-  import PlaygroundMoveMarker from './PlaygroundMoveMarker.svelte'
-  import PlaygroundNewMarker from './PlaygroundNewMarker.svelte'
+  import MoveDropMarker from './MoveDropMarker.svelte'
+  import NewDropMarker from './NewDropMarker.svelte'
 
   const links = [
     { label: 'DnD operations', path: '/playground/dnd-ops', page: 'dnd-ops' as const },
@@ -35,8 +35,8 @@
       <section class="playground-components" aria-labelledby="playground-components-heading">
         <p class="mock-section-label" id="playground-components-heading">Components</p>
         <div class="playground-component-list">
-          <div class="playground-component-item"><PlaygroundNewMarker /><span><strong>New item</strong><small>Creates a new component at the target</small></span></div>
-          <div class="playground-component-item"><PlaygroundMoveMarker /><span><strong>Moving item</strong><small>Moves an existing component to the target</small></span></div>
+          <div class="playground-component-item"><NewDropMarker /><span><strong>New item</strong><small>Creates a new component at the target</small></span></div>
+          <div class="playground-component-item"><MoveDropMarker /><span><strong>Moving item</strong><small>Moves an existing component to the target</small></span></div>
         </div>
       </section>
       <DndOpsPlayground />

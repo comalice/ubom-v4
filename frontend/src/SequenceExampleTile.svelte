@@ -1,6 +1,6 @@
 <script lang="ts">
   import { draggable } from '@thisux/sveltednd'
-  import PlaygroundControlButton from './PlaygroundControlButton.svelte'
+  import ControlButton from './ControlButton.svelte'
 
   export type SequenceTile = { kind: 'sequence-tile'; type: string; title: string; description: string; id?: number; nodeId?: number }
   export let tile: SequenceTile
@@ -17,5 +17,5 @@
     <strong>{tile.title}</strong>
     {#if variant === 'palette'}<small>{tile.description}</small>{/if}
   </span>
-  {#if onRemove}<PlaygroundControlButton kind="close" className="sequence-example-remove" label="Remove {tile.title}" onClick={onRemove} />{/if}
+  {#if onRemove}<ControlButton kind="close" className="sequence-example-remove" label="Remove {tile.title}" onClick={onRemove} />{/if}
 </div>

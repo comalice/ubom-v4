@@ -1,7 +1,7 @@
 <script lang="ts">
-  import PlaygroundBasicBlock from './PlaygroundBasicBlock.svelte'
-  import PlaygroundExpandableBlock from './PlaygroundExpandableBlock.svelte'
-  import PlaygroundNestedBlock from './PlaygroundNestedBlock.svelte'
+  import BasicBlock from './BasicBlock.svelte'
+  import ExpandableBlock from './ExpandableBlock.svelte'
+  import NestedBlock from './NestedBlock.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
 
   const withoutRemove = { id: 101, kind: 'component' as const, label: 'Literal', blockType: 'basic' as const, children: [] }
@@ -43,11 +43,11 @@
   <div class="block-example-grid">
     <article class="block-example-card">
       <span class="block-example-kind">Normal</span>
-      <PlaygroundBasicBlock item={withoutRemove} parentId={null} container="component-list:examples" title="Literal" />
+      <BasicBlock item={withoutRemove} parentId={null} container="component-list:examples" title="Literal" />
     </article>
     <article class="block-example-card">
       <span class="block-example-kind">Small</span>
-      <PlaygroundBasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Literal" size="small" />
+      <BasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Literal" size="small" />
     </article>
   </div>
 </section>
@@ -59,11 +59,11 @@
   <div class="block-example-grid">
     <article class="block-example-card">
       <span class="block-example-kind">Without x</span>
-      <PlaygroundBasicBlock item={withoutRemove} parentId={null} container="component-list:examples" title="Literal" />
+      <BasicBlock item={withoutRemove} parentId={null} container="component-list:examples" title="Literal" />
     </article>
     <article class="block-example-card">
       <span class="block-example-kind">With x</span>
-      <PlaygroundBasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Literal" onRemove={() => {}} />
+      <BasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Literal" onRemove={() => {}} />
     </article>
   </div>
 </section>
@@ -75,11 +75,11 @@
   <div class="block-example-grid">
     <article class="block-example-card">
       <span class="block-example-kind">Expanded</span>
-      <PlaygroundExpandableBlock title="Literal" />
+      <ExpandableBlock title="Literal" />
     </article>
     <article class="block-example-card">
       <span class="block-example-kind">Collapsed</span>
-      <PlaygroundExpandableBlock title="Literal" initiallyOpen={false} />
+      <ExpandableBlock title="Literal" initiallyOpen={false} />
     </article>
   </div>
 </section>
@@ -91,11 +91,11 @@
   <div class="block-example-grid">
     <article class="block-example-card">
       <span class="block-example-kind">Short title</span>
-      <PlaygroundBasicBlock item={withoutRemove} parentId={null} container="component-list:examples" title="Value" />
+      <BasicBlock item={withoutRemove} parentId={null} container="component-list:examples" title="Value" />
     </article>
     <article class="block-example-card">
       <span class="block-example-kind">Long title</span>
-      <PlaygroundBasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Reference value" />
+      <BasicBlock item={withRemove} parentId={null} container="component-list:examples" title="Reference value" />
     </article>
   </div>
 </section>
@@ -107,15 +107,15 @@
   <div class="block-example-grid nested-block-example-grid">
     <article class="block-example-card">
       <span class="block-example-kind">Container with empty child list</span>
-      <PlaygroundNestedBlock item={nestedExample} parentId={null} container="component-list:examples"><span class="nested-block-example-empty">Empty nested component list</span></PlaygroundNestedBlock>
+      <NestedBlock item={nestedExample} parentId={null} container="component-list:examples"><span class="nested-block-example-empty">Empty nested component list</span></NestedBlock>
     </article>
     <article class="block-example-card">
       <span class="block-example-kind">Container with three sub blocks</span>
-      <PlaygroundNestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples">
+      <NestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples">
         <div class="nested-block-example-children">
-          {#each nestedWithChildren.children as child}<PlaygroundBasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
+          {#each nestedWithChildren.children as child}<BasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
         </div>
-      </PlaygroundNestedBlock>
+      </NestedBlock>
     </article>
   </div>
   <div class="block-examples-heading nested-block-example-heading">
@@ -125,19 +125,19 @@
   <div class="block-example-grid nested-block-example-grid">
     <article class="block-example-card">
       <span class="block-example-kind">Expanded</span>
-      <PlaygroundNestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples" collapsible>
+      <NestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples" collapsible>
         <div class="nested-block-example-children">
-          {#each nestedWithChildren.children as child}<PlaygroundBasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
+          {#each nestedWithChildren.children as child}<BasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
         </div>
-      </PlaygroundNestedBlock>
+      </NestedBlock>
     </article>
     <article class="block-example-card">
       <span class="block-example-kind">Collapsed</span>
-      <PlaygroundNestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples" collapsible initiallyOpen={false}>
+      <NestedBlock item={nestedWithChildren} parentId={null} container="component-list:examples" collapsible initiallyOpen={false}>
         <div class="nested-block-example-children">
-          {#each nestedWithChildren.children as child}<PlaygroundBasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
+          {#each nestedWithChildren.children as child}<BasicBlock item={child} parentId={nestedWithChildren.id} container="component-list:104" title={child.label} />{/each}
         </div>
-      </PlaygroundNestedBlock>
+      </NestedBlock>
     </article>
   </div>
 </section>

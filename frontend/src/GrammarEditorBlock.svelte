@@ -2,7 +2,7 @@
   import { type DragDropState } from '@thisux/sveltednd'
   import GrammarEditorRow from './GrammarEditorRow.svelte'
   import PlaygroundGrammarDropTarget from './PlaygroundGrammarDropTarget.svelte'
-  import PlaygroundBlockShell from './PlaygroundBlockShell.svelte'
+  import BlockShell from './BlockShell.svelte'
   import type { PlaygroundDragPayload, PlaygroundDropTarget, PlaygroundExpr as Expr } from './PlaygroundGrammar'
 
   export let expr: Expr
@@ -43,7 +43,7 @@
   }
 </script>
 
-<PlaygroundBlockShell title={blockTitle} summary={blockSummary} kind={expr.kind} collapsible initiallyOpen={false} onRemove={onRemove} {container} {dragData} dragHandle=".grammar-drag" interactive={['input', 'button']} {onDragEnd}>
+<BlockShell title={blockTitle} summary={blockSummary} kind={expr.kind} collapsible initiallyOpen={false} onRemove={onRemove} {container} {dragData} dragHandle=".grammar-drag" interactive={['input', 'button']} {onDragEnd}>
   {#if expr.kind === 'literal'}
     <div class="grammar-expr-body"><label>Text<input value={expr.text} aria-label="Literal text" on:input={(event) => update({ text: (event.currentTarget as HTMLInputElement).value })} /></label></div>
   {:else if expr.kind === 'number'}
@@ -57,4 +57,4 @@
   {:else}
     <div class="grammar-expr-body grammar-choice"><div class="grammar-child-label">Alternatives</div>{#each expr.children as alternative, alternativeIndex}<div class="grammar-alternative"><span class="grammar-alternative-label">{String.fromCharCode(65 + alternativeIndex)}</span><div class="grammar-choice-block"><GrammarEditorRow exprs={alternative} path={[...path, expr.id, String(alternativeIndex)]} container={`grammar-editor:choice-row:${expr.id}:${alternativeIndex}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => { const children = expr.children.map((row, rowIndex) => rowIndex === alternativeIndex ? row.map((item, itemIndex) => itemIndex === index ? value : item) : row); update({ children }) }} onRemove={(index) => removeChild(alternativeIndex, index)} /></div><button class="grammar-remove grammar-remove-alternative" type="button" aria-label="Remove alternative {String.fromCharCode(65 + alternativeIndex)}" on:click={() => removeAlternative(alternativeIndex)}>x</button></div>{/each}<PlaygroundGrammarDropTarget container={`grammar-editor:choice-slot:${expr.id}`} target={{ type: 'choice-alternative', path: [...path, expr.id] }} label="Add a choice alternative" showLabel onDrop={onDrop} /><button class="grammar-add" type="button" on:click={addAlternative}>+ add alternative</button></div>
   {/if}
-</PlaygroundBlockShell>
+</BlockShell>

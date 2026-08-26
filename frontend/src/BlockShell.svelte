@@ -1,6 +1,6 @@
 <script lang="ts">
   import { draggable } from '@thisux/sveltednd'
-  import PlaygroundControlButton from './PlaygroundControlButton.svelte'
+  import ControlButton from './ControlButton.svelte'
 
   export let title = ''
   export let summary = ''
@@ -23,8 +23,8 @@
     <span class="grammar-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>
     {#if summary}<span class="playground-block-shell-summary">{summary}</span>{/if}
-    {#if collapsible}<PlaygroundControlButton kind="chevron" className="playground-block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}
-    {#if onRemove}<PlaygroundControlButton kind="close" className="playground-block-shell-remove" label="Remove {title}" onClick={onRemove} />{/if}
+    {#if collapsible}<ControlButton kind="chevron" className="playground-block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}
+    {#if onRemove}<ControlButton kind="close" className="playground-block-shell-remove" label="Remove {title}" onClick={onRemove} />{/if}
   </header>
   {#if !collapsible || open}<div class="playground-block-shell-body"><slot /></div>{/if}
 </article>

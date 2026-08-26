@@ -1,7 +1,7 @@
 <script lang="ts">
   import { droppable, dndState, type DragDropState } from '@thisux/sveltednd'
-  import PlaygroundMoveMarker from './PlaygroundMoveMarker.svelte'
-  import PlaygroundNewMarker from './PlaygroundNewMarker.svelte'
+  import MoveDropMarker from './MoveDropMarker.svelte'
+  import NewDropMarker from './NewDropMarker.svelte'
   import type { PlaygroundDragPayload, PlaygroundDropTarget } from './PlaygroundGrammar'
 
   export let container: string
@@ -15,7 +15,7 @@
 </script>
 
 <div class:grammar-editor-drop-target-over={over} class:grammar-editor-drop-target-palette={palette} class:grammar-editor-drop-target-labeled={showLabel} class="grammar-editor-drop-target" role="listitem" aria-label={label} use:droppable={{ container, callbacks: { onDrop: (state) => onDrop(state, target) } }}>
-  <PlaygroundNewMarker />
-  <PlaygroundMoveMarker />
+  <NewDropMarker />
+  <MoveDropMarker />
   {#if showLabel}<span class="grammar-editor-drop-target-label">{label}</span>{/if}
 </div>

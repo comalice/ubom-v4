@@ -1,8 +1,8 @@
 <script lang="ts">
   import { droppable, type DragDropState } from '@thisux/sveltednd'
   import GrammarEditorBlock from './GrammarEditorBlock.svelte'
-  import PlaygroundMoveMarker from './PlaygroundMoveMarker.svelte'
-  import PlaygroundNewMarker from './PlaygroundNewMarker.svelte'
+  import MoveDropMarker from './MoveDropMarker.svelte'
+  import NewDropMarker from './NewDropMarker.svelte'
   import type { PlaygroundDragPayload as DragPayload, PlaygroundDropTarget as DropTarget, PlaygroundExpr as Expr } from './PlaygroundGrammar'
 
   export type GrammarDragItem = DragPayload
@@ -23,8 +23,8 @@
 
 <div class="grammar-editor-row">
   {#each exprs as expr, index (expr.id)}
-    <div class:dnd-insert-zone-edge={index === 0} class="dnd-insert-zone" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop(state, { type: 'row', path, index }) } }}><i aria-hidden="true"></i><PlaygroundNewMarker /><PlaygroundMoveMarker /></div>
+    <div class:dnd-insert-zone-edge={index === 0} class="dnd-insert-zone" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop(state, { type: 'row', path, index }) } }}><i aria-hidden="true"></i><NewDropMarker /><MoveDropMarker /></div>
     <GrammarEditorBlock {expr} {path} container={container} dragData={blockData(expr)} onChange={(value) => onChange(index, value)} onRemove={() => onRemove(index)} onDrop={onDrop} onRowDragOver={onDragOver} onRowDragLeave={onDragLeave} {onDragEnd} />
   {/each}
-  <div class="dnd-insert-zone dnd-insert-zone-edge" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop(state, { type: 'row', path, index: exprs.length }) } }}><i aria-hidden="true"></i><PlaygroundNewMarker /><PlaygroundMoveMarker /></div>
+  <div class="dnd-insert-zone dnd-insert-zone-edge" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop(state, { type: 'row', path, index: exprs.length }) } }}><i aria-hidden="true"></i><NewDropMarker /><MoveDropMarker /></div>
 </div>

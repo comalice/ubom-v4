@@ -1,10 +1,10 @@
 <script lang="ts">
   import { type DragDropState } from '@thisux/sveltednd'
-  import type { DropSlot } from './PlaygroundComponentList.svelte'
-  import PlaygroundDraggable, { type DraggableComponent } from './PlaygroundDraggable.svelte'
-  import PlaygroundField from './PlaygroundField.svelte'
-  import type { ComponentNode } from './PlaygroundDraggable.svelte'
-  import PlaygroundStructurePreview from './PlaygroundStructurePreview.svelte'
+  import type { DropSlot } from './DndComponentList.svelte'
+  import DndDraggable, { type DraggableComponent } from './DndDraggable.svelte'
+  import DndField from './DndField.svelte'
+  import type { ComponentNode } from './DndDraggable.svelte'
+  import StructureTree from './StructureTree.svelte'
 
   type DragItem = DraggableComponent
   const rootListId = 'component-list:root'
@@ -87,19 +87,19 @@
 <div class="dnd-ops-playground">
   <section class="dnd-structure-preview" aria-labelledby="structure-preview-heading">
     <span class="mock-section-label" id="structure-preview-heading">Current structure</span>
-    <PlaygroundStructurePreview nodes={placedComponents} />
+    <StructureTree nodes={placedComponents} />
   </section>
   <div class="dnd-ops-heading"><div><span class="mock-section-label">Experiment</span><h3>Drop components into a field</h3></div>{#if placedComponents.length}<button class="dnd-reset" type="button" on:click={() => placedComponents = []}>Reset</button>{/if}</div>
   <div class="dnd-ops-stage">
     <section class="dnd-component-palette" aria-labelledby="component-palette-heading">
       <span class="mock-section-label" id="component-palette-heading">Component palette</span>
-      <PlaygroundDraggable item={component} container="component-palette" variant="palette" description="Leaf component" onDragEnd={handleDragEnd} />
-      <PlaygroundDraggable item={nestedComponent} container="component-palette" variant="palette" description="Component with nested field" onDragEnd={handleDragEnd} />
+      <DndDraggable item={component} container="component-palette" variant="palette" description="Leaf component" onDragEnd={handleDragEnd} />
+      <DndDraggable item={nestedComponent} container="component-palette" variant="palette" description="Component with nested field" onDragEnd={handleDragEnd} />
     </section>
 
     <section class="dnd-field-area" aria-labelledby="field-heading">
       <span class="mock-section-label" id="field-heading">Field</span>
-      <PlaygroundField nodes={placedComponents} container={rootListId} onDrop={handleDrop} onDragOver={handleGapDragOver} onGapDragLeave={handleGapDragLeave} onGapDrop={handleGapDrop} onDragEnd={handleDragEnd} onRemove={(id) => placedComponents = removeNode(placedComponents, id)} />
+      <DndField nodes={placedComponents} container={rootListId} onDrop={handleDrop} onDragOver={handleGapDragOver} onGapDragLeave={handleGapDragLeave} onGapDrop={handleGapDrop} onDragEnd={handleDragEnd} onRemove={(id) => placedComponents = removeNode(placedComponents, id)} />
     </section>
   </div>
 </div>

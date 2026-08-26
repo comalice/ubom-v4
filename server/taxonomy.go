@@ -61,8 +61,9 @@ type Taxonomy struct {
 }
 
 type TaxonomyNode struct {
-	ID         TaxonomyNodeID        `json:"id"`
-	Label      string                `json:"label"`
+	ID    TaxonomyNodeID `json:"id"`
+	Label string         `json:"label"`
+	// Deprecated: use Predicates. Retained for persisted/API compatibility.
 	Matches    map[string]string     `json:"matches,omitempty"`
 	Predicates []TaxonomyPredicate   `json:"predicates,omitempty"`
 	Attributes []AttributeAssignment `json:"attributes,omitempty"`
@@ -151,7 +152,11 @@ func taxonomyValidation(format string, args ...any) error {
 }
 
 func validateTaxonomyFields(node TaxonomyNode, fields map[string]SeqDefNode) error {
-	for _, predicate := range taxonomyPredicates(node) {
+	predicates, err := validatedTaxonomyPredicates(node)
+	if err != nil {
+		return err
+	}
+	for _, predicate := range predicates {
 		fieldNode, ok := fields[predicate.Field.String()]
 		if !ok {
 			return taxonomyValidation("taxonomy node %q references unknown field %q", node.ID, predicate.Field)
@@ -216,10 +221,15 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 	return nil
 }
 
-func validatedTaxonomyPredicates(node TaxonomyNode) ([]TaxonomyPredicate, error) {
-	result := append([]TaxonomyPredicate{}, node.Predicates...)
-	for field, value := range node.Matches {
-		result = append(result, ExactPredicate(FieldName(field), value))
+func taxonomyPredicates(node TaxonomyNode) []TaxonomyPredicate {
+	result, _ := typedTaxonomyPredicates(node)
+	return result
+}
+
+func typedTaxonomyPredicates(node TaxonomyNode) ([]TaxonomyPredicate, error) {
+	var result []TaxonomyPredicate
+	if node.Predicates != nil {
+		result = append(result, node.Predicates...)
 	}
 	seen := map[FieldName]bool{}
 	for _, predicate := range result {
@@ -232,11 +242,6 @@ func validatedTaxonomyPredicates(node TaxonomyNode) ([]TaxonomyPredicate, error)
 		seen[predicate.Field] = true
 	}
 	return result, nil
-}
-
-func taxonomyPredicates(node TaxonomyNode) []TaxonomyPredicate {
-	result, _ := validatedTaxonomyPredicates(node)
-	return result
 }
 
 func (p TaxonomyPredicate) Validate() error {
@@ -346,15 +351,6 @@ func numericCapture(value any) (int64, bool) {
 	return 0, false
 }
 
-func (n TaxonomyNode) predicatesMatch(bindings map[string]string) bool {
-	for _, predicate := range taxonomyPredicates(n) {
-		if !predicate.matches(bindings[predicate.Field.String()]) {
-			return false
-		}
-	}
-	return true
-}
-
 // Classify returns the deepest matching path. Sibling order is retained as a
 // deterministic priority for compatibility with the legacy projection API;
 // validated taxonomies reject overlapping siblings.
@@ -435,11 +431,10 @@ func taxonomyNodePredicatesMatch(node TaxonomyNode, parsed ParsedSequence) bool 
 	return true
 }
 
-// Classification validates all predicate-bearing nodes before evaluating the
-// value. The legacy projection helpers intentionally retain their tolerant
-// taxonomyPredicates adapter, but public classification must not hide errors.
+// Classification validates all typed predicate-bearing nodes before evaluating
+// the value. Legacy Matches are handled only by compatibility adapters.
 func validateClassificationPredicates(node TaxonomyNode) error {
-	if _, err := validatedTaxonomyPredicates(node); err != nil {
+	if _, err := typedTaxonomyPredicates(node); err != nil {
 		return err
 	}
 	for _, child := range node.Children {
@@ -483,61 +478,4 @@ func taxonomyNodePath(node TaxonomyNode, id TaxonomyNodeID) ([]TaxonomyNode, boo
 		}
 	}
 	return nil, false
-}
-
-// Project returns the labels along the first matching path from Root. When
-// sibling rules overlap, declaration order is the deterministic priority.
-// Unknown binding values are valid but stop projection at the last match.
-func (t Taxonomy) Project(parsed ParseResult) []string {
-	return projectTaxonomyNode(t.Root, parsed.Bindings)
-}
-
-// ProjectNode returns the deepest matching taxonomy node, using declaration
-// order as the priority when sibling rules overlap.
-func (t Taxonomy) ProjectNode(parsed ParseResult) (TaxonomyNodeID, error) {
-	node, ok := projectTaxonomyNodeID(t.Root, parsed.Bindings)
-	if !ok {
-		return "", fmt.Errorf("bindings do not match a taxonomy node")
-	}
-	return node, nil
-}
-
-func projectTaxonomyNode(node TaxonomyNode, bindings map[string]string) []string {
-	labels := []string{}
-	if node.Label != "" {
-		labels = append(labels, node.Label)
-	}
-
-	for _, child := range node.Children {
-		if child.predicatesMatch(bindings) {
-			return append(labels, projectTaxonomyNode(child, bindings)...)
-		}
-	}
-	return labels
-}
-
-func projectTaxonomyNodeID(node TaxonomyNode, bindings map[string]string) (TaxonomyNodeID, bool) {
-	best := node.ID
-	found := node.ID != ""
-	for _, child := range node.Children {
-		if !child.predicatesMatch(bindings) {
-			continue
-		}
-		if childBest, childFound := projectTaxonomyNodeID(child, bindings); childFound {
-			return childBest, true
-		}
-		if child.ID != "" {
-			return child.ID, true
-		}
-	}
-	return best, found
-}
-
-func taxonomyMatches(matches, bindings map[string]string) bool {
-	for name, want := range matches {
-		if bindings[name] != want {
-			return false
-		}
-	}
-	return true
 }

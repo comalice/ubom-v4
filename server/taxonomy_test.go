@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestTaxonomyPredicateMatching(t *testing.T) {
+func TestLegacyTaxonomyPredicateMatching(t *testing.T) {
 	node := TaxonomyNode{Predicates: []TaxonomyPredicate{
 		ExactPredicate("category", "RES"),
 		NumericRangePredicate("group", 100, 199),
@@ -220,7 +220,7 @@ func TestTaxonomyValidateRejectsInvalidTreeRelationships(t *testing.T) {
 	}
 }
 
-func TestTaxonomyProject(t *testing.T) {
+func TestLegacyTaxonomyProject(t *testing.T) {
 	taxonomy := Taxonomy{Root: TaxonomyNode{
 		Label: "component",
 		Children: []TaxonomyNode{
@@ -252,7 +252,7 @@ func TestTaxonomyProject(t *testing.T) {
 	}
 }
 
-func TestTaxonomyProjectStopsAtUnknownValue(t *testing.T) {
+func TestLegacyTaxonomyProjectStopsAtUnknownValue(t *testing.T) {
 	taxonomy := Taxonomy{Root: TaxonomyNode{
 		Label: "component",
 		Children: []TaxonomyNode{{

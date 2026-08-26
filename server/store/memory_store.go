@@ -171,6 +171,13 @@ func (s *MemoryStore) ListSeqDefs() ([]ubom.SeqDef, error) {
 }
 
 func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
+	// Upgrade legacy exact matches before storing so all later interpretation
+	// uses typed predicates, while the original Matches remain available.
+	taxonomy, err := ubom.UpgradeLegacyTaxonomy(def.Taxonomy)
+	if err != nil {
+		return err
+	}
+	def.Taxonomy = taxonomy
 	if err := def.Validate(); err != nil {
 		return err
 	}

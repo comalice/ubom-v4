@@ -402,6 +402,12 @@ func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 	if err := json.Unmarshal(attributeData, &attributeDefs); err != nil {
 		return ubom.TaxonomyDef{}, err
 	}
+	// Legacy rows contain only Matches. Upgrade them at the persistence
+	// boundary so normal interpretation sees typed predicates.
+	taxonomy, err = ubom.UpgradeLegacyTaxonomy(taxonomy)
+	if err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
 	return ubom.TaxonomyDef{ID: id, SeqDef: seqDefID, AttributeDefs: attributeDefs, Taxonomy: taxonomy}, nil
 }
 

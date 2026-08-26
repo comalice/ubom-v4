@@ -8,6 +8,39 @@ import (
 	ubom "ubom-v4"
 )
 
+func TestMemoryStoreUpgradesLegacyTaxonomyForSchemaClassification(t *testing.T) {
+	store := NewMemoryStore()
+	seqDef := ubom.NewSeqDef(ubom.Bind("code", ubom.PlaceSequence("AB"))).WithID("legacy-seq")
+	taxonomyDef := ubom.TaxonomyDef{ID: "legacy-taxonomy", SeqDef: seqDef.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+		ID:       "root",
+		Children: []ubom.TaxonomyNode{{ID: "a", Matches: map[string]string{"code": "A"}}},
+	}}}
+	if err := store.CreateSeqDef(seqDef); err != nil {
+		t.Fatalf("CreateSeqDef() error = %v", err)
+	}
+	if err := store.CreateTaxonomyDef(taxonomyDef); err != nil {
+		t.Fatalf("CreateTaxonomyDef() error = %v", err)
+	}
+	stored, err := store.GetTaxonomyDef(taxonomyDef.ID)
+	if err != nil {
+		t.Fatalf("GetTaxonomyDef() error = %v", err)
+	}
+	if stored.Taxonomy.Root.Children[0].Matches["code"] != "A" {
+		t.Fatalf("legacy Matches were not retained: %#v", stored.Taxonomy.Root.Children[0].Matches)
+	}
+	if len(stored.Taxonomy.Root.Children[0].Predicates) != 1 {
+		t.Fatalf("legacy Matches were not upgraded: %#v", stored.Taxonomy.Root.Children[0].Predicates)
+	}
+
+	part, err := ubom.NewSchema(seqDef, stored, ubom.SchemaPolicy{}).NewPartNumber("A", nil)
+	if err != nil {
+		t.Fatalf("Schema.NewPartNumber() error = %v", err)
+	}
+	if part.TaxonomyNodeID != "a" {
+		t.Fatalf("Schema.NewPartNumber() node = %q, want a", part.TaxonomyNodeID)
+	}
+}
+
 func TestMemoryStoreRoundTrip(t *testing.T) {
 	store := NewMemoryStore()
 	seqDef := ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn-v1")

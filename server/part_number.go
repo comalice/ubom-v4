@@ -131,16 +131,6 @@ func (p PartNumber) Validate() error {
 	return nil
 }
 
-// NewPartNumber is the legacy adapter for Schema.NewPartNumber. Durable part
-// numbers require a taxonomy classification node, even though callers of this
-// adapter do not provide an explicit open/closed policy.
-func NewPartNumber(value string, seqDef SeqDef, taxonomy TaxonomyDef) (PartNumber, error) {
-	// The historical API has no attribute parameter and callers commonly fill
-	// attributes immediately afterward. Keep that construction behavior while
-	// sharing all schema parsing and classification logic.
-	return NewSchema(seqDef, taxonomy, SchemaPolicy{}).materializePartNumber(value, nil, false)
-}
-
 // Next generates the next part number from the part number's SeqDef.
 // TODO MVP+1 wire in attribute fields -- require an attribute object with (key,value) pairs for
 // all defined attribues in the taxonomy tree AND/OR on the part number.

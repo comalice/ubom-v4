@@ -22,8 +22,7 @@ func validatePartNumberReferences(s Store, part ubom.PartNumber) error {
 		return ErrNotFound
 	}
 	if taxonomyHasTypedPredicates(taxonomyDef.Taxonomy.Root) {
-		// Typed predicates use the composed schema contract, including field
-		// references and semantic attribute validation.
+		// Typed predicates use the composed schema contract.
 		materialized, err := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{}).NewPartNumber(part.Value, part.Attributes)
 		if err != nil {
 			return err

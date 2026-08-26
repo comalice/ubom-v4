@@ -124,16 +124,17 @@ Classify(ParseResult)
     -> taxonomy node or unclassified
 ```
 
-Taxonomy may also provide constraints for generation:
+Taxonomy may eventually provide reverse constraints for generation. This is a
+proposed/deferred API, not part of the accepted implementation:
 
 ```text
 Constraints(node or context)
     -> bindings compatible with that classification
 ```
 
-This allows taxonomy to own facts such as `resistor requires category = RES`
-without making taxonomy responsible for rendering `RES-0042`. `SeqDef` still
-constructs the string from bindings.
+When implemented, this would allow taxonomy to own facts such as `resistor
+requires category = RES` without making taxonomy responsible for rendering
+`RES-0042`. `SeqDef` still constructs the string from bindings.
 
 ### Schema
 
@@ -146,9 +147,10 @@ Schema.Parse(value)
     return parsed plus classification
 ```
 
-The existing `NewPartNumber` operation already performs this composition. A
-future `Schema` abstraction would make the composed concept explicit without
-merging the underlying responsibilities.
+`Schema` performs this composition explicitly without merging the underlying
+responsibilities. `NewPartNumber` is available as a compatibility adapter for
+callers that do not supply attributes, while durable creation still requires a
+classification node.
 
 ### PartNumber
 
@@ -193,7 +195,7 @@ SeqDef:
     parse, generate, and produce successor candidates
 
 Taxonomy:
-    classify candidates and constrain them by context
+    classify candidates; reverse constraints are proposed/deferred
 
 Store:
     enforce uniqueness and persistence
@@ -202,9 +204,11 @@ Allocator or application service:
     iterate candidates until one satisfies policy and is unused
 ```
 
-Taxonomy should not define the mechanics of string succession. It can filter
-or constrain candidates, while the allocator coordinates taxonomy, sequence
-ordering, and store availability.
+Taxonomy should not define the mechanics of string succession. The accepted
+allocator iterates SeqDef successors and reclassifies each candidate against
+the requested context. A future reverse-constraint API could reduce that
+search, while the allocator would still coordinate sequence ordering and store
+availability.
 
 ## Example Allocation Flow
 
@@ -220,6 +224,12 @@ For a released part number:
 7. Check store uniqueness.
 8. Persist the classified PartNumber.
 ```
+
+The current allocator obtains its starting bindings from the draft and then
+iterates SeqDef successors, reclassifying every candidate. A future allocator
+may first request reverse constraints from `Taxonomy.Constraints(context)` to
+choose a narrower starting/intermediate binding set; that API is not currently
+implemented.
 
 For an existing value:
 
@@ -321,11 +331,12 @@ resistor:
     category = RES
 ```
 
-then both of these should be true:
+then classification should be true now, while the reverse constraint is an
+ideal future capability:
 
 ```text
 Classify({category: RES}) -> resistor
-Constraints(resistor)    -> category must equal RES
+proposed Constraints(resistor) -> category must equal RES
 ```
 
 `SeqDef` remains responsible for rendering those constrained fields into a
@@ -434,12 +445,15 @@ layer responsible for the other.
 ### SeqDef Methods
 
 ```go
-func (d SeqDef) Parse(value string) (ParsedSequence, error)
+func (d SeqDef) ParseValues(value string) (ParsedSequence, error)
 func (d SeqDef) Generate(bindings map[string]string) (string, error)
 func (d SeqDef) Successor(value string) (string, error)
 ```
 
-`Parse` recognizes and captures. `Generate` renders a value from bindings.
+`Parse` remains a string-returning compatibility operation; schema
+interpretation uses `ParseValues` so taxonomy receives structured captures.
+
+`ParseValues` recognizes and captures. `Generate` renders a value from bindings.
 `Successor` produces a structural candidate only where the definition has a
 well-defined ordering. It does not check store uniqueness or taxonomy policy.
 
@@ -456,20 +470,15 @@ That avoids parsing the same value twice when an allocator already has a
 
 ```go
 func (t TaxonomyDef) Classify(parsed ParsedSequence) (*Classification, error)
-func (t TaxonomyDef) MatchesContext(
-    classification Classification,
-    context TaxonomyNodeID,
-) bool
-func (t TaxonomyDef) Constraints(node TaxonomyNodeID) (map[string]string, error)
 ```
 
-`Classify` maps captured values to a taxonomy node. `MatchesContext` checks
-whether the result is at or below a requested taxonomy context. `Constraints`
-is the reverse-direction capability needed when a user selects a taxonomy
-context before generating a value.
+`Classify` maps captured values to a taxonomy node. Application allocation
+checks whether the result is at or below a requested taxonomy context and
+iterates SeqDef successors; taxonomy does not render strings or reserve
+values. There is no separate reverse-direction `Constraints` API in the
+accepted implementation.
 
-`Constraints` should not make taxonomy render strings. It supplies facts such
-as:
+Taxonomy constraints should not render strings. They supply facts such as:
 
 ```text
 resistor requires category = RES
@@ -491,13 +500,16 @@ The schema methods coordinate the two definitions:
 
 ```go
 func (s Schema) Parse(value string) (InterpretedValue, error) {
-    parsed, err := s.SeqDef.Parse(value)
+    parsed, err := s.SeqDef.ParseValues(value)
     if err != nil {
         return InterpretedValue{}, err
     }
 
-    classification, err := s.Taxonomy.Classify(parsed)
-    if err != nil && s.Policy.RequireClassification {
+    classification, err := s.Taxonomy.ClassifyWithPolicy(parsed, s.Policy)
+    if err != nil && !s.Policy.RequireClassification {
+        return InterpretedValue{Parsed: parsed}, nil
+    }
+    if err != nil {
         return InterpretedValue{}, err
     }
 
@@ -575,12 +587,11 @@ type PartNumberStore interface {
 }
 ```
 
-The allocator's call tree is:
+The current allocator's call tree is:
 
 ```text
 Allocator.Allocate
-`- Schema.Taxonomy.Constraints(context)
-`- merge constraints with seed bindings
+`- use draft/seed bindings
 `- Schema.Generate(bindings)
    |- SeqDef.Generate
    |- SeqDef.Parse
@@ -595,6 +606,16 @@ Allocator.Allocate
       `- TaxonomyDef.Classify
 `- Schema.NewPartNumber(candidate.Value, attributes)
 `- Store.CreatePartNumber(part)
+```
+
+The proposed future constraint-assisted variant would add the following before
+`Schema.Generate`:
+
+```text
+Allocator.Allocate
+`- proposed Schema.Taxonomy.Constraints(context)
+`- merge constraints with seed bindings
+`- continue with the current successor/reclassification loop
 ```
 
 The final store operation must still be authoritative for uniqueness. A
@@ -666,13 +687,11 @@ Assume the requested context is `resistor`, and the taxonomy supplies:
 category = RES
 ```
 
-The call tree is:
+The current call tree is:
 
 ```text
-Allocator.Allocate(schema, "resistor", {number: "0042"}, attributes)
-`- Taxonomy.Constraints("resistor")
-   `- {category: "RES"}
-`- merge with seed
+Allocator.Allocate(schema, "resistor", {category: "RES", number: "0042"}, attributes)
+`- use seed bindings
    `- {category: "RES", number: "0042"}
 `- Schema.Generate(bindings)
    |- SeqDef.Generate
@@ -687,8 +706,8 @@ Allocator.Allocate(schema, "resistor", {number: "0042"}, attributes)
 ```
 
 If `RES-0042` is already occupied, allocation advances according to the
-sequence ordering. The successor is a candidate, not automatically an
-allocation result:
+sequence ordering and reclassifies each successor. The successor is a candidate,
+not automatically an allocation result:
 
 ```text
 SeqDef.Successor("RES-0042")
@@ -703,6 +722,11 @@ Store.GetPartNumber("RES-0043")
 
 If a successor crosses into a value classified outside the requested context,
 the allocator skips it rather than asking `SeqDef` to understand taxonomy.
+
+A future constraint-assisted allocator could use the proposed
+`Taxonomy.Constraints("resistor")` to derive `{category: "RES"}` before
+generation. That would narrow candidate selection but would not replace
+classification or store uniqueness checks.
 
 ### Nested Range Refinement
 
@@ -842,20 +866,24 @@ are alternatives at the same level, their value ranges should not overlap.
 
 ### Range Refinement And Allocation
 
-The nested structure also provides an allocation context:
+The nested structure provides an allocation context. The accepted allocator
+starts with bindings, iterates ordered candidates, and reclassifies them:
 
 ```text
 Allocate(context = Y)
-`- Taxonomy.Constraints(Y)
-   `- group in 150..175
-   `- inherited from X: group in 100..199
-`- choose an unused group in 150..175
-`- SeqDef.Generate({group: chosen value})
+`- start with the draft's group binding
+`- SeqDef.Generate({group: candidate value})
 `- Taxonomy.Classify(candidate)
    `- X matches
    `- Y matches
+`- if occupied or outside Y, advance SeqDef successor and reclassify
 `- Store.CreatePartNumber(candidate)
 ```
+
+A future implementation could use the proposed `Taxonomy.Constraints(Y)` to
+derive the `150..175` intersection, including the inherited `100..199`
+condition, before generating candidates. That reverse constraint operation is
+deferred and does not replace the current reclassification step.
 
 The inherited `100..199` constraint is redundant for the numeric intersection
 in this example, but it is semantically important: a candidate for `Y` must

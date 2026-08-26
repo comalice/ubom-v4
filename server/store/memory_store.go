@@ -273,6 +273,8 @@ func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 }
 
 func (s *MemoryStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := draft.Validate(); err != nil {
 		return err
 	}
@@ -336,11 +338,12 @@ func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	value, err := seqDef.Generate(draft.Bindings)
+	schema := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{})
+	interpreted, err := schema.Generate(draft.Bindings)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	part, err := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{}).NewPartNumber(value, draft.Attributes)
+	part, err := schema.NewPartNumber(interpreted.Parsed.Value, draft.Attributes)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}

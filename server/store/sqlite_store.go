@@ -696,6 +696,8 @@ func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 }
 
 func (s *SQLiteStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := draft.Validate(); err != nil {
 		return err
 	}
@@ -720,6 +722,9 @@ func (s *SQLiteStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
 	_, err = s.db.Exec(`INSERT INTO part_number_drafts
 		(id, seq_def_id, taxonomy_def_id, context_node_id, bindings, attributes, status)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`, draft.ID, draft.SeqDefID, draft.TaxonomyDefID, draft.ContextNodeID, bindings, attributes, draft.Status)
+	if isSQLiteConstraint(err) {
+		return ErrAlreadyExists
+	}
 	return err
 }
 
@@ -748,6 +753,8 @@ func (s *SQLiteStore) GetPartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNu
 }
 
 func (s *SQLiteStore) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := draft.Validate(); err != nil {
 		return err
 	}
@@ -781,6 +788,8 @@ func (s *SQLiteStore) UpdatePartNumberDraft(draft ubom.PartNumberDraft) error {
 }
 
 func (s *SQLiteStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.PartNumber, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	draft, err := s.GetPartNumberDraft(id)
 	if err != nil {
 		return ubom.PartNumber{}, err
@@ -796,11 +805,12 @@ func (s *SQLiteStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	value, err := seqDef.Generate(draft.Bindings)
+	schema := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{})
+	interpreted, err := schema.Generate(draft.Bindings)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	part, err := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{}).NewPartNumber(value, draft.Attributes)
+	part, err := schema.NewPartNumber(interpreted.Parsed.Value, draft.Attributes)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}

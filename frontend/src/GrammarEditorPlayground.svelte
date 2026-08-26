@@ -4,7 +4,7 @@
   import DndField from './DndField.svelte'
   import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
-  import { playgroundCreateExpr as createExpr, playgroundGenerateSequence as generateSequence, playgroundParseSequence as parseSequence, type PlaygroundDragPayload as DragPayload, type PlaygroundDropTarget as DropTarget, type PlaygroundExpr as Expr, type PlaygroundExprKind as ExprKind } from './PlaygroundGrammar'
+  import { createGrammarExpr as createExpr, generateGrammarSequence as generateSequence, parseGrammarSequence as parseSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },

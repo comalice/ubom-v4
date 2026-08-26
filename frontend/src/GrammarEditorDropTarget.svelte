@@ -2,13 +2,13 @@
   import { droppable, dndState, type DragDropState } from '@thisux/sveltednd'
   import MoveDropMarker from './MoveDropMarker.svelte'
   import NewDropMarker from './NewDropMarker.svelte'
-  import type { PlaygroundDragPayload, PlaygroundDropTarget } from './PlaygroundGrammar'
+  import type { GrammarDragPayload, GrammarDropTarget } from './GrammarEditorModel'
 
   export let container: string
-  export let target: PlaygroundDropTarget
+  export let target: GrammarDropTarget
   export let label: string
   export let showLabel = false
-  export let onDrop: (state: DragDropState<PlaygroundDragPayload>, target: PlaygroundDropTarget) => void
+  export let onDrop: (state: DragDropState<GrammarDragPayload>, target: GrammarDropTarget) => void
 
   $: palette = dndState.draggedItem?.kind === 'palette'
   $: over = dndState.targetContainer === container

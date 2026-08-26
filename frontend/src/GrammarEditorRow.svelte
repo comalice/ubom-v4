@@ -3,7 +3,7 @@
   import GrammarEditorBlock from './GrammarEditorBlock.svelte'
   import MoveDropMarker from './MoveDropMarker.svelte'
   import NewDropMarker from './NewDropMarker.svelte'
-  import type { PlaygroundDragPayload as DragPayload, PlaygroundDropTarget as DropTarget, PlaygroundExpr as Expr } from './PlaygroundGrammar'
+  import type { GrammarDragPayload as DragPayload, GrammarDropTarget as DropTarget, GrammarExpr as Expr } from './GrammarEditorModel'
 
   export type GrammarDragItem = DragPayload
   export type GrammarDropSlot = Extract<DropTarget, { type: 'row' }>

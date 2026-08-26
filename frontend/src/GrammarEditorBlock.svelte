@@ -1,9 +1,9 @@
 <script lang="ts">
   import { type DragDropState } from '@thisux/sveltednd'
   import GrammarEditorRow from './GrammarEditorRow.svelte'
-  import PlaygroundGrammarDropTarget from './PlaygroundGrammarDropTarget.svelte'
+  import GrammarEditorDropTarget from './GrammarEditorDropTarget.svelte'
   import BlockShell from './BlockShell.svelte'
-  import type { PlaygroundDragPayload, PlaygroundDropTarget, PlaygroundExpr as Expr } from './PlaygroundGrammar'
+  import type { GrammarDragPayload, GrammarDropTarget, GrammarExpr as Expr } from './GrammarEditorModel'
 
   export let expr: Expr
   export let onChange: (expr: Expr) => void = () => {}
@@ -12,8 +12,8 @@
   export let dragData: unknown = expr
   export let onDragEnd: () => void = () => {}
   export let path: string[] = []
-  export let onDrop: (state: DragDropState<PlaygroundDragPayload>, target: PlaygroundDropTarget) => void = () => {}
-  export let onRowDragOver: (state: DragDropState<PlaygroundDragPayload>) => void = () => {}
+  export let onDrop: (state: DragDropState<GrammarDragPayload>, target: GrammarDropTarget) => void = () => {}
+  export let onRowDragOver: (state: DragDropState<GrammarDragPayload>) => void = () => {}
   export let onRowDragLeave: () => void = () => {}
 
   function update(value: Partial<Expr>) { onChange({ ...expr, ...value } as Expr) }
@@ -53,8 +53,8 @@
   {:else if expr.kind === 'chars'}
     <div class="grammar-expr-body"><label>Allowed characters<input value={expr.chars} aria-label="Allowed characters" on:input={(event) => update({ chars: (event.currentTarget as HTMLInputElement).value })} /></label></div>
   {:else if expr.kind === 'bind'}
-    <div class="grammar-expr-body"><label>Name<input value={expr.name} aria-label="Binding name" on:input={(event) => update({ name: (event.currentTarget as HTMLInputElement).value })} /></label><div class="grammar-child-label">Captures</div><div class="grammar-binding-target"><PlaygroundGrammarDropTarget container={`grammar-editor:binding-slot:${expr.id}`} target={{ type: 'binding-child', path: [...path, expr.id] }} label="Replace captured expression" showLabel onDrop={onDrop} /><GrammarEditorRow exprs={expr.child ? [expr.child] : []} path={[...path, expr.id]} container={`grammar-editor:binding-row:${expr.id}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => { if (index === 0) update({ child: value }) }} onRemove={() => update({ child: undefined })} /></div></div>
+    <div class="grammar-expr-body"><label>Name<input value={expr.name} aria-label="Binding name" on:input={(event) => update({ name: (event.currentTarget as HTMLInputElement).value })} /></label><div class="grammar-child-label">Captures</div><div class="grammar-binding-target"><GrammarEditorDropTarget container={`grammar-editor:binding-slot:${expr.id}`} target={{ type: 'binding-child', path: [...path, expr.id] }} label="Replace captured expression" showLabel onDrop={onDrop} /><GrammarEditorRow exprs={expr.child ? [expr.child] : []} path={[...path, expr.id]} container={`grammar-editor:binding-row:${expr.id}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => { if (index === 0) update({ child: value }) }} onRemove={() => update({ child: undefined })} /></div></div>
   {:else}
-    <div class="grammar-expr-body grammar-choice"><div class="grammar-child-label">Alternatives</div>{#each expr.children as alternative, alternativeIndex}<div class="grammar-alternative"><span class="grammar-alternative-label">{String.fromCharCode(65 + alternativeIndex)}</span><div class="grammar-choice-block"><GrammarEditorRow exprs={alternative} path={[...path, expr.id, String(alternativeIndex)]} container={`grammar-editor:choice-row:${expr.id}:${alternativeIndex}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => { const children = expr.children.map((row, rowIndex) => rowIndex === alternativeIndex ? row.map((item, itemIndex) => itemIndex === index ? value : item) : row); update({ children }) }} onRemove={(index) => removeChild(alternativeIndex, index)} /></div><button class="grammar-remove grammar-remove-alternative" type="button" aria-label="Remove alternative {String.fromCharCode(65 + alternativeIndex)}" on:click={() => removeAlternative(alternativeIndex)}>x</button></div>{/each}<PlaygroundGrammarDropTarget container={`grammar-editor:choice-slot:${expr.id}`} target={{ type: 'choice-alternative', path: [...path, expr.id] }} label="Add a choice alternative" showLabel onDrop={onDrop} /><button class="grammar-add" type="button" on:click={addAlternative}>+ add alternative</button></div>
+    <div class="grammar-expr-body grammar-choice"><div class="grammar-child-label">Alternatives</div>{#each expr.children as alternative, alternativeIndex}<div class="grammar-alternative"><span class="grammar-alternative-label">{String.fromCharCode(65 + alternativeIndex)}</span><div class="grammar-choice-block"><GrammarEditorRow exprs={alternative} path={[...path, expr.id, String(alternativeIndex)]} container={`grammar-editor:choice-row:${expr.id}:${alternativeIndex}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => { const children = expr.children.map((row, rowIndex) => rowIndex === alternativeIndex ? row.map((item, itemIndex) => itemIndex === index ? value : item) : row); update({ children }) }} onRemove={(index) => removeChild(alternativeIndex, index)} /></div><button class="grammar-remove grammar-remove-alternative" type="button" aria-label="Remove alternative {String.fromCharCode(65 + alternativeIndex)}" on:click={() => removeAlternative(alternativeIndex)}>x</button></div>{/each}<GrammarEditorDropTarget container={`grammar-editor:choice-slot:${expr.id}`} target={{ type: 'choice-alternative', path: [...path, expr.id] }} label="Add a choice alternative" showLabel onDrop={onDrop} /><button class="grammar-add" type="button" on:click={addAlternative}>+ add alternative</button></div>
   {/if}
 </BlockShell>

@@ -1,6 +1,5 @@
 <script lang="ts">
   import Breadcrumbs from './Breadcrumbs.svelte'
-  import ControlButton from './ControlButton.svelte'
   import BlockShell from './BlockShell.svelte'
   import ExpandableBlock from './ExpandableBlock.svelte'
   import SequenceExampleTile, { type SequenceTile } from './SequenceExampleTile.svelte'
@@ -50,9 +49,8 @@
   </section>
 
   <section class="core-component-group" aria-labelledby="controls-heading">
-    <div class="core-component-heading"><div><p class="mock-section-label">Controls and feedback</p><h3 id="controls-heading">Controls and feedback</h3></div><span class="core-component-count">4 components</span></div>
+    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">3 components</span></div>
     <div class="core-component-grid">
-      <article class="core-component-card"><h4>ControlButton</h4><p class="muted">Icon-only controls with accessible labels.</p><div class="core-component-actions"><ControlButton kind="chevron" label="Expand example" expanded={false} /><ControlButton kind="chevron" label="Collapse example" expanded={true} /><ControlButton kind="close" label="Close example" /></div></article>
       <article class="core-component-card"><h4>NewDropMarker</h4><p class="muted">Marker for creating a new item.</p><div class="core-marker-demo"><NewDropMarker /></div></article>
       <article class="core-component-card"><h4>MoveDropMarker</h4><p class="muted">Marker for moving an existing item.</p><div class="core-marker-demo"><MoveDropMarker /></div></article>
       <article class="core-component-card"><h4>Empty and status states</h4><p class="muted">Existing shared patterns used by lists and tables.</p><div class="playground-empty core-mini-empty">No components to show.</div></article>

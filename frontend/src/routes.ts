@@ -7,7 +7,7 @@ export type Route =
   | { kind: 'revision'; partNumber: string; id: string }
   | { kind: 'settings' }
   | { kind: 'seq-def-mock' }
-  | { kind: 'grammar-mock' }
+  | { kind: 'grammar-editor' }
   | { kind: 'playground'; page: 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'grammar-editor' }
   | { kind: 'not-found' }
 
@@ -17,7 +17,7 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
   if (parts.length === 1 && parts[0] === 'settings') return { kind: 'settings' }
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'mock') return { kind: 'seq-def-mock' }
-  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'grammar-mock') return { kind: 'grammar-mock' }
+  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'grammar-editor') return { kind: 'grammar-editor' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'dnd-ops') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'block-examples') return { kind: 'playground', page: 'block-examples' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'grammar-blocks') return { kind: 'playground', page: 'grammar-blocks' }

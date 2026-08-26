@@ -44,8 +44,8 @@
           ]
       : route.kind === 'seq-def-mock'
         ? [{ label: 'Settings', href: '/settings' }, { label: 'Sequence generator mock' }]
-      : route.kind === 'grammar-mock'
-        ? [{ label: 'Settings', href: '/settings' }, { label: 'Grammar workbench mock' }]
+      : route.kind === 'grammar-editor'
+        ? [{ label: 'Settings', href: '/settings' }, { label: 'Grammar editor' }]
       : route.kind === 'playground'
         ? [{ label: 'Playground' }]
         : route.kind === 'settings'
@@ -78,7 +78,7 @@
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
-       else if (route.kind === 'settings' || route.kind === 'seq-def-mock' || route.kind === 'grammar-mock' || route.kind === 'playground') return
+        else if (route.kind === 'settings' || route.kind === 'seq-def-mock' || route.kind === 'grammar-editor' || route.kind === 'playground') return
       else error = 'Page not found'
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Unable to load page'
@@ -184,7 +184,7 @@
     {:else}<p class="muted">No BOM entries.</p>{/if}
   {:else if route.kind === 'seq-def-mock'}
     <SequenceGeneratorMock navigate={navigate} />
-  {:else if route.kind === 'grammar-mock'}
+  {:else if route.kind === 'grammar-editor'}
     <GrammarEditor />
   {:else if route.kind === 'playground'}
     <Playground navigate={navigate} page={route.page} />

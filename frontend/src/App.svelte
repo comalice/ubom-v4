@@ -9,7 +9,6 @@
   import Shell from './Shell.svelte'
   import Authoring from './Authoring.svelte'
   import Settings from './Settings.svelte'
-  import SequenceGeneratorMock from './SequenceGeneratorMock.svelte'
   import GrammarEditor from './GrammarEditor.svelte'
   import Playground from './Playground.svelte'
   import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
@@ -42,8 +41,6 @@
             { label: revision.partNumber.value, href: partPath(revision.partNumber.value) },
             { label: `Revision ${revision.revision}` },
           ]
-      : route.kind === 'seq-def-mock'
-        ? [{ label: 'Settings', href: '/settings' }, { label: 'Sequence generator mock' }]
       : route.kind === 'grammar-editor'
         ? [{ label: 'Settings', href: '/settings' }, { label: 'Grammar editor' }]
       : route.kind === 'playground'
@@ -78,7 +75,7 @@
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
-        else if (route.kind === 'settings' || route.kind === 'seq-def-mock' || route.kind === 'grammar-editor' || route.kind === 'playground') return
+        else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'playground') return
       else error = 'Page not found'
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Unable to load page'
@@ -182,8 +179,6 @@
     <h2>Bill of Materials</h2>
     {#if revision.bom.length > 0}<BomTable nodes={revision.bom} />
     {:else}<p class="muted">No BOM entries.</p>{/if}
-  {:else if route.kind === 'seq-def-mock'}
-    <SequenceGeneratorMock navigate={navigate} />
   {:else if route.kind === 'grammar-editor'}
     <GrammarEditor />
   {:else if route.kind === 'playground'}

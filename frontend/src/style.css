@@ -444,6 +444,55 @@ ul { line-height: 1.8; }
 .dnd-placed-component button { position: absolute; top: .25rem; right: .3rem; padding: 0 .15rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: .7rem ui-monospace, monospace; }
 .dnd-placed-component button:hover { color: #f87171; }
 
+/* Native control reference styles stay scoped to the HTML primitives page. */
+.html-primitives { max-width: 52rem; }
+.html-primitives > h2 { margin-bottom: .45rem; }
+.html-primitives-intro { max-width: 42rem; margin: 0 0 2rem; font-size: .75rem; line-height: 1.6; }
+.html-primitives .primitive-group { margin-top: 2rem; }
+.html-primitives .primitive-group:first-of-type { margin-top: 0; }
+.html-primitives .primitive-group > .mock-section-label { margin: 0 0 .25rem; }
+.html-primitives .primitive-group > h3 { margin: 0 0 .75rem; color: var(--ink); font: 400 1.05rem Georgia, serif; }
+.html-primitives .primitive-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; }
+.html-primitives .primitive-link-list { display: grid; overflow: hidden; }
+.html-primitives .primitive-link-list a { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 2.75rem; padding: .65rem .85rem; color: var(--accent); border-bottom: 1px solid var(--hairline-light); font-size: .78rem; }
+.html-primitives .primitive-link-list a:last-child { border-bottom: 0; }
+.html-primitives .primitive-link-list a:hover { color: var(--ink); background: var(--accent-light); text-decoration: none; }
+.html-primitives .primitive-link-list a[aria-current='page'] { color: var(--ink); background: var(--ground); font-weight: 600; }
+.html-primitives .primitive-link-list a[aria-current='page']::before { width: .3rem; height: .3rem; margin-right: -.3rem; background: var(--accent); border-radius: 50%; content: ''; }
+.html-primitives .primitive-link-list .primitive-link-muted { color: var(--muted); }
+.html-primitives .primitive-link-list .primitive-link-disabled { color: var(--muted); opacity: .6; cursor: not-allowed; }
+.html-primitives .primitive-link-list .primitive-link-disabled:hover { color: var(--muted); background: transparent; text-decoration: none; }
+.html-primitives .primitive-button-row { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .85rem; }
+.html-primitives button { min-height: 2.25rem; padding: .55rem .85rem; border: 1px solid transparent; border-radius: .25rem; cursor: pointer; font: .75rem ui-monospace, SFMono-Regular, monospace; transition: color .15s, background .15s, border-color .15s, opacity .15s; }
+.html-primitives .primitive-button-primary { color: var(--surface); background: var(--accent); }
+.html-primitives .primitive-button-primary:hover:not(:disabled) { background: var(--ink); }
+.html-primitives .primitive-button-secondary { color: var(--ink); background: var(--surface); border-color: var(--hairline); }
+.html-primitives .primitive-button-secondary:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
+.html-primitives .primitive-button-quiet { color: var(--muted); background: transparent; }
+.html-primitives .primitive-button-quiet:hover:not(:disabled) { color: var(--ink); background: var(--ground); }
+.html-primitives button:disabled { opacity: .45; cursor: not-allowed; }
+.html-primitives .primitive-control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.html-primitives .primitive-field-card { display: grid; align-content: start; gap: .45rem; padding: .85rem; }
+.html-primitives .primitive-field-card label, .html-primitives .primitive-form-field label { color: var(--ink); font-size: .75rem; font-weight: 600; }
+.html-primitives .primitive-field-card small, .html-primitives .primitive-form-field small { color: var(--muted); font-size: .67rem; line-height: 1.4; }
+.html-primitives input:not([type='radio']):not([type='checkbox']), .html-primitives select, .html-primitives textarea { width: 100%; min-width: 0; padding: .58rem .65rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; font: .78rem Inter, ui-sans-serif, system-ui, sans-serif; }
+.html-primitives textarea { resize: vertical; }
+.html-primitives select { min-height: 2.3rem; }
+.html-primitives input::placeholder, .html-primitives textarea::placeholder { color: var(--muted); opacity: .8; }
+.html-primitives input:disabled, .html-primitives select:disabled, .html-primitives textarea:disabled { color: var(--muted); background: var(--hairline-light); cursor: not-allowed; }
+.html-primitives input:focus-visible, .html-primitives select:focus-visible, .html-primitives textarea:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent-light); outline-offset: 1px; }
+.html-primitives .primitive-choice-card { margin-top: .75rem; padding: .85rem; }
+.html-primitives .primitive-choice-card fieldset { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem 1.2rem; margin: 0; padding: 0; border: 0; }
+.html-primitives .primitive-choice-card legend { width: 100%; margin-bottom: .25rem; color: var(--ink); font-size: .75rem; font-weight: 600; }
+.html-primitives .primitive-choice-card label { display: inline-flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .75rem; cursor: pointer; }
+.html-primitives input[type='radio'], .html-primitives input[type='checkbox'] { width: 1rem; height: 1rem; margin: 0; accent-color: var(--accent); }
+.html-primitives .primitive-form { display: grid; gap: 1rem; padding: 1rem; }
+.html-primitives .primitive-form-fields { display: grid; gap: .9rem; }
+.html-primitives .primitive-form-field { display: grid; gap: .4rem; }
+.html-primitives .primitive-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding-top: .85rem; border-top: 1px solid var(--hairline-light); }
+.html-primitives .primitive-form-status { color: #39724a; font: .68rem ui-monospace, monospace; }
+.html-primitives a:focus-visible, .html-primitives button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 @media (max-width: 700px) {
   .grammar-basic-example { grid-template-columns: 1fr; }
   .grammar-block-meta { grid-column: 1; }
@@ -472,7 +521,13 @@ ul { line-height: 1.8; }
   .playground-nav nav a { min-width: max-content; border-left: 0; border-bottom: 2px solid transparent; }
   .playground-nav nav a:hover, .playground-nav nav a.playground-nav-active { border-bottom-color: var(--accent); border-left-color: transparent; }
   .playground-content { padding: 1rem; }
+  .core-component-grid, .primitive-control-grid { grid-template-columns: 1fr; }
+  .core-component-heading { align-items: flex-start; }
   .dnd-ops-stage { grid-template-columns: 1fr; }
   .seq-def-toolbar { grid-template-columns: 1fr; }
   .seq-def-toolbar button { width: 100%; }
+  .html-primitives { max-width: none; }
+  .html-primitives .primitive-control-grid { grid-template-columns: 1fr; }
+  .html-primitives .primitive-choice-card fieldset { align-items: flex-start; flex-direction: column; gap: .55rem; }
+  .html-primitives .primitive-form-actions button { width: 100%; }
 }

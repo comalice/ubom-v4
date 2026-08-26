@@ -1,6 +1,8 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'grammar-editor'
+  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'grammar-editor'
+  import CoreComponentsPlayground from './CoreComponentsPlayground.svelte'
+  import HtmlPrimitivesPlayground from './HtmlPrimitivesPlayground.svelte'
   import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
   import DndOpsPlayground from './DndOpsPlayground.svelte'
   import GrammarBlocksPlayground from './GrammarBlocksPlayground.svelte'
@@ -9,6 +11,8 @@
   import NewDropMarker from './NewDropMarker.svelte'
 
   const links = [
+    { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
+    { label: 'HTML primitives', path: '/playground/html-primitives', page: 'html-primitives' as const },
     { label: 'DnD operations', path: '/playground/dnd-ops', page: 'dnd-ops' as const },
     { label: 'Block examples', path: '/playground/block-examples', page: 'block-examples' as const },
     { label: 'Grammar blocks', path: '/playground/grammar-blocks', page: 'grammar-blocks' as const },
@@ -29,7 +33,11 @@
   </aside>
 
   <main class="playground-content">
-    {#if page === 'dnd-ops'}
+    {#if page === 'core-components'}
+      <CoreComponentsPlayground />
+    {:else if page === 'html-primitives'}
+      <HtmlPrimitivesPlayground />
+    {:else if page === 'dnd-ops'}
       <p class="eyebrow">DnD operations</p>
       <h2>DnD operations</h2>
       <section class="playground-components" aria-labelledby="playground-components-heading">

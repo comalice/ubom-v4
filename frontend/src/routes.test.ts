@@ -11,3 +11,13 @@ describe('sequence definition routes', () => {
     expect(parseRoute('/settings/sequence-definitions/part-number-v1')).toEqual({ kind: 'seq-def', id: 'part-number-v1' })
   })
 })
+
+describe('playground routes', () => {
+  it('parses the core components page', () => {
+    expect(parseRoute('/playground/core-components')).toEqual({ kind: 'playground', page: 'core-components' })
+  })
+
+  it('parses the HTML primitives page', () => {
+    expect(parseRoute('/playground/html-primitives')).toEqual({ kind: 'playground', page: 'html-primitives' })
+  })
+})

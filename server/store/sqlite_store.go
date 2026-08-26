@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -472,9 +473,8 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 }
 
 func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error) {
-	rows, err := s.db.Query(`SELECT id, parent_id, label, matches, predicates, attributes
-		FROM taxonomy_nodes WHERE taxonomy_def_id = ?
-		ORDER BY parent_id, position`, id)
+	rows, err := s.db.Query(`SELECT id, parent_id, label, matches, predicates, attributes, position
+		FROM taxonomy_nodes WHERE taxonomy_def_id = ?`, id)
 	if err != nil {
 		return ubom.Taxonomy{}, err
 	}
@@ -482,8 +482,9 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 
 	nodes := map[ubom.TaxonomyNodeID]*ubom.TaxonomyNode{}
 	type relation struct {
-		id     ubom.TaxonomyNodeID
-		parent sql.NullString
+		id       ubom.TaxonomyNodeID
+		parent   sql.NullString
+		position int
 	}
 	var relations []relation
 	for rows.Next() {
@@ -493,7 +494,8 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		var data []byte
 		var predicateData []byte
 		var attributeData []byte
-		if err := rows.Scan(&id, &parent, &label, &data, &predicateData, &attributeData); err != nil {
+		var position int
+		if err := rows.Scan(&id, &parent, &label, &data, &predicateData, &attributeData, &position); err != nil {
 			return ubom.Taxonomy{}, err
 		}
 		matches := map[string]string{}
@@ -510,32 +512,60 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		}
 		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Matches: matches, Predicates: predicates, Attributes: attributes}
 		nodes[node.ID] = node
-		relations = append(relations, relation{id: node.ID, parent: parent})
+		relations = append(relations, relation{id: node.ID, parent: parent, position: position})
 	}
 	if err := rows.Err(); err != nil {
 		return ubom.Taxonomy{}, err
 	}
 
-	var root *ubom.TaxonomyNode
+	children := make(map[ubom.TaxonomyNodeID][]relation)
+	var rootID ubom.TaxonomyNodeID
 	for _, relation := range relations {
-		node := nodes[relation.id]
 		if !relation.parent.Valid {
-			if root != nil {
+			if rootID != "" {
 				return ubom.Taxonomy{}, errors.New("taxonomy has multiple roots")
 			}
-			root = node
+			rootID = relation.id
 			continue
 		}
-		parent := nodes[ubom.TaxonomyNodeID(relation.parent.String)]
-		if parent == nil {
-			return ubom.Taxonomy{}, errors.New("taxonomy node has missing parent")
-		}
-		parent.Children = append(parent.Children, *node)
+		children[ubom.TaxonomyNodeID(relation.parent.String)] = append(children[ubom.TaxonomyNodeID(relation.parent.String)], relation)
 	}
-	if root == nil {
+	if rootID == "" {
 		return ubom.Taxonomy{}, nil
 	}
-	return ubom.Taxonomy{Root: *root}, nil
+	for parentID := range children {
+		sort.SliceStable(children[parentID], func(i, j int) bool { return children[parentID][i].position < children[parentID][j].position })
+	}
+	visited := make(map[ubom.TaxonomyNodeID]bool, len(nodes))
+	var build func(ubom.TaxonomyNodeID) (ubom.TaxonomyNode, error)
+	build = func(nodeID ubom.TaxonomyNodeID) (ubom.TaxonomyNode, error) {
+		if visited[nodeID] {
+			return ubom.TaxonomyNode{}, errors.New("taxonomy contains a cycle or duplicate path")
+		}
+		node, ok := nodes[nodeID]
+		if !ok {
+			return ubom.TaxonomyNode{}, errors.New("taxonomy node has missing parent")
+		}
+		visited[nodeID] = true
+		result := *node
+		result.Children = nil
+		for _, child := range children[nodeID] {
+			built, err := build(child.id)
+			if err != nil {
+				return ubom.TaxonomyNode{}, err
+			}
+			result.Children = append(result.Children, built)
+		}
+		return result, nil
+	}
+	root, err := build(rootID)
+	if err != nil {
+		return ubom.Taxonomy{}, err
+	}
+	if len(visited) != len(nodes) {
+		return ubom.Taxonomy{}, errors.New("taxonomy contains an unreachable node")
+	}
+	return ubom.Taxonomy{Root: root}, nil
 }
 
 func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
@@ -869,7 +899,7 @@ func (s *SQLiteStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 }
 
 func isSQLiteConstraint(err error) bool {
-	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 func (s *SQLiteStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {

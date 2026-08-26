@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -173,6 +174,55 @@ func TestTaxonomyPredicateContract(t *testing.T) {
 	part := post("/api/parts", `{"value":"RES100","seqDef":"predicate-pn","taxonomyDef":"predicate-taxonomy"}`, http.StatusCreated)
 	if !strings.Contains(part, `"value":"RES100"`) {
 		t.Fatalf("part response = %s", part)
+	}
+}
+
+func TestSchemaAcceptanceHTTPFlow(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(path, body string, wantStatus int) string {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+		if recording.Code != wantStatus {
+			t.Fatalf("POST %s status = %d, want %d; body = %s", path, recording.Code, wantStatus, recording.Body)
+		}
+		return recording.Body.String()
+	}
+
+	post("/api/seq-defs", `{"id":"acceptance-http-seq","root":{"kind":"concat","children":[{"kind":"bind","name":"category","child":{"kind":"choice","children":[{"kind":"literal","text":"RES"},{"kind":"literal","text":"CAP"}]}},{"kind":"literal","text":"-"},{"kind":"bind","name":"group","child":{"kind":"range","min":0,"max":999,"width":3}},{"kind":"literal","text":"-"},{"kind":"bind","name":"number","child":{"kind":"range","min":0,"max":999,"width":3}}]}}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"id":"acceptance-http-taxonomy","seqDef":"acceptance-http-seq","attributeDefs":[{"id":"family","label":"Family","valueType":"string"},{"id":"resistance","label":"Resistance","valueType":"decimal","unit":"ohm"}],"root":{"id":"component","label":"Component","attributes":[{"attributeDefId":"family","required":true}],"children":[{"id":"resistor","label":"Resistor","predicates":[{"field":"category","kind":"exact","value":"RES"}],"children":[{"id":"high-power","label":"High Power","predicates":[{"field":"group","kind":"numeric-range","min":100,"max":199}],"attributes":[{"attributeDefId":"resistance","required":false}]}]},{"id":"capacitor","label":"Capacitor","predicates":[{"field":"category","kind":"exact","value":"CAP"}]}]}}`, http.StatusCreated)
+	part := post("/api/parts", `{"value":"RES-150-042","seqDef":"acceptance-http-seq","taxonomyDef":"acceptance-http-taxonomy","attributes":[{"attributeDefId":"family","value":"electronics"}]}`, http.StatusCreated)
+	if !strings.Contains(part, `"value":"RES-150-042"`) {
+		t.Fatalf("created part = %s", part)
+	}
+
+	viewResponse := httptest.NewRecorder()
+	server.Handler().ServeHTTP(viewResponse, httptest.NewRequest(http.MethodGet, "/api/parts/by-value/RES-150-042", nil))
+	if viewResponse.Code != http.StatusOK {
+		t.Fatalf("GET part status = %d; body = %s", viewResponse.Code, viewResponse.Body)
+	}
+	var view app.PartNumberView
+	if err := json.NewDecoder(viewResponse.Body).Decode(&view); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(view.TaxonomyPath, []string{"Component", "Resistor", "High Power"}) || len(view.Attributes) != 1 || view.Attributes[0].ID != "family" {
+		t.Fatalf("part view = %#v, want interpreted path and inherited attribute", view)
+	}
+
+	draftBody := post("/api/part-drafts", `{"seqDef":"acceptance-http-seq","taxonomyDef":"acceptance-http-taxonomy","contextNodeId":"high-power"}`, http.StatusCreated)
+	var draft struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(draftBody), &draft); err != nil || draft.ID == "" {
+		t.Fatalf("draft response = %s", draftBody)
+	}
+	patch := httptest.NewRecorder()
+	server.Handler().ServeHTTP(patch, httptest.NewRequest(http.MethodPatch, "/api/part-drafts/"+draft.ID, strings.NewReader(`{"bindings":{"category":"RES","group":"100","number":"001"},"attributes":[{"attributeDefId":"family","value":"electronics"}]}`)))
+	if patch.Code != http.StatusOK {
+		t.Fatalf("PATCH draft status = %d; body = %s", patch.Code, patch.Body)
+	}
+	released := post("/api/part-drafts/"+draft.ID+"/release", `{}`, http.StatusCreated)
+	if !strings.Contains(released, `"value":"RES-100-001"`) {
+		t.Fatalf("released part = %s", released)
 	}
 }
 

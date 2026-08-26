@@ -14,6 +14,8 @@ export type SeqDefNode = {
 }
 export type SeqDefDefinition = { id: string; root: SeqDefNode }
 export type SeqDefPreview = { id: string; bindings: Record<string, string>; value?: string; error?: string }
+export type SeqDefCandidateField = { name: string; source: string; normalized: unknown }
+export type SeqDefCandidatePreview = { value: string; bindings: Record<string, string>; fields: SeqDefCandidateField[] }
 export type TaxonomyPredicate = {
   field: string
   kind: 'exact' | 'numeric-range'
@@ -161,6 +163,8 @@ export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
   post<SeqDefPreview>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })
 export const previewSeqDefRoot = (root: SeqDefNode, bindings: Record<string, string>) =>
   post<SeqDefPreview>('/api/seq-defs/preview', { root, bindings })
+export const previewSeqDefCandidate = (root: SeqDefNode, value: string) =>
+  post<SeqDefCandidatePreview>('/api/seq-defs/preview/candidate', { root, value })
 export const createTaxonomyDef = (definition: TaxonomyDefinition) => post<{ id: string }>('/api/taxonomy-defs', definition)
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })

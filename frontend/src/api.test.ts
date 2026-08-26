@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { previewSeqDefRoot, type SeqDefNode } from './api'
+import { previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -37,5 +37,25 @@ describe('previewSeqDefRoot', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: 'invalid sequence' }), { status: 400, statusText: 'Bad Request' }))
 
     await expect(previewSeqDefRoot(root, {})).rejects.toThrow('invalid sequence')
+  })
+})
+
+describe('previewSeqDefCandidate', () => {
+  it('posts the complete candidate value separately from binding generation', async () => {
+    const response = { value: 'PN-SN-B0', bindings: { prefix: 'PN' }, fields: [{ name: 'prefix', source: 'PN', normalized: null }] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(response), { status: 200 }))
+
+    await expect(previewSeqDefCandidate({ kind: 'literal', text: 'PN-' }, 'PN-SN-B0')).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith('/api/seq-defs/preview/candidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ root: { kind: 'literal', text: 'PN-' }, value: 'PN-SN-B0' }),
+    })
+  })
+
+  it('uses the server error message for an invalid candidate', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: 'candidate does not match' }), { status: 400 }))
+
+    await expect(previewSeqDefCandidate({ kind: 'literal', text: 'PN-' }, 'invalid')).rejects.toThrow('candidate does not match')
   })
 })

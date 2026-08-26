@@ -300,6 +300,7 @@ ul { line-height: 1.8; }
 .grammar-editor-test { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
 .grammar-editor-test .grammar-output { margin-top: .7rem; }
 .grammar-preview { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+.grammar-candidate-preview { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
 .grammar-preview-bindings { display: grid; gap: .45rem; margin-top: .7rem; }
 .grammar-preview-button { margin-top: .25rem; padding: .5rem .7rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .2rem; cursor: pointer; font: .65rem ui-monospace, monospace; }
 .grammar-preview-button:disabled { opacity: .5; cursor: default; }

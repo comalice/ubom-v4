@@ -266,28 +266,28 @@ ul { line-height: 1.8; }
 .grammar-basic-example-list { display: grid; gap: .8rem; margin-top: .7rem; }
 .grammar-basic-example { display: grid; grid-template-columns: minmax(10rem, .7fr) minmax(16rem, 1.3fr); gap: .8rem; align-items: start; }
 .grammar-basic-example .sequence-example-tile { min-height: 100%; }
-.grammar-editor-sketch-intro { max-width: 42rem; margin: .4rem 0 1.1rem; color: var(--muted); font-size: .7rem; line-height: 1.5; }
-.grammar-editor-sketch { overflow: hidden; background: var(--surface); border: 1px solid var(--hairline); border-radius: .3rem; }
-.grammar-editor-sketch-palette { padding: .8rem; border-bottom: 1px solid var(--hairline); }
-.grammar-editor-sketch-palette-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .45rem; margin-top: .55rem; }
-.grammar-editor-sketch-palette-grid .sequence-example-tile { min-width: 0; }
-.grammar-editor-sketch-layout { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; min-height: 25rem; }
-.grammar-editor-sketch-canvas { min-width: 0; padding: 1rem; }
-.grammar-editor-sketch-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
-.grammar-editor-sketch-count { color: var(--muted); font-size: .58rem; }
-.grammar-editor-sketch-root-label { margin: 1.2rem 0 .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
-.grammar-editor-sketch-row { display: grid; gap: .45rem; }
-.grammar-editor-sketch-row .block-shell { min-width: 0; }
-.grammar-editor-sketch-block-body { padding: .55rem .6rem; color: var(--muted); background: var(--surface); border-top: 1px solid var(--hairline); font: .62rem ui-monospace, monospace; }
-.grammar-editor-sketch-drop-zone { display: grid; min-height: 5rem; margin-top: 1rem; place-items: center; color: var(--muted); background: var(--ground); border: 1px dashed var(--hairline); border-radius: .25rem; font: .65rem ui-monospace, monospace; text-align: center; }
-.grammar-editor-sketch-map { padding: 1rem .7rem; background: var(--ground); border-left: 1px solid var(--hairline); }
-.grammar-editor-sketch-map-tree { margin-top: .8rem; }
-.grammar-editor-sketch-map-tree .dnd-structure-tree { margin: 0; padding-left: 1rem; }
-.grammar-editor-sketch-map-tree .dnd-structure-node { display: inline-block; padding: .25rem .3rem; border: 1px solid transparent; border-radius: .2rem; }
-.grammar-editor-sketch-map-tree .dnd-structure-node:hover { border-color: var(--hairline); background: var(--surface); }
-.grammar-editor-sketch-map-tree .dnd-structure-node small { margin-left: 0; }
-.grammar-editor-sketch-test { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
-.grammar-editor-sketch-test .grammar-output { margin-top: .7rem; }
+.grammar-editor-intro { max-width: 42rem; margin: .4rem 0 1.1rem; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.grammar-editor { overflow: hidden; background: var(--surface); border: 1px solid var(--hairline); border-radius: .3rem; }
+.grammar-editor-palette { padding: .8rem; border-bottom: 1px solid var(--hairline); }
+.grammar-editor-palette-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .45rem; margin-top: .55rem; }
+.grammar-editor-palette-grid .sequence-example-tile { min-width: 0; }
+.grammar-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; min-height: 25rem; }
+.grammar-editor-canvas { min-width: 0; padding: 1rem; }
+.grammar-editor-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
+.grammar-editor-count { color: var(--muted); font-size: .58rem; }
+.grammar-editor-root-label { margin: 1.2rem 0 .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
+.grammar-editor-sequence-row { display: grid; gap: .45rem; }
+.grammar-editor-sequence-row .block-shell { min-width: 0; }
+.grammar-editor-block-body { padding: .55rem .6rem; color: var(--muted); background: var(--surface); border-top: 1px solid var(--hairline); font: .62rem ui-monospace, monospace; }
+.grammar-editor-drop-zone { display: grid; min-height: 5rem; margin-top: 1rem; place-items: center; color: var(--muted); background: var(--ground); border: 1px dashed var(--hairline); border-radius: .25rem; font: .65rem ui-monospace, monospace; text-align: center; }
+.grammar-editor-map { padding: 1rem .7rem; background: var(--ground); border-left: 1px solid var(--hairline); }
+.grammar-editor-map-tree { margin-top: .8rem; }
+.grammar-editor-map-tree .dnd-structure-tree { margin: 0; padding-left: 1rem; }
+.grammar-editor-map-tree .dnd-structure-node { display: inline-block; padding: .25rem .3rem; border: 1px solid transparent; border-radius: .2rem; }
+.grammar-editor-map-tree .dnd-structure-node:hover { border-color: var(--hairline); background: var(--surface); }
+.grammar-editor-map-tree .dnd-structure-node small { margin-left: 0; }
+.grammar-editor-test { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+.grammar-editor-test .grammar-output { margin-top: .7rem; }
 .playground { display: grid; grid-template-columns: 14rem minmax(0, 1fr); min-height: 72vh; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; overflow: hidden; }
 .playground-nav { padding: 1.25rem 1rem; border-right: 1px solid var(--hairline); }
 .playground-nav h1 { margin: .35rem 0 .5rem; color: var(--ink); font: 400 1.25rem Georgia, serif; }
@@ -386,7 +386,7 @@ ul { line-height: 1.8; }
 .dnd-field-filled.dnd-field-over { border-color: var(--hairline); outline: none; }
 .dnd-field.drop-before::before, .dnd-field.drop-after::after { display: none; }
 .dnd-ops-playground .drop-before::before, .dnd-ops-playground .drop-after::after { display: none !important; content: none !important; }
-.grammar-editor-sketch .drop-before::before, .grammar-editor-sketch .drop-after::after { display: none !important; content: none !important; }
+.grammar-editor .drop-before::before, .grammar-editor .drop-after::after { display: none !important; content: none !important; }
 .dnd-field-filled { place-items: stretch; border-style: solid; }
 .dnd-new-drop-target { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; color: white; background: #4c9a68; border-radius: 50%; font: 1.5rem/1 ui-monospace, monospace; opacity: .35; transform: scale(.8); transition: opacity .12s, transform .12s; }
 .dnd-field-over .dnd-new-drop-target { opacity: 1; transform: scale(1.1); }
@@ -428,9 +428,9 @@ ul { line-height: 1.8; }
   .mock-block { min-width: 7rem; }
   .mock-results { grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); }
   .grammar-number-fields { grid-template-columns: repeat(2, 1fr); }
-  .grammar-editor-sketch-palette-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grammar-editor-sketch-layout { grid-template-columns: 1fr; }
-  .grammar-editor-sketch-map { border-top: 1px solid var(--hairline); border-left: 0; }
+  .grammar-editor-palette-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grammar-editor-layout { grid-template-columns: 1fr; }
+  .grammar-editor-map { border-top: 1px solid var(--hairline); border-left: 0; }
   .playground { grid-template-columns: 1fr; }
   .playground-nav { border-right: 0; border-bottom: 1px solid var(--hairline); }
   .playground-nav nav { display: flex; overflow-x: auto; }

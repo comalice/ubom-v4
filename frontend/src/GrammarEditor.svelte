@@ -52,7 +52,7 @@
   function removeRoot(index: number) { rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
   function handleGapDragOver(state: DragDropState<GrammarDragItem>) {
     if (!state.draggedItem) return
-    const target = (state.targetElement as HTMLElement | null)?.closest('.grammar-editor-sketch .dnd-insert-zone')
+    const target = (state.targetElement as HTMLElement | null)?.closest('.grammar-editor .dnd-insert-zone')
     const markerClass = state.draggedItem.kind === 'palette' ? 'dnd-insert-zone-new' : 'dnd-insert-zone-move'
     if (!target?.classList.contains(markerClass)) {
       clearDropMarker()
@@ -139,38 +139,38 @@
     return target.path.includes(source.id)
   }
   function clearDropMarker() {
-    document.querySelectorAll('.grammar-editor-sketch .dnd-insert-zone-active').forEach((element) => element.classList.remove('dnd-insert-zone-active', 'dnd-insert-zone-new', 'dnd-insert-zone-move'))
+    document.querySelectorAll('.grammar-editor .dnd-insert-zone-active').forEach((element) => element.classList.remove('dnd-insert-zone-active', 'dnd-insert-zone-new', 'dnd-insert-zone-move'))
   }
   function handleDragEnd() { clearDropMarker() }
 </script>
 
 <p class="eyebrow">Grammar editor</p>
 <h2>Grammar editor</h2>
-<p class="grammar-editor-sketch-intro">Build a sequence by dragging blocks from the palette into the editor. Use the structure map to move through nested blocks.</p>
-<section class="grammar-editor-sketch" aria-label="Grammar editor layout sketch">
-  <div class="grammar-editor-sketch-palette">
+<p class="grammar-editor-intro">Build a sequence by dragging blocks from the palette into the editor. Use the structure map to move through nested blocks.</p>
+<section class="grammar-editor" aria-label="Grammar editor layout sketch">
+  <div class="grammar-editor-palette">
     <span class="mock-section-label">Block palette</span>
-    <div class="grammar-editor-sketch-palette-grid">
+    <div class="grammar-editor-palette-grid">
       {#each paletteTiles as tile}
         <SequenceExampleTile tile={{ kind: 'sequence-tile', ...tile }} variant="palette" container="grammar-editor:palette" dragData={{ kind: 'palette', exprKind: tile.type as ExprKind }} onDragEnd={handleDragEnd} />
       {/each}
     </div>
   </div>
-  <div class="grammar-editor-sketch-layout">
-    <section class="grammar-editor-sketch-canvas" aria-labelledby="grammar-editor-canvas-heading">
-      <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
+  <div class="grammar-editor-layout">
+    <section class="grammar-editor-canvas" aria-labelledby="grammar-editor-canvas-heading">
+      <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-count">3 blocks</span></div>
       <DndField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
-        <div class="grammar-editor-sketch-row">
+        <div class="grammar-editor-sequence-row">
           <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
         </div>
-        <div class="grammar-editor-sketch-drop-zone">Drop a block here to add it to the root sequence</div>
+        <div class="grammar-editor-drop-zone">Drop a block here to add it to the root sequence</div>
       </DndField>
     </section>
-    <aside class="grammar-editor-sketch-map" aria-labelledby="grammar-editor-map-heading">
-      <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-sketch-count">3 blocks</span></div>
-      <div class="grammar-editor-sketch-map-tree"><StructureTree nodes={structureNodes} showIds={false} /></div>
-      <section class="grammar-editor-sketch-test" aria-labelledby="grammar-editor-test-heading">
-        <div class="grammar-editor-sketch-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>
+    <aside class="grammar-editor-map" aria-labelledby="grammar-editor-map-heading">
+      <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-count">3 blocks</span></div>
+      <div class="grammar-editor-map-tree"><StructureTree nodes={structureNodes} showIds={false} /></div>
+      <section class="grammar-editor-test" aria-labelledby="grammar-editor-test-heading">
+        <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>
         <label class="grammar-input-label">Input to parse<input bind:value={testInput} placeholder="Type a candidate value" /></label>
         {#if testInput}<div class:grammar-valid={!('error' in parsed)} class="grammar-parse-result">{#if 'error' in parsed}Invalid: {parsed.error}{:else}Valid input{#each Object.entries(parsed.bindings) as [name, value]}<span>{name} = {value}</span>{/each}{/if}</div>{/if}
         <div class="grammar-output"><span>Canonical generated value</span><strong>{generated || '(empty)'}</strong></div>

@@ -26,14 +26,14 @@ const (
 )
 
 type PartNumberDraft struct {
-	ID                   PartNumberDraftID
-	SeqDefID             SeqDefID
-	TaxonomyDefID        TaxonomyDefID
-	ContextNodeID        TaxonomyNodeID
-	Bindings             map[string]string
-	Attributes           []PartNumberAttribute
-	Status               DraftStatus
-	ReleasedPartNumberID PartNumberID
+	ID                   PartNumberDraftID     `json:"id"`
+	SeqDefID             SeqDefID              `json:"seqDef"`
+	TaxonomyDefID        TaxonomyDefID         `json:"taxonomyDef"`
+	ContextNodeID        TaxonomyNodeID        `json:"contextNodeId"`
+	Bindings             map[string]string     `json:"bindings"`
+	Attributes           []PartNumberAttribute `json:"attributes"`
+	Status               DraftStatus           `json:"status"`
+	ReleasedPartNumberID PartNumberID          `json:"releasedPartNumberId,omitempty"`
 }
 
 func (d PartNumberDraft) Validate() error {
@@ -56,8 +56,8 @@ func (d PartNumberDraft) Validate() error {
 }
 
 type LineItem struct {
-	PartNumberID   PartNumberID
-	PartRevisionID PartRevisionID
+	PartNumberID   PartNumberID   `json:"partNumberId"`
+	PartRevisionID PartRevisionID `json:"partRevisionId"`
 }
 
 // Validate checks the identity fields required for a BOM line item.
@@ -72,12 +72,12 @@ func (l LineItem) Validate() error {
 }
 
 type PartRevision struct {
-	ID               PartRevisionID
-	PartNumberID     PartNumberID // Link to owning part number.
-	Revision         string       // Human-facing revision value.
-	RevisionSeqDefID SeqDefID     // Sequence definition used by Revision.
-	BOM              []LineItem
-	Part             Part
+	ID               PartRevisionID `json:"id"`
+	PartNumberID     PartNumberID   `json:"partNumberId"`   // Link to owning part number.
+	Revision         string         `json:"revision"`       // Human-facing revision value.
+	RevisionSeqDefID SeqDefID       `json:"revisionSeqDef"` // Sequence definition used by Revision.
+	BOM              []LineItem     `json:"bom"`
+	Part             Part           `json:"part"`
 }
 
 // Validate checks the structure of a part revision and its BOM.
@@ -104,13 +104,13 @@ func (r PartRevision) Validate() error {
 // partial construction or fully qualified -- where a fully qualified part number possesses values
 // for every level of the related taxonomy definition.
 type PartNumber struct {
-	ID             PartNumberID     // unique part number ID, created by durable store
-	Value          string           // SeqDef parseable canonical part number, globally unique.
-	PartRevisionID []PartRevisionID // Part revisions.
-	SeqDefID       SeqDefID         // SeqDef version used to generate this part number.
-	TaxonomyDefID  TaxonomyDefID    // Taxonomy applied to this part number.
-	TaxonomyNodeID TaxonomyNodeID   // Taxonomy node containing this part number.
-	Attributes     []PartNumberAttribute
+	ID             PartNumberID          `json:"id"`              // unique part number ID, created by durable store
+	Value          string                `json:"value"`           // SeqDef parseable canonical part number, globally unique.
+	PartRevisionID []PartRevisionID      `json:"partRevisionIds"` // Part revisions.
+	SeqDefID       SeqDefID              `json:"seqDef"`          // SeqDef version used to generate this part number.
+	TaxonomyDefID  TaxonomyDefID         `json:"taxonomyDef"`     // Taxonomy applied to this part number.
+	TaxonomyNodeID TaxonomyNodeID        `json:"taxonomyNodeId"`  // Taxonomy node containing this part number.
+	Attributes     []PartNumberAttribute `json:"attributes"`
 }
 
 // Validate checks the fields required to persist a part number.

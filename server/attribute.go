@@ -17,23 +17,23 @@ const (
 
 // AttributeDef describes a value that taxonomy nodes may require or expose.
 type AttributeDef struct {
-	ID         AttributeDefID
-	Label      string
-	ValueType  AttributeValueType
-	Unit       string
-	EnumValues []string
+	ID         AttributeDefID     `json:"id"`
+	Label      string             `json:"label"`
+	ValueType  AttributeValueType `json:"valueType"`
+	Unit       string             `json:"unit,omitempty"`
+	EnumValues []string           `json:"enumValues,omitempty"`
 }
 
 type AttributeAssignment struct {
-	AttributeDefID AttributeDefID
-	Required       bool
+	AttributeDefID AttributeDefID `json:"attributeDefId"`
+	Required       bool           `json:"required"`
 }
 
 // PartNumberAttribute is a canonical value owned by a part number. The
 // definition supplies its type, unit, and any enum vocabulary.
 type PartNumberAttribute struct {
-	AttributeDefID AttributeDefID
-	Value          string
+	AttributeDefID AttributeDefID `json:"attributeDefId"`
+	Value          string         `json:"value"`
 }
 
 func (d AttributeDef) Validate() error {

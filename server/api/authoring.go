@@ -158,8 +158,7 @@ func (s *Server) handleSeqDefs(w http.ResponseWriter, r *http.Request) {
 		writeCreateError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]any{"id": request.ID})
+	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": request.ID})
 }
 
 func (s *Server) handleUnsavedSeqDefPreview(w http.ResponseWriter, r *http.Request) {
@@ -258,11 +257,14 @@ func (s *Server) handleTaxonomyDefs(w http.ResponseWriter, r *http.Request) {
 		writeCreateError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]any{"id": request.ID})
+	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": request.ID})
 }
 
 func (s *Server) handleCreatePartNumber(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	var request partNumberRequest
 	if !decodeBody(w, r, &request) {
 		return
@@ -277,22 +279,24 @@ func (s *Server) handleCreatePartNumber(w http.ResponseWriter, r *http.Request) 
 		writeCreateError(w, err)
 		return
 	}
-	part, err := ubom.NewPartNumber(request.Value, seqDef, taxonomy)
+	part, err := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{}).NewPartNumber(request.Value, request.Attributes)
 	if err != nil {
 		writeCreateError(w, err)
 		return
 	}
-	part.Attributes = request.Attributes
 	created, err := s.service.CreatePartNumber(part)
 	if err != nil {
 		writeCreateError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]any{"id": created.ID, "value": created.Value})
+	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": created.ID, "value": created.Value})
 }
 
 func (s *Server) handleCreateRevision(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	var request partRevisionRequest
 	if !decodeBody(w, r, &request) {
 		return
@@ -302,8 +306,7 @@ func (s *Server) handleCreateRevision(w http.ResponseWriter, r *http.Request) {
 		writeCreateError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]any{"id": created.ID, "revision": created.Revision})
+	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": created.ID, "revision": created.Revision})
 }
 
 func (s *Server) handlePartDrafts(w http.ResponseWriter, r *http.Request) {
@@ -325,8 +328,7 @@ func (s *Server) handlePartDrafts(w http.ResponseWriter, r *http.Request) {
 		writeCreateError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, draft)
+	writeJSONStatus(w, http.StatusCreated, draft)
 }
 
 func (s *Server) handlePartDraft(w http.ResponseWriter, r *http.Request) {
@@ -392,8 +394,7 @@ func (s *Server) handleReleasePartDraft(w http.ResponseWriter, r *http.Request) 
 		writeCreateError(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	writeJSON(w, map[string]any{"id": part.ID, "value": part.Value})
+	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": part.ID, "value": part.Value})
 }
 
 func writeCreateError(w http.ResponseWriter, err error) {
@@ -403,6 +404,12 @@ func writeCreateError(w http.ResponseWriter, err error) {
 	}
 	if errors.Is(err, store.ErrAlreadyExists) {
 		status = http.StatusConflict
+	}
+	if ubom.IsCategory(err, ubom.ErrorCategoryConflict) || errors.Is(err, ubom.ErrAllocation) {
+		status = http.StatusConflict
+	}
+	if ubom.IsCategory(err, ubom.ErrorCategoryOrdering) {
+		status = http.StatusUnprocessableEntity
 	}
 	writeError(w, status, err.Error())
 }

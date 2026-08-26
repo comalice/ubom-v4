@@ -142,13 +142,63 @@ func TestAuthoringFlow(t *testing.T) {
 		if recording.Code != wantStatus {
 			t.Fatalf("POST %s status = %d, want %d; body = %s", path, recording.Code, wantStatus, recording.Body)
 		}
+		if !strings.HasPrefix(recording.Header().Get("Content-Type"), "application/json") {
+			t.Fatalf("POST %s content type = %q, want application/json", path, recording.Header().Get("Content-Type"))
+		}
 		return recording.Body.String()
 	}
 
 	post("/api/seq-defs", `{"id":"author-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"places","alphabets":["AB"]}]}}`, http.StatusCreated)
 	post("/api/seq-defs", `{"id":"author-rev-v1","root":{"kind":"range","min":1,"max":9,"width":1}}`, http.StatusCreated)
 	post("/api/taxonomy-defs", `{"id":"author-taxonomy-v1","seqDef":"author-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
-	post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusMethodNotAllowed)
+	part := post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusCreated)
+	if !strings.Contains(part, `"id":"1"`) || !strings.Contains(part, `"value":"PN-A"`) {
+		t.Fatalf("part response = %s", part)
+	}
+}
+
+func TestTaxonomyPredicateContract(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(path, body string, wantStatus int) string {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+		if recording.Code != wantStatus {
+			t.Fatalf("POST %s status = %d, want %d; body = %s", path, recording.Code, wantStatus, recording.Body)
+		}
+		return recording.Body.String()
+	}
+	post("/api/seq-defs", `{"id":"predicate-pn","root":{"kind":"concat","children":[{"kind":"bind","name":"category","child":{"kind":"choice","children":[{"kind":"literal","text":"RES"}]}},{"kind":"bind","name":"number","child":{"kind":"range","min":0,"max":999,"width":3}}]}}`, http.StatusCreated)
+	body := `{"id":"predicate-taxonomy","seqDef":"predicate-pn","root":{"id":"root","label":"Components","children":[{"id":"resistors","label":"Resistors","predicates":[{"field":"category","kind":"exact","value":"RES"},{"field":"number","kind":"numeric-range","min":100,"max":199}]}]}}`
+	post("/api/taxonomy-defs", body, http.StatusCreated)
+	part := post("/api/parts", `{"value":"RES100","seqDef":"predicate-pn","taxonomyDef":"predicate-taxonomy"}`, http.StatusCreated)
+	if !strings.Contains(part, `"value":"RES100"`) {
+		t.Fatalf("part response = %s", part)
+	}
+}
+
+func TestDraftAndLineItemJSONContract(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/part-drafts", strings.NewReader(`{"seqDef":"missing","taxonomyDef":"missing","contextNodeId":"root"}`)))
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("draft status = %d, want %d; body = %s", response.Code, http.StatusNotFound, response.Body)
+	}
+	// Domain structs used by the API must not fall back to Go's field names.
+	draft := `{"id":"draft-1","seqDef":"seq-1","taxonomyDef":"tax-1","contextNodeId":"root","bindings":{},"attributes":[],"status":"draft"}`
+	var decoded struct {
+		SeqDef string `json:"seqDef"`
+	}
+	if err := json.Unmarshal([]byte(draft), &decoded); err != nil || decoded.SeqDef != "seq-1" {
+		t.Fatalf("draft contract decode = %#v, %v", decoded, err)
+	}
+	line := struct {
+		PartNumberID string `json:"partNumberId"`
+		RevisionID   string `json:"partRevisionId"`
+	}{"part-1", "revision-1"}
+	encoded, err := json.Marshal(line)
+	if err != nil || !strings.Contains(string(encoded), `"partNumberId"`) || !strings.Contains(string(encoded), `"partRevisionId"`) {
+		t.Fatalf("line item contract = %s, %v", encoded, err)
+	}
 }
 
 func TestSeqDefPreviewAndStrictRequest(t *testing.T) {

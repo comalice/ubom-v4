@@ -22,10 +22,10 @@ type TaxonomyDefID string
 type TaxonomyNodeID string
 
 type TaxonomyDef struct {
-	ID            TaxonomyDefID // durable unique ID
-	SeqDef        SeqDefID      // sequence this taxonomy is applied to
-	AttributeDefs []AttributeDef
-	Taxonomy      Taxonomy
+	ID            TaxonomyDefID  `json:"id"`     // durable unique ID
+	SeqDef        SeqDefID       `json:"seqDef"` // sequence this taxonomy is applied to
+	AttributeDefs []AttributeDef `json:"attributeDefs"`
+	Taxonomy      Taxonomy       `json:"taxonomy"`
 }
 
 // PredicateKind identifies the value comparison made by a taxonomy predicate.
@@ -40,11 +40,11 @@ const (
 // NumericRange is inclusive at both ends. Exact values intentionally compare
 // the captured source text, preserving significant padding and case.
 type TaxonomyPredicate struct {
-	Field FieldName
-	Kind  PredicateKind
-	Value string
-	Min   int64
-	Max   int64
+	Field FieldName     `json:"field"`
+	Kind  PredicateKind `json:"kind"`
+	Value string        `json:"value,omitempty"`
+	Min   int64         `json:"min"`
+	Max   int64         `json:"max"`
 }
 
 func ExactPredicate(field FieldName, value string) TaxonomyPredicate {
@@ -61,12 +61,12 @@ type Taxonomy struct {
 }
 
 type TaxonomyNode struct {
-	ID         TaxonomyNodeID
-	Label      string
-	Matches    map[string]string
-	Predicates []TaxonomyPredicate
-	Attributes []AttributeAssignment
-	Children   []TaxonomyNode
+	ID         TaxonomyNodeID        `json:"id"`
+	Label      string                `json:"label"`
+	Matches    map[string]string     `json:"matches,omitempty"`
+	Predicates []TaxonomyPredicate   `json:"predicates,omitempty"`
+	Attributes []AttributeAssignment `json:"attributes,omitempty"`
+	Children   []TaxonomyNode        `json:"children,omitempty"`
 }
 
 // ClassificationPolicy controls whether the generic taxonomy root is an

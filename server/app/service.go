@@ -55,6 +55,18 @@ type SeqDefPreview struct {
 	Error    string            `json:"error,omitempty"`
 }
 
+type SeqDefCandidateField struct {
+	Name       string `json:"name"`
+	Source     string `json:"source"`
+	Normalized any    `json:"normalized"`
+}
+
+type SeqDefCandidatePreview struct {
+	Value    string                 `json:"value"`
+	Bindings map[string]string      `json:"bindings"`
+	Fields   []SeqDefCandidateField `json:"fields"`
+}
+
 func (s *Service) PreviewSeqDef(id ubom.SeqDefID, bindings map[string]string) (SeqDefPreview, error) {
 	def, err := s.store.GetSeqDef(id)
 	if err != nil {
@@ -65,6 +77,24 @@ func (s *Service) PreviewSeqDef(id ubom.SeqDefID, bindings map[string]string) (S
 
 func (s *Service) PreviewSeqDefRoot(root ubom.SeqDefNode, bindings map[string]string) (SeqDefPreview, error) {
 	return previewSeqDef(ubom.NewSeqDef(root).WithID("preview"), "", bindings)
+}
+
+func (s *Service) PreviewSeqDefCandidate(root ubom.SeqDefNode, value string) (SeqDefCandidatePreview, error) {
+	def := ubom.NewSeqDef(root).WithID("preview")
+	if err := def.Validate(); err != nil {
+		return SeqDefCandidatePreview{}, err
+	}
+	parsed, err := def.ParseValues(value)
+	if err != nil {
+		return SeqDefCandidatePreview{}, err
+	}
+	fields := make([]SeqDefCandidateField, 0, len(parsed.Fields))
+	for _, field := range parsed.Fields {
+		fields = append(fields, SeqDefCandidateField{
+			Name: field.Name, Source: field.Source, Normalized: field.Normalized,
+		})
+	}
+	return SeqDefCandidatePreview{Value: parsed.Value, Bindings: parsed.Bindings, Fields: fields}, nil
 }
 
 func previewSeqDef(def ubom.SeqDef, id ubom.SeqDefID, bindings map[string]string) (SeqDefPreview, error) {

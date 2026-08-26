@@ -271,6 +271,37 @@ func TestSeqDefPreviewAndStrictRequest(t *testing.T) {
 	}
 }
 
+func TestSeqDefCandidatePreview(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	root := `{"kind":"concat","children":[{"kind":"bind","name":"prefix","child":{"kind":"choice","children":[{"kind":"literal","text":"PN"},{"kind":"literal","text":"SN"}]}},{"kind":"literal","text":"-"},{"kind":"bind","name":"series","child":{"kind":"choice","children":[{"kind":"literal","text":"SN"},{"kind":"literal","text":"PN"}]}},{"kind":"literal","text":"-"},{"kind":"bind","name":"revision","child":{"kind":"concat","children":[{"kind":"literal","text":"B"},{"kind":"places","alphabets":["0123456789"]}]}}]}`
+	body := `{"root":` + root + `,"value":"PN-SN-B0"}`
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/seq-defs/preview/candidate", strings.NewReader(body)))
+	if response.Code != http.StatusOK {
+		t.Fatalf("candidate preview status = %d; body = %s", response.Code, response.Body)
+	}
+	var preview struct {
+		Value    string            `json:"value"`
+		Bindings map[string]string `json:"bindings"`
+		Fields   []struct {
+			Name   string `json:"name"`
+			Source string `json:"source"`
+		} `json:"fields"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&preview); err != nil {
+		t.Fatal(err)
+	}
+	if preview.Value != "PN-SN-B0" || preview.Bindings["prefix"] != "PN" || preview.Bindings["series"] != "SN" || preview.Bindings["revision"] != "B0" || len(preview.Fields) != 3 {
+		t.Fatalf("candidate preview = %#v, want parsed value, bindings, and fields", preview)
+	}
+
+	invalid := httptest.NewRecorder()
+	server.Handler().ServeHTTP(invalid, httptest.NewRequest(http.MethodPost, "/api/seq-defs/preview/candidate", strings.NewReader(strings.Replace(body, "PN-SN-B0", "PN-SN-C0", 1))))
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid candidate status = %d; body = %s", invalid.Code, invalid.Body)
+	}
+}
+
 func TestSeqDefAuthoringPadWireContract(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	post := func(body string) *httptest.ResponseRecorder {

@@ -92,6 +92,43 @@ func TestTaxonomyNodeViewUsesExactNodeMembership(t *testing.T) {
 	}
 }
 
+func TestPreviewSeqDefCandidateParsesStructuredFields(t *testing.T) {
+	root := ubom.Concat(
+		ubom.Bind("prefix", ubom.Choice(ubom.Literal("PN"), ubom.Literal("SN"))),
+		ubom.Literal("-"),
+		ubom.Bind("series", ubom.Choice(ubom.Literal("SN"), ubom.Literal("PN"))),
+		ubom.Literal("-"),
+		ubom.Bind("revision", ubom.Concat(ubom.Literal("B"), ubom.PlaceSequence("0123456789"))),
+	)
+
+	preview, err := NewService(store.NewMemoryStore()).PreviewSeqDefCandidate(root, "PN-SN-B0")
+	if err != nil {
+		t.Fatalf("PreviewSeqDefCandidate() error = %v", err)
+	}
+	if preview.Value != "PN-SN-B0" {
+		t.Fatalf("value = %q, want PN-SN-B0", preview.Value)
+	}
+	want := map[string]string{"prefix": "PN", "series": "SN", "revision": "B0"}
+	if len(preview.Bindings) != len(want) {
+		t.Fatalf("bindings = %#v, want %#v", preview.Bindings, want)
+	}
+	for name, value := range want {
+		if preview.Bindings[name] != value {
+			t.Errorf("binding %q = %q, want %q", name, preview.Bindings[name], value)
+		}
+	}
+	if len(preview.Fields) != 3 || preview.Fields[2].Name != "revision" || preview.Fields[2].Source != "B0" {
+		t.Fatalf("fields = %#v, want ordered captures", preview.Fields)
+	}
+}
+
+func TestPreviewSeqDefCandidateRejectsInvalidCandidate(t *testing.T) {
+	root := ubom.NewSeqDef(ubom.Bind("code", ubom.PlaceSequence("AB"))).Root()
+	if _, err := NewService(store.NewMemoryStore()).PreviewSeqDefCandidate(root, "C"); !ubom.IsCategory(err, ubom.ErrorCategorySyntax) {
+		t.Fatalf("PreviewSeqDefCandidate() error = %v, want syntax error", err)
+	}
+}
+
 func TestRevisionViewRecursesBOM(t *testing.T) {
 	metadata := store.NewMemoryStore()
 	parent, err := LoadSampleData(metadata)

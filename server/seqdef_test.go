@@ -362,6 +362,78 @@ func TestSeqDefBindDoesNotLeakFromFailedChoice(t *testing.T) {
 	}
 }
 
+func TestSeqDefStructuredCapturesPreserveOrderAndNormalization(t *testing.T) {
+	definition := NewSeqDef(Concat(
+		Bind("category", Literal("CAP")),
+		Literal("-"),
+		Bind("number", Range(0, 99).Width(2)),
+	))
+
+	result, err := definition.ParseValues("CAP-07")
+	if err != nil {
+		t.Fatalf("ParseValues() error = %v", err)
+	}
+	if len(result.Fields) != 2 {
+		t.Fatalf("Fields length = %d, want 2", len(result.Fields))
+	}
+	if result.Fields[0].Name != "category" || result.Fields[0].Source != "CAP" || result.Fields[0].Normalized != "CAP" {
+		t.Errorf("category capture = %#v", result.Fields[0])
+	}
+	if result.Fields[1].Name != "number" || result.Fields[1].Source != "07" || result.Fields[1].Normalized != 7 {
+		t.Errorf("number capture = %#v, want source 07 and normalized 7", result.Fields[1])
+	}
+	if result.Bindings["number"] != "07" {
+		t.Errorf("compatibility binding number = %q, want 07", result.Bindings["number"])
+	}
+}
+
+func TestSeqDefChoiceRollbackRemovesStructuredCaptures(t *testing.T) {
+	definition := NewSeqDef(Choice(
+		Concat(Bind("kind", Literal("OLD")), Literal("-"), Literal("bad")),
+		Concat(Bind("kind", Literal("NEW")), Literal("-"), Literal("good")),
+	))
+
+	result, err := definition.ParseValues("NEW-good")
+	if err != nil {
+		t.Fatalf("ParseValues() error = %v", err)
+	}
+	if len(result.Fields) != 1 || result.Fields[0].Name != "kind" || result.Fields[0].Source != "NEW" {
+		t.Fatalf("Fields = %#v, want only the successful alternative capture", result.Fields)
+	}
+}
+
+func TestSeqDefRejectsDuplicateBindingsOnSuccessfulPath(t *testing.T) {
+	definition := NewSeqDef(Concat(Bind("value", Literal("A")), Bind("value", Literal("B"))))
+	if _, err := definition.ParseValues("AB"); err == nil {
+		t.Fatal("ParseValues() accepted duplicate binding")
+	}
+
+	// Reusing a name in alternatives is unambiguous because only the selected
+	// alternative contributes captures.
+	choice := NewSeqDef(Choice(Bind("value", Literal("A")), Bind("value", Literal("B"))))
+	if result, err := choice.ParseValues("B"); err != nil || len(result.Fields) != 1 || result.Fields[0].Source != "B" {
+		t.Fatalf("alternative duplicate binding = %#v, %v", result, err)
+	}
+}
+
+func TestSeqDefStructuredRangeCaptureRetainsPadding(t *testing.T) {
+	result, err := NewSeqDef(Bind("number", Range(0, 17).Width(2, 'X'))).ParseValues("X7")
+	if err != nil {
+		t.Fatalf("ParseValues() error = %v", err)
+	}
+	field := result.Fields[0]
+	if field.Source != "X7" || field.Normalized != 7 {
+		t.Fatalf("capture = %#v, want source X7 and normalized 7", field)
+	}
+}
+
+func TestSeqDefParseRequiresFullInput(t *testing.T) {
+	definition := NewSeqDef(Bind("value", Literal("A")))
+	if _, err := definition.ParseValues("AB"); err == nil || !errors.Is(err, ErrInvalidSyntax) {
+		t.Fatalf("ParseValues() error = %v, want invalid syntax", err)
+	}
+}
+
 func TestSeqDefBindableFieldsInChoice(t *testing.T) {
 	definition := NewSeqDef(Choice(
 		Concat(Bind("category", Literal("RES")), Bind("number", Range(0, 99).Width(2))),

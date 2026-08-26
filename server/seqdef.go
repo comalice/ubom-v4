@@ -246,25 +246,135 @@ func (d SeqDef) Parse(input string) (string, error) {
 	return result.Value, err
 }
 
+// CapturedField is one named segment matched by a Bind node. Source is the
+// exact input text. Normalized is an int for a range capture and the source
+// string when no more specific structural value is available.
+type CapturedField struct {
+	Name       string
+	Source     string
+	Normalized any
+}
+
 type ParseResult struct {
-	Value    string
+	Value  string
+	Fields []CapturedField
+	// Bindings is a compatibility adapter for callers predating structured
+	// captures. It is derived from Fields; duplicate names are rejected.
 	Bindings map[string]string
+}
+
+type captureState struct {
+	fields []CapturedField
+	names  map[string]bool
+}
+
+func newCaptureState() *captureState { return &captureState{names: map[string]bool{}} }
+
+func (s *captureState) clone() *captureState {
+	copyState := newCaptureState()
+	copyState.fields = append(copyState.fields, s.fields...)
+	for name := range s.names {
+		copyState.names[name] = true
+	}
+	return copyState
+}
+
+func (s *captureState) commit(from *captureState) {
+	s.fields = append(s.fields[:0], from.fields...)
+	s.names = from.names
 }
 
 func (d SeqDef) ParseValues(input string) (ParseResult, error) {
 	if d.root == nil {
-		return ParseResult{}, fmt.Errorf("sequence definition has no root")
+		return ParseResult{}, WrapDomainError(ErrorCategorySyntax, "sequence definition has no root", nil)
 	}
-
-	bindings := map[string]string{}
-	value, next, err := d.root.parseAt(input, 0, bindings)
+	state := newCaptureState()
+	value, next, err := parseCapturedNode(d.root, input, 0, state)
 	if err != nil {
-		return ParseResult{}, err
+		return ParseResult{}, WrapDomainError(ErrorCategorySyntax, "sequence input is invalid", err)
 	}
 	if next != len(input) {
-		return ParseResult{}, expected(next, "end of input")
+		return ParseResult{}, WrapDomainError(ErrorCategorySyntax, "sequence input is invalid", expected(next, "end of input"))
 	}
-	return ParseResult{Value: value, Bindings: bindings}, nil
+	bindings := make(map[string]string, len(state.fields))
+	for _, field := range state.fields {
+		bindings[field.Name] = field.Source
+	}
+	return ParseResult{Value: value, Fields: state.fields, Bindings: bindings}, nil
+}
+
+// parseCapturedNode keeps the existing node interface intact for package-local
+// structural nodes, while built-in nodes collect transactional captures.
+func parseCapturedNode(node SeqDefNode, input string, offset int, state *captureState) (string, int, error) {
+	switch n := node.(type) {
+	case LiteralNode:
+		return n.parseAt(input, offset, nil)
+	case ConcatNode:
+		return parseCapturedConcat(n.Children, input, offset, state)
+	case RangeRadixNode:
+		return parseCapturedConcat(n.Children, input, offset, state)
+	case ChoiceNode:
+		var lastErr error
+		for _, child := range n.Children {
+			trial := state.clone()
+			value, next, err := parseCapturedNode(child, input, offset, trial)
+			if err == nil {
+				state.commit(trial)
+				return value, next, nil
+			}
+			lastErr = err
+		}
+		if lastErr == nil {
+			lastErr = expected(offset, "one of the choices")
+		}
+		return "", offset, lastErr
+	case BindNode:
+		if state.names[n.Name] {
+			return "", offset, fmt.Errorf("duplicate binding %q", n.Name)
+		}
+		start := offset
+		state.names[n.Name] = true
+		state.fields = append(state.fields, CapturedField{Name: n.Name})
+		index := len(state.fields) - 1
+		value, next, err := parseCapturedNode(n.Child, input, offset, state)
+		if err != nil {
+			return "", start, err
+		}
+		text := input[start:next]
+		state.fields[index].Source = text
+		state.fields[index].Normalized = normalizedCapture(n.Child, text)
+		return value, next, nil
+	case PlaceSequenceNode, RangeNode:
+		return node.parseAt(input, offset, nil)
+	default:
+		bindings := make(map[string]string, len(state.fields))
+		for _, field := range state.fields {
+			bindings[field.Name] = field.Source
+		}
+		return node.parseAt(input, offset, bindings)
+	}
+}
+
+func parseCapturedConcat(nodes []SeqDefNode, input string, offset int, state *captureState) (string, int, error) {
+	value := ""
+	for _, child := range nodes {
+		part, next, err := parseCapturedNode(child, input, offset, state)
+		if err != nil {
+			return "", offset, err
+		}
+		value += part
+		offset = next
+	}
+	return value, offset, nil
+}
+
+func normalizedCapture(node SeqDefNode, text string) any {
+	if rangeNode, ok := node.(RangeNode); ok {
+		if value, err := rangeNode.ParseValue(text); err == nil {
+			return value
+		}
+	}
+	return text
 }
 
 // SeqDefNode is a type-safe grammar node. Constructors below build the AST.

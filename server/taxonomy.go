@@ -467,6 +467,73 @@ func (t Taxonomy) EffectiveAttributes(nodeID TaxonomyNodeID) ([]AttributeAssignm
 	return result, nil
 }
 
+// Constraints returns the effective typed predicates required by the path from
+// the taxonomy root to nodeID. Predicates for the same field are combined into
+// one constraint; the result keeps the first-seen field order.
+func (t Taxonomy) Constraints(nodeID TaxonomyNodeID) ([]TaxonomyPredicate, error) {
+	if t.Root.ID == "" || nodeID == "" {
+		return nil, fmt.Errorf("taxonomy node %q not found", nodeID)
+	}
+	path, ok := taxonomyNodePath(t.Root, nodeID)
+	if !ok {
+		return nil, fmt.Errorf("taxonomy node %q not found", nodeID)
+	}
+
+	result := make([]TaxonomyPredicate, 0)
+	positions := map[FieldName]int{}
+	for _, node := range path {
+		predicates, err := typedTaxonomyPredicates(node)
+		if err != nil {
+			return nil, err
+		}
+		for _, predicate := range predicates {
+			position, exists := positions[predicate.Field]
+			if !exists {
+				positions[predicate.Field] = len(result)
+				result = append(result, predicate)
+				continue
+			}
+			combined, err := combineTaxonomyPredicates(result[position], predicate)
+			if err != nil {
+				return nil, err
+			}
+			result[position] = combined
+		}
+	}
+	return result, nil
+}
+
+func combineTaxonomyPredicates(existing, next TaxonomyPredicate) (TaxonomyPredicate, error) {
+	if existing.Kind == PredicateExact && next.Kind == PredicateExact {
+		if existing.Value != next.Value {
+			return TaxonomyPredicate{}, taxonomyValidation("conflicting exact predicates for field %q: %q and %q", existing.Field, existing.Value, next.Value)
+		}
+		return existing, nil
+	}
+	if existing.Kind == PredicateExact || next.Kind == PredicateExact {
+		exact, numeric := existing, next
+		if exact.Kind != PredicateExact {
+			exact, numeric = next, existing
+		}
+		value, err := strconv.ParseInt(exact.Value, 10, 64)
+		if err != nil || value < numeric.Min || value > numeric.Max {
+			return TaxonomyPredicate{}, taxonomyValidation("exact predicate for field %q is outside numeric range %d..%d", exact.Field, numeric.Min, numeric.Max)
+		}
+		return exact, nil
+	}
+	min, max := existing.Min, existing.Max
+	if next.Min > min {
+		min = next.Min
+	}
+	if next.Max < max {
+		max = next.Max
+	}
+	if min > max {
+		return TaxonomyPredicate{}, taxonomyValidation("numeric predicate intersection for field %q is empty", existing.Field)
+	}
+	return NumericRangePredicate(existing.Field, min, max), nil
+}
+
 func taxonomyNodePath(node TaxonomyNode, id TaxonomyNodeID) ([]TaxonomyNode, bool) {
 	if node.ID == id {
 		return []TaxonomyNode{node}, true

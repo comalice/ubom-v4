@@ -122,6 +122,65 @@ func TestTaxonomyClassifyRejectsInvalidPredicate(t *testing.T) {
 	}
 }
 
+func TestTaxonomyConstraintsReturnsCumulativePredicates(t *testing.T) {
+	taxonomy := Taxonomy{Root: TaxonomyNode{
+		ID:         "root",
+		Predicates: []TaxonomyPredicate{ExactPredicate("category", "RES")},
+		Children: []TaxonomyNode{{
+			ID:         "resistor",
+			Predicates: []TaxonomyPredicate{NumericRangePredicate("group", 0, 999)},
+			Children: []TaxonomyNode{{
+				ID:         "high-power",
+				Predicates: []TaxonomyPredicate{NumericRangePredicate("group", 100, 199), ExactPredicate("finish", "THICK")},
+			}},
+		}},
+	}}
+
+	got, err := taxonomy.Constraints("high-power")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []TaxonomyPredicate{
+		ExactPredicate("category", "RES"),
+		NumericRangePredicate("group", 100, 199),
+		ExactPredicate("finish", "THICK"),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Constraints() = %#v, want %#v", got, want)
+	}
+}
+
+func TestTaxonomyConstraintsRootUnknownAndOwnership(t *testing.T) {
+	taxonomy := Taxonomy{Root: TaxonomyNode{ID: "root", Predicates: []TaxonomyPredicate{ExactPredicate("category", "RES")}}}
+	got, err := taxonomy.Constraints("root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []TaxonomyPredicate{ExactPredicate("category", "RES")}) {
+		t.Fatalf("root Constraints() = %#v", got)
+	}
+	got[0].Value = "CAP"
+	again, err := taxonomy.Constraints("root")
+	if err != nil || again[0].Value != "RES" {
+		t.Fatalf("Constraints() exposed taxonomy storage: %#v, %v", again, err)
+	}
+	if _, err := taxonomy.Constraints("missing"); err == nil {
+		t.Fatal("Constraints() accepted an unknown node")
+	}
+}
+
+func TestTaxonomyConstraintsRejectsConflictsAndEmptyIntersections(t *testing.T) {
+	tests := []TaxonomyNode{
+		{ID: "root", Predicates: []TaxonomyPredicate{ExactPredicate("code", "A")}, Children: []TaxonomyNode{{ID: "child", Predicates: []TaxonomyPredicate{ExactPredicate("code", "B")}}}},
+		{ID: "root", Predicates: []TaxonomyPredicate{NumericRangePredicate("number", 1, 5)}, Children: []TaxonomyNode{{ID: "child", Predicates: []TaxonomyPredicate{NumericRangePredicate("number", 6, 9)}}}},
+	}
+	for _, root := range tests {
+		if _, err := (Taxonomy{Root: root}).Constraints("child"); err == nil {
+			t.Fatalf("Constraints() accepted conflicting path: %#v", root)
+		}
+	}
+}
+
 func TestTaxonomyPredicateValidation(t *testing.T) {
 	tests := []TaxonomyPredicate{
 		{Field: "", Kind: PredicateExact, Value: "x"},

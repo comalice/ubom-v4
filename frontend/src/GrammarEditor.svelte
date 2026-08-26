@@ -5,7 +5,7 @@
   import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
   import { previewSeqDefRoot, type SeqDefPreview } from './api'
-  import { createGrammarExpr as createExpr, generateGrammarSequence as generateSequence, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
+  import { createGrammarExpr as createExpr, grammarPreviewKey, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -28,6 +28,7 @@
   let testInput = 'PN-SN-A'
   let bindingValues: Record<string, string> = { family: 'SN-' }
   let preview: SeqDefPreview | null = null
+  let previewedKey: string | null = null
   let previewError = ''
   let previewing = false
 
@@ -54,8 +55,10 @@
   $: structureNodes = rootSequence.map(toStructureNode)
   $: validationErrors = validateSequence(rootSequence)
   $: parsed = parseSequence(rootSequence, testInput)
-  $: generated = generateSequence(rootSequence)
   $: bindingNames = collectBindingNames(rootSequence)
+  $: previewBindings = Object.fromEntries(bindingNames.map(name => [name, bindingValues[name] ?? '']))
+  $: previewKey = grammarPreviewKey(rootSequence, previewBindings)
+  $: currentPreview = previewedKey === previewKey ? preview : null
 
   function collectBindingNames(exprs: Expr[]): string[] {
     const names: string[] = []
@@ -75,14 +78,19 @@
   }
 
   async function requestPreview() {
+    const requestKey = previewKey
     preview = null
+    previewedKey = null
     previewError = ''
     previewing = true
     try {
-      const bindings = Object.fromEntries(bindingNames.map(name => [name, bindingValues[name] ?? '']))
-      preview = await previewSeqDefRoot(toSeqDefRoot(rootSequence), bindings)
+      const result = await previewSeqDefRoot(toSeqDefRoot(rootSequence), previewBindings)
+      if (requestKey === previewKey) {
+        preview = result
+        previewedKey = requestKey
+      }
     } catch (reason) {
-      previewError = reason instanceof Error ? reason.message : 'Unable to preview sequence'
+      if (requestKey === previewKey) previewError = reason instanceof Error ? reason.message : 'Unable to preview sequence'
     } finally {
       previewing = false
     }
@@ -220,7 +228,7 @@
         <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>
         <label class="grammar-input-label">Input to parse<input bind:value={testInput} placeholder="Type a candidate value" /></label>
         {#if testInput}<div class:grammar-valid={!('error' in parsed)} class="grammar-parse-result">{#if 'error' in parsed}Invalid: {parsed.error}{:else}Valid input{#each Object.entries(parsed.bindings) as [name, value]}<span>{name} = {value}</span>{/each}{/if}</div>{/if}
-        <div class="grammar-output"><span>Canonical generated value</span><strong>{generated || '(empty)'}</strong></div>
+        <div class="grammar-output"><span>Canonical generated value</span>{#if currentPreview && !currentPreview.error}<strong>{currentPreview.value || '(empty)'}</strong>{:else if currentPreview?.error}<strong>Unavailable</strong><span>{currentPreview.error}</span>{:else}<strong>Not previewed</strong><span>Preview this sequence on the server to see the canonical value.</span>{/if}</div>
         <section class="grammar-preview" aria-labelledby="grammar-preview-heading">
           <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-preview-heading">Server preview</span></div>
           {#if bindingNames.length}
@@ -234,9 +242,9 @@
           {/if}
           <button class="grammar-preview-button" type="button" disabled={previewing || validationErrors.length > 0} onclick={requestPreview}>{previewing ? 'Previewing...' : 'Preview on server'}</button>
           {#if previewError}<p class="error" role="alert">{previewError}</p>{/if}
-          {#if preview}
-            <div class:grammar-preview-failed={preview.error} class="grammar-preview-result" role="status">
-              {#if preview.error}<strong>Server rejected the values</strong><span>{preview.error}</span>{:else}<strong>{preview.value || '(empty)'}</strong><span>Bindings returned: {Object.entries(preview.bindings).map(([name, value]) => `${name} = ${value}`).join(', ') || 'none'}</span>{/if}
+          {#if currentPreview}
+            <div class:grammar-preview-failed={currentPreview.error} class="grammar-preview-result" role="status">
+              {#if currentPreview.error}<strong>Server rejected the values</strong><span>{currentPreview.error}</span>{:else}<strong>{currentPreview.value || '(empty)'}</strong><span>Bindings returned: {Object.entries(currentPreview.bindings).map(([name, value]) => `${name} = ${value}`).join(', ') || 'none'}</span>{/if}
             </div>
           {/if}
         </section>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   generateGrammarExpr,
   generateGrammarSequence,
+  grammarPreviewKey,
   toSeqDefNode,
   toSeqDefRoot,
   type GrammarExpr,
@@ -115,6 +116,17 @@ describe('GrammarEditorModel generation', () => {
     expect(generateGrammarExpr({ id: 'empty-places', kind: 'places', alphabets: ['', 'ABC'] })).toBe('A')
     expect(generateGrammarExpr({ id: 'empty-choice', kind: 'choice', children: [] })).toBe('')
     expect(generateGrammarExpr({ id: 'empty-bind', kind: 'bind', name: 'value' })).toBe('')
+  })
+})
+
+describe('GrammarEditorModel preview inputs', () => {
+  it('changes when the document or binding inputs change', () => {
+    const expressions = [literal('literal', 'PN-')]
+    const initial = grammarPreviewKey(expressions, { family: 'SN-' })
+
+    expect(grammarPreviewKey(expressions, { family: 'SN-' })).toBe(initial)
+    expect(grammarPreviewKey([literal('literal', 'PN-2')], { family: 'SN-' })).not.toBe(initial)
+    expect(grammarPreviewKey(expressions, { family: 'SN-2' })).not.toBe(initial)
   })
 })
 

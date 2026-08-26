@@ -174,6 +174,15 @@ export function generateGrammarExpr(expr: GrammarExpr): string {
 
 export function generateGrammarSequence(exprs: GrammarExpr[]) { return exprs.map(generateGrammarExpr).join('') }
 
+// Include the editor document and its preview bindings so a response cannot be
+// presented as current after either one changes.
+export function grammarPreviewKey(exprs: GrammarExpr[], bindings: Record<string, string>): string {
+  return JSON.stringify({
+    exprs,
+    bindings: Object.fromEntries(Object.entries(bindings).sort(([left], [right]) => left.localeCompare(right))),
+  })
+}
+
 // The editor model is intentionally UI-friendly; this adapter is the only
 // boundary where it is converted to the server's recursive SeqDef AST.
 export function toSeqDefNode(expr: GrammarExpr): SeqDefNode {

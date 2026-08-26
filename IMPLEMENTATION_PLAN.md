@@ -287,3 +287,143 @@ For every implementation step, review:
 - Are ambiguous or incomplete cases explicit?
 - Is the diff limited to the selected step?
 - Are focused tests and the full suite green?
+
+## Next Phase
+
+The core reimplementation is complete. The next phase makes the new schema
+model authoritative throughout the system and then improves taxonomy-directed
+allocation.
+
+### 16. Migrate Internal Callers To Schema
+
+Move all internal interpretation and part-number construction through the
+explicit `Schema` abstraction.
+
+Targets:
+
+- Seed data and fixtures
+- Store release paths
+- API part creation
+- Application views
+- Tests that construct or classify part numbers
+
+Acceptance:
+
+- No internal production path duplicates SeqDef parsing plus taxonomy
+  classification.
+- Schema validation is the single cross-definition validation boundary.
+- Existing semantic tests remain green.
+
+### 17. Migrate Taxonomy Data To Typed Predicates
+
+Replace internal uses of legacy `Matches` taxonomy data with typed
+`TaxonomyPredicate` values.
+
+Acceptance:
+
+- Seed data uses `ExactPredicate` and `NumericRangePredicate` as appropriate.
+- SQLite and MemoryStore fixtures exercise typed predicates.
+- Exact matching, numeric ranges, nested refinement, and inherited attributes
+  remain covered by tests.
+- No new taxonomy behavior depends on a second predicate representation.
+
+### 18. Remove Legacy Taxonomy Projection Paths
+
+After all internal callers use the explicit classification API, remove or
+quarantine compatibility paths that duplicate interpretation.
+
+Candidates:
+
+- `TaxonomyNode.Matches`
+- `Taxonomy.Project`
+- `Taxonomy.ProjectNode`
+- Legacy `NewPartNumber`
+- Binding-only taxonomy classification paths
+
+Acceptance:
+
+- The remaining public API has one authoritative classification path.
+- Any retained compatibility adapter is isolated, documented, and unreferenced
+  by production code.
+- No behavior depends on declaration-order ambiguity that typed validation
+  should reject.
+
+### 19. Implement Reverse Taxonomy Constraints
+
+Add the reverse direction of taxonomy interpretation so a taxonomy context can
+constrain candidate bindings:
+
+```text
+taxonomy context
+    -> effective predicates
+    -> candidate binding constraints
+    -> SeqDef.Generate
+```
+
+The operation must combine predicates along the taxonomy path, including
+numeric range intersection and exact-value constraints.
+
+Acceptance:
+
+- `Taxonomy.Constraints(nodeID)` returns effective constraints from root to the
+  selected node.
+- Exact and numeric constraints can be combined on different fields.
+- Intersecting constraints produce the narrower valid domain.
+- Empty intersections fail clearly.
+- Conflicting exact constraints fail clearly.
+- Constraints do not render strings or check store availability.
+
+### 20. Make Allocation Taxonomy-Directed
+
+Use reverse taxonomy constraints before candidate generation while retaining
+classification as the final semantic check.
+
+Acceptance:
+
+- Allocation for a taxonomy context starts within that context's constrained
+  candidate space.
+- Every generated candidate is classified back to the requested node or an
+  allowed descendant.
+- Successor ordering remains a SeqDef concern.
+- Store uniqueness remains authoritative.
+- Range exhaustion, no ordering, conflicts, and unavailable constrained
+  candidates have distinct errors.
+
+### 21. Add End-To-End Schema Acceptance Scenarios
+
+Exercise the complete pipeline with a representative hierarchical schema:
+
+```text
+SeqDef:
+    category: three letters
+    group: three digits
+    number: three digits
+
+Taxonomy:
+    component
+    |- resistor, category = RES
+    |  `- high-power, group = 100..199
+    `- capacitor, category = CAP
+```
+
+Acceptance:
+
+- A value parses into structured captures.
+- The value classifies to the expected taxonomy path.
+- Effective attributes are inherited and overridden correctly.
+- A taxonomy-context allocation uses the expected constrained range.
+- The candidate persists and reloads with the same interpretation.
+- Duplicate allocation is rejected by the store.
+- The API and application views expose the same path and meaning.
+
+### 22. Frontend Integration Review
+
+Run the frontend against the completed schema API and decide whether frontend
+changes belong in this reimplementation or in a separate project.
+
+Acceptance:
+
+- Frontend schema authoring can create and preview typed taxonomy predicates.
+- Draft preview and release use the same binding and classification semantics.
+- API field names and status handling are intentional and tested.
+- Any remaining frontend work is recorded as a separate scoped plan.

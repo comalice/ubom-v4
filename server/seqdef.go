@@ -5,6 +5,7 @@ import (
 	"strconv"
 )
 
+// SeqDefID identifies an immutable sequence-definition version.
 type SeqDefID string
 
 type SeqDef struct {

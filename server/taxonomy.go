@@ -10,8 +10,10 @@ Presently, we do not allow taxonomy nodes within a tree to be duplicates.
 
 */
 
+// TaxonomyDefID identifies an immutable taxonomy-definition version.
 type TaxonomyDefID string
 
+// TaxonomyNodeID identifies a node within a taxonomy definition.
 type TaxonomyNodeID string
 
 type TaxonomyDef struct {

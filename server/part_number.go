@@ -8,8 +8,13 @@ import "fmt"
 type Part struct {
 }
 
+// PartNumberID identifies a durable part number record.
 type PartNumberID string
+
+// PartRevisionID identifies a revision owned by a part number.
 type PartRevisionID string
+
+// PartNumberDraftID identifies an in-progress part-number draft.
 type PartNumberDraftID string
 
 type DraftStatus string

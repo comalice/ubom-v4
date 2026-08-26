@@ -19,14 +19,14 @@
   function update(value: Partial<Expr>) { onChange({ ...expr, ...value } as Expr) }
   function summaryFor(value: Expr): string {
     if (value.kind === 'literal') return JSON.stringify(value.text)
-    if (value.kind === 'number') return `${value.min}..${value.max} / width ${value.width} / pad ${value.pad}`
-    if (value.kind === 'alpha') return `${value.min}..${value.max}`
-    if (value.kind === 'chars') return value.chars
+    if (value.kind === 'range') return `${value.min}..${value.max} / width ${value.width} / pad ${value.pad}`
+    if (value.kind === 'places') return value.alphabets.map((alphabet) => `[${alphabet}]`).join('')
+    if (value.kind === 'range_radix') return value.children.map(summaryFor).join(' + ') || 'empty'
     if (value.kind === 'bind') return `${value.name || 'unnamed'} = ${value.child ? summaryFor(value.child) : 'empty'}`
     return value.children.map((alternative) => alternative.length ? alternative.map(summaryFor).join(' + ') : 'empty').join(' | ')
   }
 
-  $: blockTitle = expr.kind === 'number' ? 'number' : expr.kind
+  $: blockTitle = expr.kind === 'range_radix' ? 'range_radix' : expr.kind
   $: blockSummary = summaryFor(expr)
 
   function removeChild(alternativeIndex: number, childIndex: number) {
@@ -46,12 +46,12 @@
 <BlockShell title={blockTitle} summary={blockSummary} kind={expr.kind} collapsible initiallyOpen={false} onRemove={onRemove} {container} {dragData} dragHandle=".grammar-drag" interactive={['input', 'button']} {onDragEnd}>
   {#if expr.kind === 'literal'}
     <div class="grammar-expr-body"><label>Text<input value={expr.text} aria-label="Literal text" on:input={(event) => update({ text: (event.currentTarget as HTMLInputElement).value })} /></label></div>
-  {:else if expr.kind === 'number'}
-    <div class="grammar-expr-body grammar-number-fields"><label>Min<input type="number" value={expr.min} aria-label="Number minimum" on:input={(event) => update({ min: Number((event.currentTarget as HTMLInputElement).value) })} /></label><label>Max<input type="number" value={expr.max} aria-label="Number maximum" on:input={(event) => update({ max: Number((event.currentTarget as HTMLInputElement).value) })} /></label><label>Width<input type="number" value={expr.width} aria-label="Number width" on:input={(event) => update({ width: Number((event.currentTarget as HTMLInputElement).value) })} /></label><label>Pad<input maxlength="1" value={expr.pad} aria-label="Number padding" on:input={(event) => update({ pad: (event.currentTarget as HTMLInputElement).value.slice(0, 1) })} /></label></div>
-  {:else if expr.kind === 'alpha'}
-    <div class="grammar-expr-body grammar-two-fields"><label>From<input maxlength="1" value={expr.min} aria-label="Letters minimum" on:input={(event) => update({ min: (event.currentTarget as HTMLInputElement).value.slice(0, 1) })} /></label><span>to</span><label>To<input maxlength="1" value={expr.max} aria-label="Letters maximum" on:input={(event) => update({ max: (event.currentTarget as HTMLInputElement).value.slice(0, 1) })} /></label></div>
-  {:else if expr.kind === 'chars'}
-    <div class="grammar-expr-body"><label>Allowed characters<input value={expr.chars} aria-label="Allowed characters" on:input={(event) => update({ chars: (event.currentTarget as HTMLInputElement).value })} /></label></div>
+  {:else if expr.kind === 'range'}
+    <div class="grammar-expr-body grammar-number-fields"><label>Min<input type="number" value={expr.min} aria-label="Range minimum" on:input={(event) => update({ min: Number((event.currentTarget as HTMLInputElement).value) })} /></label><label>Max<input type="number" value={expr.max} aria-label="Range maximum" on:input={(event) => update({ max: Number((event.currentTarget as HTMLInputElement).value) })} /></label><label>Width<input type="number" min="1" value={expr.width} aria-label="Range width" on:input={(event) => update({ width: Number((event.currentTarget as HTMLInputElement).value) })} /></label><label>Pad<input maxlength="1" value={expr.pad} aria-label="Range padding" on:input={(event) => update({ pad: (event.currentTarget as HTMLInputElement).value.slice(0, 1) })} /></label></div>
+  {:else if expr.kind === 'places'}
+    <div class="grammar-expr-body"><label>Allowed characters<input value={expr.alphabets[0] || ''} aria-label="Places allowed characters" on:input={(event) => update({ alphabets: [(event.currentTarget as HTMLInputElement).value] })} /></label></div>
+  {:else if expr.kind === 'range_radix'}
+    <div class="grammar-expr-body grammar-radix-range"><div class="grammar-child-label">Ordered fields</div><div class="grammar-binding-target"><GrammarEditorDropTarget container={`grammar-editor:range-radix-slot:${expr.id}`} target={{ type: 'range-radix-children', path: [...path, expr.id] }} label="Add a field" showLabel onDrop={onDrop} /><GrammarEditorRow exprs={expr.children} path={[...path, expr.id]} container={`grammar-editor:range-radix-row:${expr.id}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => update({ children: expr.children.map((child, childIndex) => childIndex === index ? value : child) })} onRemove={(index) => update({ children: expr.children.filter((_, childIndex) => childIndex !== index) })} /></div></div>
   {:else if expr.kind === 'bind'}
     <div class="grammar-expr-body"><label>Name<input value={expr.name} aria-label="Binding name" on:input={(event) => update({ name: (event.currentTarget as HTMLInputElement).value })} /></label><div class="grammar-child-label">Captures</div><div class="grammar-binding-target"><GrammarEditorDropTarget container={`grammar-editor:binding-slot:${expr.id}`} target={{ type: 'binding-child', path: [...path, expr.id] }} label="Replace captured expression" showLabel onDrop={onDrop} /><GrammarEditorRow exprs={expr.child ? [expr.child] : []} path={[...path, expr.id]} container={`grammar-editor:binding-row:${expr.id}`} onDragOver={onRowDragOver} onDragLeave={onRowDragLeave} onDrop={onDrop} onDragEnd={onDragEnd} onChange={(index, value) => { if (index === 0) update({ child: value }) }} onRemove={() => update({ child: undefined })} /></div></div>
   {:else}

@@ -8,9 +8,9 @@
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
-    { type: 'number', title: 'Number', description: 'Numeric range' },
-    { type: 'alpha', title: 'Letters', description: 'Alphabetic range' },
-    { type: 'chars', title: 'Characters', description: 'Allowed characters' },
+    { type: 'range', title: 'Range', description: 'Numeric range' },
+    { type: 'places', title: 'Places', description: 'Allowed characters per position' },
+    { type: 'range_radix', title: 'Radix range', description: 'Ordered fields' },
     { type: 'bind', title: 'Binding', description: 'Capture a value' },
     { type: 'choice', title: 'Choice', description: 'One alternative' },
   ]
@@ -20,7 +20,7 @@
     { id: 'bind-1', kind: 'bind', name: 'family', child: { id: 'literal-2', kind: 'literal', text: 'SN-' } },
     { id: 'choice-1', kind: 'choice', children: [
       [{ id: 'literal-3', kind: 'literal', text: 'A' }],
-      [{ id: 'literal-4', kind: 'literal', text: 'B' }, { id: 'number-1', kind: 'number', min: 0, max: 9, width: 1, pad: '0' }],
+      [{ id: 'literal-4', kind: 'literal', text: 'B' }, { id: 'range-1', kind: 'range', min: 0, max: 9, width: 1, pad: '0' }],
     ] },
   ]
   let structureNodes: StructureNode[] = []
@@ -28,9 +28,9 @@
 
   function summary(expr: Expr): string {
     if (expr.kind === 'literal') return JSON.stringify(expr.text)
-    if (expr.kind === 'number') return `${expr.min}..${expr.max} / width ${expr.width} / pad ${expr.pad}`
-    if (expr.kind === 'alpha') return `${expr.min}..${expr.max}`
-    if (expr.kind === 'chars') return expr.chars
+    if (expr.kind === 'range') return `${expr.min}..${expr.max} / width ${expr.width} / pad ${expr.pad}`
+    if (expr.kind === 'places') return expr.alphabets.map((alphabet) => `[${alphabet}]`).join('')
+    if (expr.kind === 'range_radix') return expr.children.map(summary).join(' + ') || 'empty'
     if (expr.kind === 'bind') return `${expr.name || 'unnamed'} = ${expr.child ? summary(expr.child) : 'empty'}`
     return expr.children.map((alternative) => alternative.length ? alternative.map(summary).join(' + ') : 'empty').join(' | ')
   }
@@ -40,7 +40,9 @@
       ? (expr.child ? [toStructureNode(expr.child)] : [])
       : expr.kind === 'choice'
         ? expr.children.map((alternative, index) => ({ id: `${expr.id}-alternative-${index}`, label: `alternative ${String.fromCharCode(65 + index)}`, blockType: 'row', summary: alternative.map(summary).join(' + ') || 'empty', children: alternative.map(toStructureNode) }))
-        : []
+        : expr.kind === 'range_radix'
+          ? expr.children.map(toStructureNode)
+          : []
     return { id: expr.id, label: expr.kind, blockType: expr.kind, summary: summary(expr), children }
   }
 
@@ -69,7 +71,8 @@
     if (item.kind === 'palette') {
       if (target.type === 'row') rootSequence = insertPath(rootSequence, target.path, createExpr(item.exprKind), target.index)
       else if (target.type === 'binding-child') rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'bind' ? { ...expr, child: createExpr(item.exprKind) } : expr)
-      else rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'choice' ? { ...expr, children: [...expr.children, [createExpr(item.exprKind)]] } : expr)
+      else if (target.type === 'choice-alternative') rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'choice' ? { ...expr, children: [...expr.children, [createExpr(item.exprKind)]] } : expr)
+      else rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'range_radix' ? { ...expr, children: [...expr.children, createExpr(item.exprKind)] } : expr)
     } else {
       const sourceRow = getPath(rootSequence, item.sourcePath)
       const sourceIndex = sourceRow.findIndex((expr) => expr.id === item.expr.id)
@@ -79,6 +82,7 @@
       const without = removePath(rootSequence, item.sourcePath, item.expr.id)
       if (target.type === 'binding-child') rootSequence = replaceExpr(without, target.path, (expr) => expr.kind === 'bind' ? { ...expr, child: item.expr } : expr)
       else if (target.type === 'choice-alternative') rootSequence = replaceExpr(without, target.path, (expr) => expr.kind === 'choice' ? { ...expr, children: [...expr.children, [item.expr]] } : expr)
+      else if (target.type === 'range-radix-children') rootSequence = replaceExpr(without, target.path, (expr) => expr.kind === 'range_radix' ? { ...expr, children: [...expr.children, item.expr] } : expr)
       else {
         const index = target.path.join('/') === item.sourcePath.join('/') && sourceIndex < target.index ? target.index - 1 : target.index
         rootSequence = insertPath(without, target.path, item.expr, index)
@@ -94,6 +98,7 @@
       if (expr.id !== container) return expr
       if (expr.kind === 'bind') return { ...expr, child: expr.child && removePath([expr.child], rest, id)[0] }
       if (expr.kind === 'choice') { const children = [...expr.children]; const alternative = Number(rest[0]); children[alternative] = removePath(children[alternative] || [], rest.slice(1), id); return { ...expr, children } }
+      if (expr.kind === 'range_radix') return { ...expr, children: removePath(expr.children, rest, id) }
       return expr
     })
   }
@@ -110,6 +115,7 @@
         children[alternative] = path.length === 2 ? children[alternative].map(change) : replaceExpr(children[alternative] || [], path.slice(2), change)
         return { ...expr, children }
       }
+      if (expr.kind === 'range_radix') return { ...expr, children: path.length === 1 ? expr.children.map(change) : replaceExpr(expr.children, path.slice(1), change) }
       return expr
     })
   }
@@ -121,6 +127,7 @@
       if (found.id !== id) return found
       if (found.kind === 'bind') return { ...found, child: insertPath(found.child ? [found.child] : [], path.slice(1), expr, index)[0] }
       if (found.kind === 'choice') { const children = [...found.children]; const alternative = Number(path[1]); children[alternative] = insertPath(children[alternative] || [], path.length === 2 ? [] : path.slice(2), expr, index); return { ...found, children } }
+      if (found.kind === 'range_radix') return { ...found, children: insertPath(found.children, path.slice(1), expr, index) }
       return found
     })
   }
@@ -132,6 +139,7 @@
     if (!found) return []
     if (found.kind === 'bind') return rest.length ? getPath(found.child ? [found.child] : [], rest) : (found.child ? [found.child] : [])
     if (found.kind === 'choice') { const alternative = found.children[Number(rest[0])] || []; return rest.length === 1 ? alternative : getPath(alternative, rest.slice(1)) }
+    if (found.kind === 'range_radix') return getPath(found.children, rest)
     return []
   }
   function containsTarget(source: Expr, target: DropTarget): boolean {

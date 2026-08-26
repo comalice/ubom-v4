@@ -2,9 +2,9 @@ import type { SeqDefNode } from './api'
 
 export type GrammarExpr =
   | { id: string; kind: 'literal'; text: string }
-  | { id: string; kind: 'number'; min: number; max: number; width: number; pad: string }
-  | { id: string; kind: 'alpha'; min: string; max: string }
-  | { id: string; kind: 'chars'; chars: string }
+  | { id: string; kind: 'range'; min: number; max: number; width: number; pad: string }
+  | { id: string; kind: 'places'; alphabets: string[] }
+  | { id: string; kind: 'range_radix'; children: GrammarExpr[] }
   | { id: string; kind: 'choice'; children: GrammarExpr[][] }
   | { id: string; kind: 'bind'; name: string; child?: GrammarExpr }
 
@@ -13,6 +13,7 @@ export type GrammarDropTarget =
   | { type: 'row'; path: string[]; index: number }
   | { type: 'binding-child'; path: string[] }
   | { type: 'choice-alternative'; path: string[] }
+  | { type: 'range-radix-children'; path: string[] }
 
 export type GrammarDragPayload =
   | { kind: 'expression'; expr: GrammarExpr; sourcePath: string[] }
@@ -24,33 +25,44 @@ export function makeGrammarId() { return `${Date.now()}-${Math.random().toString
 
 export function createGrammarExpr(kind: GrammarExprKind): GrammarExpr {
   if (kind === 'literal') return { id: makeGrammarId(), kind, text: '' }
-  if (kind === 'number') return { id: makeGrammarId(), kind, min: 0, max: 9, width: 1, pad: '0' }
-  if (kind === 'alpha') return { id: makeGrammarId(), kind, min: 'A', max: 'Z' }
-  if (kind === 'chars') return { id: makeGrammarId(), kind, chars: 'ABC' }
+  if (kind === 'range') return { id: makeGrammarId(), kind, min: 0, max: 9, width: 1, pad: '0' }
+  if (kind === 'places') return { id: makeGrammarId(), kind, alphabets: ['ABC'] }
+  if (kind === 'range_radix') return { id: makeGrammarId(), kind, children: [] }
   if (kind === 'choice') return { id: makeGrammarId(), kind, children: [] }
   return { id: makeGrammarId(), kind, name: '' }
 }
 
 function parseGrammarExpr(expr: GrammarExpr, input: string, offset: number, bindings: Record<string, string>): number | string {
   if (expr.kind === 'literal') return input.startsWith(expr.text, offset) ? offset + expr.text.length : `expected ${JSON.stringify(expr.text)}`
-  if (expr.kind === 'number') {
+  if (expr.kind === 'range') {
     const text = input.slice(offset, offset + expr.width)
     const value = Number(text)
     if (text.length !== expr.width || !/^\d+$/.test(text) || !Number.isInteger(value) || value < expr.min || value > expr.max) return `expected ${expr.min}-${expr.max}`
     return offset + expr.width
   }
-  if (expr.kind === 'alpha') {
-    const value = input[offset]
-    if (!value || value < expr.min || value > expr.max) return `expected ${expr.min}-${expr.max}`
-    return offset + 1
+  if (expr.kind === 'places') {
+    let next = offset
+    for (const alphabet of expr.alphabets) {
+      if (!alphabet || !input[next] || !alphabet.includes(input[next])) return `expected one of ${JSON.stringify(alphabet)}`
+      next++
+    }
+    return next
   }
-  if (expr.kind === 'chars') return expr.chars.includes(input[offset] || '') ? offset + 1 : `expected one of ${JSON.stringify(expr.chars)}`
   if (expr.kind === 'bind') {
     if (!expr.child) return 'binding needs an expression'
     const start = offset
     const next = parseGrammarExpr(expr.child, input, offset, bindings)
     if (typeof next === 'string') return next
     if (expr.name.trim()) bindings[expr.name.trim()] = input.slice(start, next)
+    return next
+  }
+  if (expr.kind === 'range_radix') {
+    let next = offset
+    for (const child of expr.children) {
+      const parsed = parseGrammarExpr(child, input, next, bindings)
+      if (typeof parsed === 'string') return parsed
+      next = parsed
+    }
     return next
   }
   for (const alternative of expr.children) {
@@ -80,9 +92,9 @@ export function parseGrammarSequence(exprs: GrammarExpr[], input: string): Gramm
 
 export function generateGrammarExpr(expr: GrammarExpr): string {
   if (expr.kind === 'literal') return expr.text
-  if (expr.kind === 'number') return String(expr.min).padStart(Math.max(1, expr.width), expr.pad || '0')
-  if (expr.kind === 'alpha') return expr.min
-  if (expr.kind === 'chars') return expr.chars[0] || ''
+  if (expr.kind === 'range') return String(expr.min).padStart(Math.max(1, expr.width), expr.pad || '0')
+  if (expr.kind === 'places') return expr.alphabets.map((alphabet) => alphabet[0] || '').join('')
+  if (expr.kind === 'range_radix') return generateGrammarSequence(expr.children)
   if (expr.kind === 'bind') return expr.child ? generateGrammarExpr(expr.child) : ''
   return expr.children.length ? generateGrammarSequence(expr.children[0]) : ''
 }
@@ -93,7 +105,9 @@ export function generateGrammarSequence(exprs: GrammarExpr[]) { return exprs.map
 // boundary where it is converted to the server's recursive SeqDef AST.
 export function toSeqDefNode(expr: GrammarExpr): SeqDefNode {
   if (expr.kind === 'literal') return { kind: 'literal', text: expr.text }
-  if (expr.kind === 'number') return { kind: 'range', min: expr.min, max: expr.max, width: expr.width, pad: expr.pad }
+  if (expr.kind === 'range') return { kind: 'range', min: expr.min, max: expr.max, width: expr.width, pad: expr.pad }
+  if (expr.kind === 'places') return { kind: 'places', alphabets: expr.alphabets }
+  if (expr.kind === 'range_radix') return { kind: 'range_radix', children: expr.children.map(toSeqDefNode) }
   if (expr.kind === 'bind') {
     if (!expr.child) throw new Error('binding needs an expression')
     return { kind: 'bind', name: expr.name, child: toSeqDefNode(expr.child) }
@@ -106,7 +120,7 @@ export function toSeqDefNode(expr: GrammarExpr): SeqDefNode {
         : { kind: 'concat', children: alternative.map(toSeqDefNode) }),
     }
   }
-  throw new Error(`${expr.kind} blocks do not have a SeqDef AST representation`)
+  throw new Error('unsupported grammar expression')
 }
 
 export function toSeqDefRoot(exprs: GrammarExpr[]): SeqDefNode {

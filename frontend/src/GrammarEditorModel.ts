@@ -1,3 +1,5 @@
+import type { SeqDefNode } from './api'
+
 export type GrammarExpr =
   | { id: string; kind: 'literal'; text: string }
   | { id: string; kind: 'number'; min: number; max: number; width: number; pad: string }
@@ -86,3 +88,27 @@ export function generateGrammarExpr(expr: GrammarExpr): string {
 }
 
 export function generateGrammarSequence(exprs: GrammarExpr[]) { return exprs.map(generateGrammarExpr).join('') }
+
+// The editor model is intentionally UI-friendly; this adapter is the only
+// boundary where it is converted to the server's recursive SeqDef AST.
+export function toSeqDefNode(expr: GrammarExpr): SeqDefNode {
+  if (expr.kind === 'literal') return { kind: 'literal', text: expr.text }
+  if (expr.kind === 'number') return { kind: 'range', min: expr.min, max: expr.max, width: expr.width, pad: expr.pad }
+  if (expr.kind === 'bind') {
+    if (!expr.child) throw new Error('binding needs an expression')
+    return { kind: 'bind', name: expr.name, child: toSeqDefNode(expr.child) }
+  }
+  if (expr.kind === 'choice') {
+    return {
+      kind: 'choice',
+      children: expr.children.map((alternative) => alternative.length === 1
+        ? toSeqDefNode(alternative[0])
+        : { kind: 'concat', children: alternative.map(toSeqDefNode) }),
+    }
+  }
+  throw new Error(`${expr.kind} blocks do not have a SeqDef AST representation`)
+}
+
+export function toSeqDefRoot(exprs: GrammarExpr[]): SeqDefNode {
+  return { kind: 'concat', children: exprs.map(toSeqDefNode) }
+}

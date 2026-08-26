@@ -1,11 +1,46 @@
 import { taxonomySlug } from './routes'
 
+export type SeqDefNode = {
+  kind: 'literal' | 'concat' | 'choice' | 'range_radix' | 'bind' | 'places' | 'range'
+  text?: string
+  name?: string
+  min?: number
+  max?: number
+  width?: number
+  pad?: string
+  alphabets?: string[]
+  children?: SeqDefNode[]
+  child?: SeqDefNode
+}
+export type SeqDefDefinition = { id: string; root: SeqDefNode }
+export type SeqDefPreview = { id: string; bindings: Record<string, string>; value?: string; error?: string }
+export type TaxonomyPredicate = {
+  field: string
+  kind: 'exact' | 'numeric-range'
+  value?: string
+  min?: number
+  max?: number
+}
+export type TaxonomyNodeInput = {
+  id: string
+  label: string
+  predicates?: TaxonomyPredicate[]
+  attributes?: { attributeDefId: string; required: boolean }[]
+  children?: TaxonomyNodeInput[]
+}
+export type TaxonomyDefinition = {
+  id: string
+  seqDef: string
+  attributeDefs?: { id: string; label: string; valueType: string; unit?: string; enumValues?: string[] }[]
+  root: TaxonomyNodeInput
+}
+
 export type TaxonomyChild = { id: string; label: string }
 export type TaxonomyPathItem = { id: string; label: string }
 export type PartSummary = { id: string; value: string }
 export type RevisionSummary = { id: string; revision: string }
 export type PartAttribute = { id: string; label: string; value: string; valueType: string; unit?: string }
-export type AttributeColumn = { id: string; label: string; unit?: string }
+export type AttributeColumn = { id: string; label: string; valueType?: string; unit?: string; enumValues?: string[] }
 export type PartListItem = {
   id: string
   value: string
@@ -61,6 +96,16 @@ export type SnapshotView = {
   size: number
 }
 export type TaxonomyDefSummary = { id: string; seqDef: string }
+export type PartNumberDraft = {
+  id: string
+  seqDef: string
+  taxonomyDef: string
+  contextNodeId: string
+  bindings: Record<string, string>
+  attributes: { attributeDefId: string; value: string }[]
+  status: 'draft' | 'released' | 'abandoned'
+  releasedPartNumberId?: string
+}
 
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(path)
@@ -111,13 +156,28 @@ export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
 export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
+export const createSeqDef = (definition: SeqDefDefinition) => post<{ id: string }>('/api/seq-defs', definition)
+export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
+  post<SeqDefPreview>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })
+export const previewSeqDefRoot = (root: SeqDefNode, bindings: Record<string, string>) =>
+  post<SeqDefPreview>('/api/seq-defs/preview', { root, bindings })
+export const createTaxonomyDef = (definition: TaxonomyDefinition) => post<{ id: string }>('/api/taxonomy-defs', definition)
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })
 export type SeqDefField = { name: string; kind: string; options?: string[]; min?: number; max?: number; width?: number; pad?: string }
 export const getSeqDefFields = (id: string) => get<SeqDefField[]>(`/api/seq-defs/${encodeURIComponent(id)}/fields`)
 export const createPartDraft = (seqDef: string, taxonomyDef: string, contextNodeId: string) =>
-  post<{ id: string; status: string }>('/api/part-drafts', { seqDef, taxonomyDef, contextNodeId })
+  post<PartNumberDraft>('/api/part-drafts', { seqDef, taxonomyDef, contextNodeId })
 export const updatePartDraft = (id: string, bindings: Record<string, string>, attributes: { attributeDefId: string; value: string }[]) =>
-  patch<{ id: string }>(`/api/part-drafts/${encodeURIComponent(id)}`, { bindings, attributes })
-export const previewPartDraft = (id: string) => post<{ id: string; complete: boolean; value?: string; error?: string; suggestedBindings?: Record<string, string> }>(`/api/part-drafts/${encodeURIComponent(id)}/preview`, {})
+  patch<PartNumberDraft>(`/api/part-drafts/${encodeURIComponent(id)}`, { bindings, attributes })
+export type PartNumberDraftPreview = {
+  id: string
+  status: 'draft' | 'released' | 'abandoned'
+  complete: boolean
+  value?: string
+  bindings: Record<string, string>
+  suggestedBindings?: Record<string, string>
+  error?: string
+}
+export const previewPartDraft = (id: string) => post<PartNumberDraftPreview>(`/api/part-drafts/${encodeURIComponent(id)}/preview`, {})
 export const releasePartDraft = (id: string) => post<{ id: string; value: string }>(`/api/part-drafts/${encodeURIComponent(id)}/release`, {})

@@ -1,6 +1,9 @@
 package ubom
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 const (
 	digitsAlphabet  = "0123456789"
@@ -160,6 +163,70 @@ func TestSeqDefValidate(t *testing.T) {
 				t.Fatal("Validate() accepted invalid definition")
 			}
 		})
+	}
+}
+
+func TestSeqDefValidateRecognizesAllNodeKinds(t *testing.T) {
+	tests := []struct {
+		name string
+		node SeqDefNode
+	}{
+		{name: "literal", node: LiteralNode{Text: "PN"}},
+		{name: "concat", node: ConcatNode{Children: []SeqDefNode{Literal("PN")}}},
+		{name: "choice", node: ChoiceNode{Children: []SeqDefNode{Literal("PN")}}},
+		{name: "bind", node: BindNode{Name: "value", Child: Literal("PN")}},
+		{name: "places", node: PlaceSequenceNode{Alphabets: []string{"ABC"}}},
+		{name: "range", node: RangeNode{Min: 0, Max: 9, WidthValue: 1}},
+		{name: "range radix", node: RangeRadixNode{Children: []SeqDefNode{Range(0, 9)}}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := NewSeqDef(test.node).WithID("seq-v1").Validate(); err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestSeqDefValidateClassifiesStructuralErrors(t *testing.T) {
+	tests := []SeqDef{
+		{},
+		{ID: "seq-v1"},
+		NewSeqDef(Bind("", Literal("PN"))).WithID("seq-v1"),
+		NewSeqDef(Bind("value", nil)).WithID("seq-v1"),
+		NewSeqDef(PlaceSequence()).WithID("seq-v1"),
+		NewSeqDef(Concat()).WithID("seq-v1"),
+		NewSeqDef(Choice()).WithID("seq-v1"),
+		NewSeqDef(RangeRadix()).WithID("seq-v1"),
+		NewSeqDef(RangeNode{Min: 10, Max: 1, WidthValue: 1}).WithID("seq-v1"),
+	}
+
+	for i, definition := range tests {
+		err := definition.Validate()
+		if err == nil {
+			t.Errorf("case %d: Validate() accepted invalid definition", i)
+			continue
+		}
+		if !errors.Is(err, ErrInvalidDefinition) {
+			t.Errorf("case %d: errors.Is(Validate(), ErrInvalidDefinition) = false; error = %v", i, err)
+		}
+	}
+}
+
+type unknownSeqDefNode struct{}
+
+func (unknownSeqDefNode) parseAt(string, int, map[string]string) (string, int, error) {
+	return "", 0, nil
+}
+
+func TestSeqDefValidateClassifiesUnknownNode(t *testing.T) {
+	err := NewSeqDef(unknownSeqDefNode{}).WithID("seq-v1").Validate()
+	if err == nil {
+		t.Fatal("Validate() accepted an unknown sequence node")
+	}
+	if !errors.Is(err, ErrInvalidDefinition) {
+		t.Fatalf("errors.Is(Validate(), ErrInvalidDefinition) = false; error = %v", err)
 	}
 }
 

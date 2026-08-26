@@ -28,7 +28,7 @@ func NewSeqDef(root SeqDefNode) SeqDef { return SeqDef{root: root} }
 // Validate checks SeqDefNodes for well formed definitions.
 func (d SeqDef) Validate() error {
 	if d.ID == "" {
-		return fmt.Errorf("sequence definition has no ID")
+		return invalidSeqDef("sequence definition has no ID", nil)
 	}
 	if err := validateSeqDefNode(d.root); err != nil {
 		return err
@@ -38,10 +38,13 @@ func (d SeqDef) Validate() error {
 
 func validateSeqDefNode(node SeqDefNode) error {
 	if node == nil {
-		return fmt.Errorf("sequence definition has no root")
+		return invalidSeqDef("sequence definition has no root", nil)
 	}
 
 	validateChildren := func(children []SeqDefNode) error {
+		if len(children) == 0 {
+			return invalidSeqDef("sequence node has no children", nil)
+		}
 		for _, child := range children {
 			if err := validateSeqDefNode(child); err != nil {
 				return err
@@ -61,14 +64,17 @@ func validateSeqDefNode(node SeqDefNode) error {
 	case RangeRadixNode:
 		return validateChildren(n.Children)
 	case BindNode:
-		if n.Name == "" {
-			return fmt.Errorf("bind node has no name")
+		if err := (FieldName(n.Name)).Validate(); err != nil {
+			return invalidSeqDef("bind node has invalid name", err)
 		}
 		return validateSeqDefNode(n.Child)
 	case PlaceSequenceNode:
+		if len(n.Alphabets) == 0 {
+			return invalidSeqDef("place has no alphabets", nil)
+		}
 		for _, alphabet := range n.Alphabets {
 			if alphabet == "" {
-				return fmt.Errorf("place has an empty alphabet")
+				return invalidSeqDef("place has an empty alphabet", nil)
 			}
 		}
 		return nil
@@ -78,21 +84,25 @@ func validateSeqDefNode(node SeqDefNode) error {
 		}
 		return nil
 	default:
-		return fmt.Errorf("unknown sequence node type %T", node)
+		return invalidSeqDef(fmt.Sprintf("unknown sequence node type %T", node), nil)
 	}
 }
 
 func validateRange(n RangeNode) error {
 	if n.Min < 0 || n.Max < n.Min || n.WidthValue < 1 {
-		return fmt.Errorf("invalid range definition")
+		return invalidSeqDef("invalid range definition", nil)
 	}
 	if len(strconv.Itoa(n.Max)) > n.WidthValue {
-		return fmt.Errorf("invalid range definition")
+		return invalidSeqDef("invalid range definition", nil)
 	}
 	if n.Pad != 0 && n.Pad >= '1' && n.Pad <= '9' {
-		return fmt.Errorf("invalid range padding character")
+		return invalidSeqDef("invalid range padding character", nil)
 	}
 	return nil
+}
+
+func invalidSeqDef(message string, cause error) error {
+	return WrapDomainError(ErrorCategoryDefinition, message, cause)
 }
 
 func (d SeqDef) Root() SeqDefNode { return d.root }

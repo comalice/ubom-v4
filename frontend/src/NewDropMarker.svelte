@@ -1,1 +1,1 @@
-<span class="playground-component-mark playground-component-new dnd-insert-marker-new" aria-hidden="true">+</span>
+<span class="component-mark component-new dnd-insert-marker-new" aria-hidden="true">+</span>

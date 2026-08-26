@@ -6,6 +6,6 @@
   export let onClick: () => void = () => {}
 </script>
 
-<button class={`playground-control-button playground-control-${kind} ${className}`} type="button" aria-label={label} aria-expanded={kind === 'chevron' ? expanded : undefined} on:click={onClick}>
+<button class={`control-button control-${kind} ${className}`} type="button" aria-label={label} aria-expanded={kind === 'chevron' ? expanded : undefined} on:click={onClick}>
   <span aria-hidden="true"></span>
 </button>

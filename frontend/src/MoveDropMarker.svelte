@@ -1,1 +1,1 @@
-<span class="playground-component-mark playground-component-move dnd-insert-marker-move" aria-hidden="true"></span>
+<span class="component-mark component-move dnd-insert-marker-move" aria-hidden="true"></span>

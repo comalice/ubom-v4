@@ -10,6 +10,7 @@
   export let initialRoot: SeqDefNode | undefined = undefined
   export let readOnly = false
   export let onChange: ((root: SeqDefNode) => void) | undefined = undefined
+  export let onValidationChange: ((invalid: boolean) => void) | undefined = undefined
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -65,9 +66,11 @@
   $: currentCandidatePreview = candidatePreviewKey === candidateKey ? candidatePreview : null
   $: currentCandidateError = candidateErrorKey === candidateKey ? candidateError : ''
   $: candidatePending = candidatePreviewing && candidateRequestKey === candidateKey
-  $: onChange?.(toSeqDefRoot(rootSequence))
+  $: onValidationChange?.(validationErrors.length > 0)
+  $: if (validationErrors.length === 0) onChange?.(toSeqDefRoot(rootSequence))
 
   async function requestCandidatePreview() {
+    if (validationErrors.length > 0) return
     const requestKey = candidateKey
     const requestId = ++candidateRequestId
     const root = toSeqDefRoot(rootSequence)

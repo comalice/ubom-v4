@@ -20,12 +20,13 @@
   let editingVersion = false
   let error = ''
   let documentRoot = newRoot
+  let editorInvalid = false
   let loadedID: string | undefined = undefined
   let loadRequestID = 0
 
   $: validationErrors = validateGrammarSequence(fromSeqDefRoot(documentRoot))
   $: dirty = JSON.stringify({ id: definition.id, root: documentRoot }) !== baseline
-  $: saveDisabled = saving || !definition.id.trim() || validationErrors.length > 0 || !dirty || (!!id && !editingVersion)
+  $: saveDisabled = saving || !definition.id.trim() || validationErrors.length > 0 || editorInvalid || !dirty || (!!id && !editingVersion)
 
   // Mark the ID before awaiting so the initial reactive run is the only request.
   $: if (id && id !== loadedID) void loadDefinition(id)
@@ -62,6 +63,10 @@
   function updateRoot(root: SeqDefNode) {
     documentRoot = root
     definition = { ...definition, root }
+  }
+
+  function updateEditorValidation(invalid: boolean) {
+    editorInvalid = invalid
   }
 
   async function save() {
@@ -128,5 +133,7 @@
     {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <GrammarEditor initialRoot={documentRoot} readOnly={!!id && !editingVersion} onChange={updateRoot} />
+  {#key id ? `${id}:${definition.id}:${definition.version}` : 'new'}
+    <GrammarEditor initialRoot={documentRoot} readOnly={!!id && !editingVersion} onChange={updateRoot} onValidationChange={updateEditorValidation} />
+  {/key}
 {/if}

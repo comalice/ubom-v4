@@ -166,6 +166,17 @@ describe('GrammarEditorModel structural validation', () => {
     expect(expressions[3]).toEqual({ id: 'range', kind: 'range', min: 9, max: 2, width: 0, pad: '1' })
   })
 
+  it('reports an incomplete binding without requiring AST conversion', () => {
+    const expressions: GrammarExpr[] = [{ id: 'binding', kind: 'bind', name: 'value' }]
+
+    expect(validateGrammarSequence(expressions)).toEqual([{
+      code: 'missing-bind-child',
+      message: 'Binding needs an expression',
+      path: 'root[0].bind',
+      nodeId: 'binding',
+    }])
+  })
+
   it('rejects unsupported and incomplete runtime nodes', () => {
     expect(validateGrammarSequence([{ id: 'unknown', kind: 'future' }])).toEqual([
       { code: 'unsupported-node', message: 'Unsupported grammar node kind "future"', path: 'root[0].future', nodeId: 'unknown' },

@@ -69,6 +69,29 @@ type TaxonomyNode struct {
 	Children   []TaxonomyNode
 }
 
+// ClassificationPolicy controls whether the generic taxonomy root is an
+// acceptable result. Open taxonomies allow it; closed taxonomies require a
+// matching descendant.
+type ClassificationPolicy struct {
+	// RequireClassification makes a generic root result unacceptable.
+	RequireClassification bool
+}
+
+// Classification is the effective meaning of a parsed sequence. Path,
+// Labels, Predicates, and Attributes are ordered from root to the deepest
+// matching node.
+type Classification struct {
+	NodeID     TaxonomyNodeID
+	Path       []TaxonomyNodeID
+	Labels     []string
+	Predicates []TaxonomyPredicate
+	Attributes []AttributeAssignment
+	Generic    bool
+}
+
+// ClassificationResult is a descriptive alias for Classification.
+type ClassificationResult = Classification
+
 // Validate checks that taxonomy nodes are well formed.
 func (d TaxonomyDef) Validate() error {
 	if err := validateTaxonomyID(string(d.ID), "taxonomy definition"); err != nil {
@@ -272,6 +295,57 @@ func (p TaxonomyPredicate) matches(value string) bool {
 	return err == nil && n >= p.Min && n <= p.Max
 }
 
+func (p TaxonomyPredicate) matchesParsed(parsed ParsedSequence) bool {
+	for _, field := range parsed.Fields {
+		if field.Name != p.Field.String() {
+			continue
+		}
+		if p.Kind == PredicateExact {
+			return field.Source == p.Value
+		}
+		if value, ok := numericCapture(field.Normalized); ok {
+			return value >= p.Min && value <= p.Max
+		}
+		return p.matches(field.Source)
+	}
+	if parsed.Bindings != nil {
+		return p.matches(parsed.Bindings[p.Field.String()])
+	}
+	return false
+}
+
+func numericCapture(value any) (int64, bool) {
+	switch n := value.(type) {
+	case int:
+		return int64(n), true
+	case int8:
+		return int64(n), true
+	case int16:
+		return int64(n), true
+	case int32:
+		return int64(n), true
+	case int64:
+		return n, true
+	case uint:
+		if uint64(n) <= uint64(^uint64(0)>>1) {
+			return int64(n), true
+		}
+	case uint8:
+		return int64(n), true
+	case uint16:
+		return int64(n), true
+	case uint32:
+		if uint64(n) <= uint64(^uint64(0)>>1) {
+			return int64(n), true
+		}
+	case uint64:
+		if n <= uint64(^uint64(0)>>1) {
+			return int64(n), true
+		}
+	}
+	return 0, false
+}
+
 func (n TaxonomyNode) predicatesMatch(bindings map[string]string) bool {
 	for _, predicate := range taxonomyPredicates(n) {
 		if !predicate.matches(bindings[predicate.Field.String()]) {
@@ -279,6 +353,101 @@ func (n TaxonomyNode) predicatesMatch(bindings map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// Classify returns the deepest matching path. Sibling order is retained as a
+// deterministic priority for compatibility with the legacy projection API;
+// validated taxonomies reject overlapping siblings.
+func (t Taxonomy) Classify(parsed ParsedSequence) (*Classification, error) {
+	if err := validateClassificationPredicates(t.Root); err != nil {
+		return nil, err
+	}
+	if t.Root.ID == "" {
+		return nil, WrapDomainError(ErrorCategoryClassification, "taxonomy has no root classification", nil)
+	}
+	if !taxonomyNodePredicatesMatch(t.Root, parsed) {
+		return nil, WrapDomainError(ErrorCategoryClassification, "parsed value does not match the taxonomy root", nil)
+	}
+	path := []TaxonomyNode{t.Root}
+	for node := t.Root; ; {
+		matched := -1
+		for i := range node.Children {
+			if taxonomyNodePredicatesMatch(node.Children[i], parsed) {
+				matched = i
+				break
+			}
+		}
+		if matched < 0 {
+			break
+		}
+		node = node.Children[matched]
+		path = append(path, node)
+	}
+
+	result := &Classification{NodeID: path[len(path)-1].ID}
+	result.Path = make([]TaxonomyNodeID, 0, len(path))
+	positions := map[AttributeDefID]int{}
+	for _, node := range path {
+		result.Path = append(result.Path, node.ID)
+		if node.Label != "" {
+			result.Labels = append(result.Labels, node.Label)
+		}
+		result.Predicates = append(result.Predicates, taxonomyPredicates(node)...)
+		for _, assignment := range node.Attributes {
+			if position, exists := positions[assignment.AttributeDefID]; exists {
+				result.Attributes[position] = assignment
+			} else {
+				positions[assignment.AttributeDefID] = len(result.Attributes)
+				result.Attributes = append(result.Attributes, assignment)
+			}
+		}
+	}
+	result.Generic = len(path) == 1
+	return result, nil
+}
+
+// ClassifyWithPolicy applies the open/closed taxonomy policy to Classify.
+func (t Taxonomy) ClassifyWithPolicy(parsed ParsedSequence, policy ClassificationPolicy) (*Classification, error) {
+	result, err := t.Classify(parsed)
+	if err != nil {
+		return nil, err
+	}
+	if policy.RequireClassification && result.Generic {
+		return nil, WrapDomainError(ErrorCategoryClassification, "parsed value has no acceptable specific classification", nil)
+	}
+	return result, nil
+}
+
+func (d TaxonomyDef) Classify(parsed ParsedSequence) (*Classification, error) {
+	return d.Taxonomy.Classify(parsed)
+}
+
+func (d TaxonomyDef) ClassifyWithPolicy(parsed ParsedSequence, policy ClassificationPolicy) (*Classification, error) {
+	return d.Taxonomy.ClassifyWithPolicy(parsed, policy)
+}
+
+func taxonomyNodePredicatesMatch(node TaxonomyNode, parsed ParsedSequence) bool {
+	for _, predicate := range taxonomyPredicates(node) {
+		if !predicate.matchesParsed(parsed) {
+			return false
+		}
+	}
+	return true
+}
+
+// Classification validates all predicate-bearing nodes before evaluating the
+// value. The legacy projection helpers intentionally retain their tolerant
+// taxonomyPredicates adapter, but public classification must not hide errors.
+func validateClassificationPredicates(node TaxonomyNode) error {
+	if _, err := validatedTaxonomyPredicates(node); err != nil {
+		return err
+	}
+	for _, child := range node.Children {
+		if err := validateClassificationPredicates(child); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // EffectiveAttributes returns assignments from root to node. A child replaces

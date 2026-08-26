@@ -447,6 +447,10 @@ type ParseResult struct {
 	Bindings map[string]string
 }
 
+// ParsedSequence is the structured value consumed by taxonomy classification.
+// It is an alias so callers using ParseValues do not need an adapter.
+type ParsedSequence = ParseResult
+
 type captureState struct {
 	fields []CapturedField
 	names  map[string]bool

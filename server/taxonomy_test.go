@@ -31,6 +31,97 @@ func TestTaxonomyPredicateMatching(t *testing.T) {
 	}
 }
 
+func TestTaxonomyClassifyUsesStructuredCapturesAndEffectiveMeaning(t *testing.T) {
+	seqDef := NewSeqDef(Concat(
+		Literal("RES-"),
+		Bind("category", PlaceSequence("R", "E", "S")),
+		Literal("-"),
+		Bind("group", Range(0, 999).Width(3)),
+	)).WithID("parts")
+	parsed, err := seqDef.ParseValues("RES-RES-160")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taxonomy := Taxonomy{Root: TaxonomyNode{
+		ID: "root", Label: "component",
+		Attributes: []AttributeAssignment{{AttributeDefID: "family"}},
+		Children: []TaxonomyNode{{
+			ID: "resistor", Label: "resistor",
+			Predicates: []TaxonomyPredicate{ExactPredicate("category", "RES")},
+			Attributes: []AttributeAssignment{{AttributeDefID: "family", Required: true}, {AttributeDefID: "kind"}},
+			Children: []TaxonomyNode{{
+				ID: "high-power", Label: "high power",
+				Predicates: []TaxonomyPredicate{NumericRangePredicate("group", 100, 199)},
+				Attributes: []AttributeAssignment{{AttributeDefID: "kind", Required: true}},
+			}},
+		}},
+	}}
+	classification, err := taxonomy.Classify(parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if classification.NodeID != "high-power" || classification.Generic {
+		t.Fatalf("classification = %#v, want specific high-power", classification)
+	}
+	if !reflect.DeepEqual(classification.Path, []TaxonomyNodeID{"root", "resistor", "high-power"}) {
+		t.Fatalf("path = %#v", classification.Path)
+	}
+	if !reflect.DeepEqual(classification.Labels, []string{"component", "resistor", "high power"}) {
+		t.Fatalf("labels = %#v", classification.Labels)
+	}
+	if !reflect.DeepEqual(classification.Attributes, []AttributeAssignment{{AttributeDefID: "family", Required: true}, {AttributeDefID: "kind", Required: true}}) {
+		t.Fatalf("attributes = %#v", classification.Attributes)
+	}
+	if len(classification.Predicates) != 2 {
+		t.Fatalf("effective predicates = %#v, want ancestor and child", classification.Predicates)
+	}
+}
+
+func TestTaxonomyClassifyIsCumulativeAndPolicyAware(t *testing.T) {
+	taxonomy := Taxonomy{Root: TaxonomyNode{ID: "root", Label: "component", Children: []TaxonomyNode{{
+		ID: "resistor", Predicates: []TaxonomyPredicate{ExactPredicate("category", "RES")}, Children: []TaxonomyNode{{
+			ID: "high-power", Predicates: []TaxonomyPredicate{NumericRangePredicate("group", 100, 199)},
+		}},
+	}}}}
+	parsed := ParsedSequence{Fields: []CapturedField{{Name: "category", Source: "CAP"}, {Name: "group", Source: "160", Normalized: 160}}}
+	classification, err := taxonomy.Classify(parsed)
+	if err != nil || classification.NodeID != "root" || !classification.Generic {
+		t.Fatalf("classification = %#v, %v; want generic root", classification, err)
+	}
+	if _, err := taxonomy.ClassifyWithPolicy(parsed, ClassificationPolicy{RequireClassification: true}); !IsCategory(err, ErrorCategoryClassification) {
+		t.Fatalf("closed classification error = %v, want classification category", err)
+	}
+	missing := ParsedSequence{Fields: []CapturedField{{Name: "category", Source: "RES"}}}
+	classification, err = taxonomy.Classify(missing)
+	if err != nil || classification.NodeID != "resistor" {
+		t.Fatalf("missing child field classification = %#v, %v; want resistor", classification, err)
+	}
+}
+
+func TestTaxonomyClassifyNoRootAndLabelsDoNotChangeIDs(t *testing.T) {
+	if _, err := (Taxonomy{}).Classify(ParsedSequence{}); !IsCategory(err, ErrorCategoryClassification) {
+		t.Fatalf("no-root error = %v, want classification category", err)
+	}
+	taxonomy := Taxonomy{Root: TaxonomyNode{ID: "r", Label: "Root label", Children: []TaxonomyNode{{ID: "n", Label: "Node label"}}}}
+	classification, err := taxonomy.Classify(ParsedSequence{})
+	if err != nil || classification.NodeID != "n" || !reflect.DeepEqual(classification.Labels, []string{"Root label", "Node label"}) {
+		t.Fatalf("classification = %#v, %v; want node ID and labels", classification, err)
+	}
+}
+
+func TestTaxonomyClassifyRejectsInvalidPredicate(t *testing.T) {
+	taxonomy := Taxonomy{Root: TaxonomyNode{
+		ID: "root",
+		Children: []TaxonomyNode{{
+			ID:         "invalid",
+			Predicates: []TaxonomyPredicate{{Field: "code", Kind: PredicateKind("unsupported")}},
+		}},
+	}}
+	if _, err := taxonomy.Classify(ParsedSequence{}); !IsCategory(err, ErrorCategoryDefinition) {
+		t.Fatalf("Classify() error = %v, want definition error", err)
+	}
+}
+
 func TestTaxonomyPredicateValidation(t *testing.T) {
 	tests := []TaxonomyPredicate{
 		{Field: "", Kind: PredicateExact, Value: "x"},

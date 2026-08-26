@@ -27,8 +27,16 @@ type sequenceNodeRequest struct {
 }
 
 type sequenceDefinitionRequest struct {
-	ID   ubom.SeqDefID       `json:"id"`
-	Root sequenceNodeRequest `json:"root"`
+	ID           ubom.SeqDefID       `json:"id"`
+	DefinitionID string              `json:"definitionId,omitempty"`
+	Version      int                 `json:"version,omitempty"`
+	Root         sequenceNodeRequest `json:"root"`
+}
+
+type sequenceDefinitionVersionRequest struct {
+	ID      ubom.SeqDefID       `json:"id,omitempty"`
+	Version int                 `json:"version,omitempty"`
+	Root    sequenceNodeRequest `json:"root"`
 }
 
 func (n sequenceNodeRequest) rangePad() (byte, error) {
@@ -168,11 +176,12 @@ func (s *Server) handleSeqDefs(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, err.Error())
 		return
 	}
-	if err := s.service.CreateSeqDef(ubom.NewSeqDef(root).WithID(request.ID)); err != nil {
+	definition := ubom.NewSeqDef(root).WithID(request.ID).WithVersionMetadata(request.DefinitionID, request.Version, "")
+	if err := s.service.CreateSeqDef(definition); err != nil {
 		writeCreateError(w, err)
 		return
 	}
-	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": request.ID})
+	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": request.ID, "definitionId": definition.WithLegacyDefaults().DefinitionID, "version": definition.WithLegacyDefaults().Version})
 }
 
 func (s *Server) handleUnsavedSeqDefPreview(w http.ResponseWriter, r *http.Request) {
@@ -258,6 +267,28 @@ func (s *Server) handleSeqDefPath(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, definition)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "versions" && r.Method == http.MethodPost {
+		var request sequenceDefinitionVersionRequest
+		if !decodeBody(w, r, &request) {
+			return
+		}
+		root, err := request.Root.node()
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		view, err := s.service.CreateSeqDefVersion(ubom.SeqDefID(parts[0]), root, request.Version, request.ID)
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "sequence definition not found")
+			return
+		}
+		if err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		writeJSONStatus(w, http.StatusCreated, view)
 		return
 	}
 	if len(parts) != 2 || parts[0] == "" {

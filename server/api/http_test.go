@@ -152,7 +152,7 @@ func TestSeqDefDefinitionEndpoint(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&definition); err != nil {
 		t.Fatal(err)
 	}
-	if definition.ID != "full-view" || definition.Root.Kind != "range" || definition.Root.Pad != " " {
+	if definition.ID != "full-view" || definition.DefinitionID != "full-view" || definition.Version != 1 || definition.Root.Kind != "range" || definition.Root.Pad != " " {
 		t.Fatalf("definition = %#v", definition)
 	}
 
@@ -160,6 +160,32 @@ func TestSeqDefDefinitionEndpoint(t *testing.T) {
 	server.Handler().ServeHTTP(notFound, httptest.NewRequest(http.MethodGet, "/api/seq-defs/missing", nil))
 	if notFound.Code != http.StatusNotFound {
 		t.Fatalf("missing status = %d, want %d", notFound.Code, http.StatusNotFound)
+	}
+}
+
+func TestSeqDefVersionEndpoint(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	create := httptest.NewRecorder()
+	server.Handler().ServeHTTP(create, httptest.NewRequest(http.MethodPost, "/api/seq-defs", strings.NewReader(`{"id":"versioned-v1","root":{"kind":"literal","text":"A"}}`)))
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status = %d", create.Code)
+	}
+	version := httptest.NewRecorder()
+	server.Handler().ServeHTTP(version, httptest.NewRequest(http.MethodPost, "/api/seq-defs/versioned-v1/versions", strings.NewReader(`{"root":{"kind":"literal","text":"B"}}`)))
+	if version.Code != http.StatusCreated {
+		t.Fatalf("version status = %d; body = %s", version.Code, version.Body)
+	}
+	var view app.SeqDefDefinitionView
+	if err := json.NewDecoder(version.Body).Decode(&view); err != nil {
+		t.Fatal(err)
+	}
+	if view.ID != "versioned-v1-v2" || view.DefinitionID != "versioned-v1" || view.Version != 2 || view.ParentID != "versioned-v1" {
+		t.Fatalf("view = %#v", view)
+	}
+	conflict := httptest.NewRecorder()
+	server.Handler().ServeHTTP(conflict, httptest.NewRequest(http.MethodPost, "/api/seq-defs/versioned-v1/versions", strings.NewReader(`{"id":"versioned-v1-v2","version":2,"root":{"kind":"literal","text":"C"}}`)))
+	if conflict.Code != http.StatusConflict {
+		t.Fatalf("duplicate status = %d; body = %s", conflict.Code, conflict.Body)
 	}
 }
 

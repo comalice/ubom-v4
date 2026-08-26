@@ -195,4 +195,8 @@ func TestSQLiteStoreMigratesLegacyTaxonomyNodes(t *testing.T) {
 	if len(got.Taxonomy.Root.Predicates) != 1 || got.Taxonomy.Root.Predicates[0] != (ubom.ExactPredicate("field", "value")) {
 		t.Fatalf("legacy taxonomy predicates = %#v, want upgraded exact predicate", got.Taxonomy.Root.Predicates)
 	}
+	legacySeq, err := store.GetSeqDef("legacy-seq")
+	if err != nil || legacySeq.DefinitionID != "legacy-seq" || legacySeq.Version != 1 {
+		t.Fatalf("legacy sequence metadata = %#v, error = %v", legacySeq, err)
+	}
 }

@@ -15,6 +15,7 @@ type Store interface {
 	ListSnapshotsByArtifact(artifact.ID) ([]artifact.Snapshot, error)
 
 	CreateSeqDef(ubom.SeqDef) error
+	CreateSeqDefVersion(parent ubom.SeqDefID, def ubom.SeqDef) error
 	GetSeqDef(ubom.SeqDefID) (ubom.SeqDef, error)
 	ListSeqDefs() ([]ubom.SeqDef, error)
 

@@ -303,6 +303,7 @@ func (s *SQLiteStore) ListSnapshotsByArtifact(id artifact.ID) ([]artifact.Snapsh
 }
 
 func (s *SQLiteStore) CreateSeqDef(def ubom.SeqDef) error {
+	def = def.WithLegacyDefaults()
 	if err := def.Validate(); err != nil {
 		return err
 	}
@@ -315,6 +316,29 @@ func (s *SQLiteStore) CreateSeqDef(def ubom.SeqDef) error {
 	}
 	_, err = s.db.Exec("INSERT INTO seq_defs (id, ast) VALUES (?, ?)", def.ID, ast)
 	return err
+}
+
+func (s *SQLiteStore) CreateSeqDefVersion(parent ubom.SeqDefID, def ubom.SeqDef) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	original, err := s.GetSeqDef(parent)
+	if err != nil {
+		return err
+	}
+	if def.DefinitionID != original.DefinitionID || def.ParentID != parent || def.Version <= original.Version {
+		return errors.New("invalid sequence definition version link")
+	}
+	existing, err := s.ListSeqDefs()
+	if err != nil {
+		return err
+	}
+	for _, candidate := range existing {
+		candidate = candidate.WithLegacyDefaults()
+		if candidate.DefinitionID == def.DefinitionID && candidate.Version == def.Version {
+			return ErrAlreadyExists
+		}
+	}
+	return s.CreateSeqDef(def)
 }
 
 func (s *SQLiteStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {

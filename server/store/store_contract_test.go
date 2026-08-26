@@ -40,6 +40,43 @@ func TestStoreContract(t *testing.T) {
 	}
 }
 
+func TestSeqDefVersionNumberConflict(t *testing.T) {
+	stores := []struct {
+		name  string
+		build func(t *testing.T) Store
+	}{
+		{name: "memory", build: func(t *testing.T) Store { return NewMemoryStore() }},
+		{name: "sqlite", build: func(t *testing.T) Store {
+			persistence, err := OpenSQLiteStore("file:seq-version-conflict?mode=memory&cache=shared")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { persistence.Close() })
+			return persistence
+		}},
+	}
+	for _, test := range stores {
+		t.Run(test.name, func(t *testing.T) {
+			persistence := test.build(t)
+			parent := ubom.NewSeqDef(ubom.Literal("A")).WithID(ubom.SeqDefID(test.name+"-v1")).WithVersionMetadata(test.name+"-stable", 1, "")
+			if err := persistence.CreateSeqDef(parent); err != nil {
+				t.Fatal(err)
+			}
+			version := ubom.NewSeqDef(ubom.Literal("B")).WithID(ubom.SeqDefID(test.name+"-first-id")).WithVersionMetadata(parent.DefinitionID, 2, parent.ID)
+			if err := persistence.CreateSeqDefVersion(parent.ID, version); err != nil {
+				t.Fatal(err)
+			}
+			duplicate := version.WithID(ubom.SeqDefID(test.name + "-different-id"))
+			if err := persistence.CreateSeqDefVersion(parent.ID, duplicate); !errors.Is(err, ErrAlreadyExists) {
+				t.Fatalf("duplicate version error = %v, want ErrAlreadyExists", err)
+			}
+			if _, err := persistence.GetSeqDef(duplicate.ID); !errors.Is(err, ErrNotFound) {
+				t.Fatalf("duplicate record lookup error = %v, want ErrNotFound", err)
+			}
+		})
+	}
+}
+
 func TestPartNumberPersistenceInvariant(t *testing.T) {
 	tests := []struct {
 		name  string

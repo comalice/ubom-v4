@@ -12,7 +12,7 @@ export type SeqDefNode = {
   children?: SeqDefNode[]
   child?: SeqDefNode
 }
-export type SeqDefDefinition = { id: string; root: SeqDefNode }
+export type SeqDefDefinition = { id: string; definitionId: string; version: number; parentId?: string; root: SeqDefNode }
 export type SeqDefPreview = { id: string; bindings: Record<string, string>; value?: string; error?: string }
 export type SeqDefCandidateField = { name: string; source: string; normalized: unknown }
 export type SeqDefCandidatePreview = { value: string; bindings: Record<string, string>; fields: SeqDefCandidateField[] }
@@ -159,9 +159,11 @@ export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${e
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
 export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
-export type SeqDefView = { id: string }
+export type SeqDefView = { id: string; definitionId: string; version: number; parentId?: string }
 export const getSeqDef = (id: string) => get<SeqDefDefinition>(`/api/seq-defs/${encodeURIComponent(id)}`)
-export const createSeqDef = (definition: SeqDefDefinition) => post<{ id: string }>('/api/seq-defs', definition)
+export const createSeqDef = (definition: Pick<SeqDefDefinition, 'id' | 'root'>) => post<{ id: string; definitionId: string; version: number }>('/api/seq-defs', definition)
+export const createSeqDefVersion = (parentId: string, root: SeqDefNode, version?: number) =>
+  post<SeqDefDefinition>(`/api/seq-defs/${encodeURIComponent(parentId)}/versions`, { root, ...(version ? { version } : {}) })
 export const previewSeqDef = (id: string, bindings: Record<string, string>) =>
   post<SeqDefPreview>(`/api/seq-defs/${encodeURIComponent(id)}/preview`, { bindings })
 export const previewSeqDefRoot = (root: SeqDefNode, bindings: Record<string, string>) =>

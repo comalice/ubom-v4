@@ -26,9 +26,12 @@ func marshalSeqDef(def ubom.SeqDef) ([]byte, error) {
 		return nil, err
 	}
 	return json.Marshal(struct {
-		ID   ubom.SeqDefID `json:"id"`
-		Root seqDefRecord  `json:"root"`
-	}{ID: def.ID, Root: node})
+		ID           ubom.SeqDefID `json:"id"`
+		DefinitionID string        `json:"definitionId,omitempty"`
+		Version      int           `json:"version,omitempty"`
+		ParentID     ubom.SeqDefID `json:"parentId,omitempty"`
+		Root         seqDefRecord  `json:"root"`
+	}{ID: def.ID, DefinitionID: def.DefinitionID, Version: def.Version, ParentID: def.ParentID, Root: node})
 }
 
 func marshalSeqDefNode(node ubom.SeqDefNode) (seqDefRecord, error) {
@@ -70,8 +73,11 @@ func marshalChildren(kind string, children []ubom.SeqDefNode) (seqDefRecord, err
 
 func unmarshalSeqDef(data []byte) (ubom.SeqDef, error) {
 	var value struct {
-		ID   ubom.SeqDefID `json:"id"`
-		Root seqDefRecord  `json:"root"`
+		ID           ubom.SeqDefID `json:"id"`
+		DefinitionID string        `json:"definitionId"`
+		Version      int           `json:"version"`
+		ParentID     ubom.SeqDefID `json:"parentId"`
+		Root         seqDefRecord  `json:"root"`
 	}
 	if err := json.Unmarshal(data, &value); err != nil {
 		return ubom.SeqDef{}, err
@@ -80,7 +86,7 @@ func unmarshalSeqDef(data []byte) (ubom.SeqDef, error) {
 	if err != nil {
 		return ubom.SeqDef{}, err
 	}
-	return ubom.NewSeqDef(root).WithID(value.ID), nil
+	return ubom.NewSeqDef(root).WithID(value.ID).WithVersionMetadata(value.DefinitionID, value.Version, value.ParentID).WithLegacyDefaults(), nil
 }
 
 func unmarshalSeqDefNode(record seqDefRecord) (ubom.SeqDefNode, error) {

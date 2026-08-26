@@ -166,6 +166,20 @@ func TestSeqDefValidate(t *testing.T) {
 	}
 }
 
+func TestSeqDefVersionMetadataDefaultsAndValidation(t *testing.T) {
+	legacy := NewSeqDef(Literal("A")).WithID("legacy")
+	if legacy.DefinitionID != "legacy" || legacy.Version != 1 || legacy.ParentID != "" {
+		t.Fatalf("legacy metadata = %#v, want identity legacy, version 1, no parent", legacy)
+	}
+	version := legacy.WithVersionMetadata("stable", 2, legacy.ID)
+	if err := version.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := legacy.WithVersionMetadata("stable", 0, "").Validate(); err == nil {
+		t.Fatal("accepted zero version")
+	}
+}
+
 func TestSeqDefValidateRecognizesAllNodeKinds(t *testing.T) {
 	tests := []struct {
 		name string

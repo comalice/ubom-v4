@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getSeqDef, getSeqDefs, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
+import { createSeqDefVersion, getSeqDef, getSeqDefs, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -42,14 +42,23 @@ describe('previewSeqDefRoot', () => {
 
 describe('sequence definition authoring API', () => {
   it('lists definitions and fetches the complete authoring document', async () => {
-    const definition = { id: 'full-view', root: { kind: 'range' as const, min: 0, max: 9, width: 2, pad: ' ' } }
+    const definition = { id: 'full-view', definitionId: 'full-view', version: 1, root: { kind: 'range' as const, min: 0, max: 9, width: 2, pad: ' ' } }
     const fetchMock = vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: definition.id }]), { status: 200 }))
+       .mockResolvedValueOnce(new Response(JSON.stringify([{ id: definition.id, definitionId: definition.definitionId, version: definition.version }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(definition), { status: 200 }))
 
-    await expect(getSeqDefs()).resolves.toEqual([{ id: definition.id }])
+    await expect(getSeqDefs()).resolves.toEqual([{ id: definition.id, definitionId: definition.definitionId, version: definition.version }])
     await expect(getSeqDef(definition.id)).resolves.toEqual(definition)
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(['/api/seq-defs', '/api/seq-defs/full-view'])
+  })
+})
+
+describe('sequence definition version API', () => {
+  it('posts a root to the parent version endpoint', async () => {
+    const root: SeqDefNode = { kind: 'literal', text: 'PN-2' }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id: 'base-v2' }), { status: 201 }))
+    await createSeqDefVersion('base', root)
+    expect(fetchMock).toHaveBeenCalledWith('/api/seq-defs/base/versions', expect.objectContaining({ method: 'POST', body: JSON.stringify({ root }) }))
   })
 })
 

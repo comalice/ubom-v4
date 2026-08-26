@@ -66,11 +66,34 @@ func TestGetSeqDefDefinitionViewSerializesAuthoringRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.ID != definition.ID || view.Root.Kind != "concat" || len(view.Root.Children) != 2 {
+	if view.ID != definition.ID || view.DefinitionID != string(definition.ID) || view.Version != 1 || view.Root.Kind != "concat" || len(view.Root.Children) != 2 {
 		t.Fatalf("view = %#v, want complete root", view)
 	}
 	if view.Root.Children[1].Pad != " " {
 		t.Fatalf("pad = %q, want one-character string", view.Root.Children[1].Pad)
+	}
+}
+
+func TestCreateSeqDefVersionPreservesParent(t *testing.T) {
+	metadata := store.NewMemoryStore()
+	parent := ubom.NewSeqDef(ubom.Literal("A")).WithID("widget-v1")
+	if err := metadata.CreateSeqDef(parent); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(metadata)
+	view, err := service.CreateSeqDefVersion(parent.ID, ubom.Literal("B"), 0, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.ID != "widget-v1-v2" || view.DefinitionID != "widget-v1" || view.Version != 2 || view.ParentID != parent.ID {
+		t.Fatalf("view = %#v", view)
+	}
+	original, err := metadata.GetSeqDef(parent.ID)
+	if err != nil || original.Root().(ubom.LiteralNode).Text != "A" {
+		t.Fatalf("parent changed: %#v, %v", original, err)
+	}
+	if _, err := service.CreateSeqDefVersion(parent.ID, ubom.Literal("C"), 1, ""); err == nil {
+		t.Fatal("accepted conflicting version")
 	}
 }
 

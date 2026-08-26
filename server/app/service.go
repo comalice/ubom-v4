@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 
 	ubom "ubom-v4"
 	"ubom-v4/artifact"
@@ -17,12 +18,18 @@ func NewService(s store.Store) *Service {
 }
 
 type SeqDefView struct {
-	ID ubom.SeqDefID `json:"id"`
+	ID           ubom.SeqDefID `json:"id"`
+	DefinitionID string        `json:"definitionId"`
+	Version      int           `json:"version"`
+	ParentID     ubom.SeqDefID `json:"parentId,omitempty"`
 }
 
 type SeqDefDefinitionView struct {
-	ID   ubom.SeqDefID  `json:"id"`
-	Root SeqDefNodeView `json:"root"`
+	ID           ubom.SeqDefID  `json:"id"`
+	DefinitionID string         `json:"definitionId"`
+	Version      int            `json:"version"`
+	ParentID     ubom.SeqDefID  `json:"parentId,omitempty"`
+	Root         SeqDefNodeView `json:"root"`
 }
 
 type SeqDefNodeView struct {
@@ -53,6 +60,36 @@ type TaxonomyDefSummary struct {
 }
 
 func (s *Service) CreateSeqDef(def ubom.SeqDef) error { return s.store.CreateSeqDef(def) }
+func (s *Service) CreateSeqDefVersion(parent ubom.SeqDefID, root ubom.SeqDefNode, requestedVersion int, requestedID ubom.SeqDefID) (SeqDefDefinitionView, error) {
+	original, err := s.store.GetSeqDef(parent)
+	if err != nil {
+		return SeqDefDefinitionView{}, err
+	}
+	defs, err := s.store.ListSeqDefs()
+	if err != nil {
+		return SeqDefDefinitionView{}, err
+	}
+	next := original.Version + 1
+	for _, candidate := range defs {
+		if candidate.DefinitionID == original.DefinitionID && candidate.Version >= next {
+			next = candidate.Version + 1
+		}
+	}
+	if requestedVersion != 0 && requestedVersion != next {
+		if requestedVersion < next {
+			return SeqDefDefinitionView{}, store.ErrAlreadyExists
+		}
+		return SeqDefDefinitionView{}, fmt.Errorf("version must be %d", next)
+	}
+	if requestedID == "" {
+		requestedID = ubom.SeqDefID(fmt.Sprintf("%s-v%d", original.DefinitionID, next))
+	}
+	def := ubom.NewSeqDef(root).WithID(requestedID).WithVersionMetadata(original.DefinitionID, next, parent)
+	if err := s.store.CreateSeqDefVersion(parent, def); err != nil {
+		return SeqDefDefinitionView{}, err
+	}
+	return s.GetSeqDefDefinitionView(def.ID)
+}
 func (s *Service) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	return s.store.CreateTaxonomyDef(def)
 }
@@ -75,7 +112,8 @@ func (s *Service) GetSeqDefDefinitionView(id ubom.SeqDefID) (SeqDefDefinitionVie
 	if err != nil {
 		return SeqDefDefinitionView{}, err
 	}
-	return SeqDefDefinitionView{ID: def.ID, Root: root}, nil
+	def = def.WithLegacyDefaults()
+	return SeqDefDefinitionView{ID: def.ID, DefinitionID: def.DefinitionID, Version: def.Version, ParentID: def.ParentID, Root: root}, nil
 }
 
 func seqDefNodeView(node ubom.SeqDefNode) (SeqDefNodeView, error) {
@@ -241,7 +279,8 @@ func (s *Service) ListSeqDefViews() ([]SeqDefView, error) {
 	}
 	views := make([]SeqDefView, 0, len(defs))
 	for _, def := range defs {
-		views = append(views, SeqDefView{ID: def.ID})
+		def = def.WithLegacyDefaults()
+		views = append(views, SeqDefView{ID: def.ID, DefinitionID: def.DefinitionID, Version: def.Version, ParentID: def.ParentID})
 	}
 	return views, nil
 }

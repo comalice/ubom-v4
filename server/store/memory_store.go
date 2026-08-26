@@ -143,6 +143,7 @@ func (s *MemoryStore) ListSnapshotsByArtifact(id artifact.ID) ([]artifact.Snapsh
 }
 
 func (s *MemoryStore) CreateSeqDef(def ubom.SeqDef) error {
+	def = def.WithLegacyDefaults()
 	if err := def.Validate(); err != nil {
 		return err
 	}
@@ -153,18 +154,35 @@ func (s *MemoryStore) CreateSeqDef(def ubom.SeqDef) error {
 	return nil
 }
 
+func (s *MemoryStore) CreateSeqDefVersion(parent ubom.SeqDefID, def ubom.SeqDef) error {
+	original, err := s.GetSeqDef(parent)
+	if err != nil {
+		return err
+	}
+	if def.DefinitionID != original.DefinitionID || def.ParentID != parent || def.Version <= original.Version {
+		return errors.New("invalid sequence definition version link")
+	}
+	for _, existing := range s.seqDefs {
+		existing = existing.WithLegacyDefaults()
+		if existing.DefinitionID == def.DefinitionID && existing.Version == def.Version {
+			return ErrAlreadyExists
+		}
+	}
+	return s.CreateSeqDef(def)
+}
+
 func (s *MemoryStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
 	def, ok := s.seqDefs[id]
 	if !ok {
 		return ubom.SeqDef{}, ErrNotFound
 	}
-	return def, nil
+	return def.WithLegacyDefaults(), nil
 }
 
 func (s *MemoryStore) ListSeqDefs() ([]ubom.SeqDef, error) {
 	items := make([]ubom.SeqDef, 0, len(s.seqDefs))
 	for _, def := range s.seqDefs {
-		items = append(items, def)
+		items = append(items, def.WithLegacyDefaults())
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items, nil

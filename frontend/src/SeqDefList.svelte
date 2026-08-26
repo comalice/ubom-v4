@@ -36,7 +36,7 @@
   <div class="settings-list">
     {#each definitions as definition}
       <a class="settings-item" href={`/settings/sequence-definitions/${encodeURIComponent(definition.id)}`}>
-        <strong>{definition.id}</strong>
+         <span><strong>{definition.id}</strong><small>{definition.definitionId} · v{definition.version}</small></span>
         <span class="card-arrow" aria-hidden="true">→</span>
       </a>
     {/each}

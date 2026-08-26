@@ -5,12 +5,15 @@ import (
 	"strconv"
 )
 
-// SeqDefID identifies an immutable sequence-definition version.
+// SeqDefID identifies an immutable sequence-definition version (the URL/key).
 type SeqDefID string
 
 type SeqDef struct {
-	ID   SeqDefID
-	root SeqDefNode
+	ID           SeqDefID
+	DefinitionID string // Stable identity shared by all versions.
+	Version      int    // Positive, monotonically increasing version number.
+	ParentID     SeqDefID
+	root         SeqDefNode
 }
 
 // BindableField describes a value supplied to a Bind node in a definition.
@@ -25,10 +28,31 @@ type SeqDefField = BindableField
 
 func NewSeqDef(root SeqDefNode) SeqDef { return SeqDef{root: root} }
 
+// WithVersionMetadata sets the stable identity and immutable version link.
+func (d SeqDef) WithVersionMetadata(definitionID string, version int, parentID SeqDefID) SeqDef {
+	d.DefinitionID, d.Version, d.ParentID = definitionID, version, parentID
+	return d
+}
+
+// WithLegacyDefaults makes records written before versioning readable. A
+// legacy record is its own stable definition at version 1 and has no parent.
+func (d SeqDef) WithLegacyDefaults() SeqDef {
+	if d.DefinitionID == "" {
+		d.DefinitionID = string(d.ID)
+	}
+	if d.Version == 0 {
+		d.Version = 1
+	}
+	return d
+}
+
 // Validate checks SeqDefNodes for well formed definitions.
 func (d SeqDef) Validate() error {
 	if d.ID == "" {
 		return invalidSeqDef("sequence definition has no ID", nil)
+	}
+	if d.DefinitionID == "" || d.Version < 1 {
+		return invalidSeqDef("sequence definition has invalid version metadata", nil)
 	}
 	if err := validateSeqDefNode(d.root); err != nil {
 		return err
@@ -422,6 +446,9 @@ func seqDefBindingNames(node SeqDefNode) map[string]bool {
 
 func (d SeqDef) WithID(id SeqDefID) SeqDef {
 	d.ID = id
+	// Definitions created by older callers have no metadata; treating their
+	// record key as the stable identity preserves the old construction API.
+	d = d.WithLegacyDefaults()
 	return d
 }
 

@@ -249,7 +249,7 @@
             <p class="muted">This sequence has no bindings.</p>
           {/if}
           <button class="grammar-preview-button" type="button" disabled={previewing || validationErrors.length > 0} onclick={requestPreview}>{previewing ? 'Previewing...' : 'Preview on server'}</button>
-          <div class:grammar-preview-failed={previewStatus.kind === 'server-rejected' || previewStatus.kind === 'request-failed'} class:grammar-preview-pending={previewStatus.kind === 'previewing'} class:grammar-preview-result role="status" aria-live="polite">
+            <div class="grammar-preview-result" class:grammar-preview-failed={previewStatus.kind === 'server-rejected' || previewStatus.kind === 'request-failed'} class:grammar-preview-pending={previewStatus.kind === 'previewing'} role="status" aria-live="polite">
             <strong>{previewStatus.label}</strong>
             <span>{previewStatus.message}</span>
             {#if previewStatus.kind === 'success' && currentPreview}<span>Bindings returned: {Object.entries(currentPreview.bindings).map(([name, value]) => `${name} = ${value}`).join(', ') || 'none'}</span>{/if}

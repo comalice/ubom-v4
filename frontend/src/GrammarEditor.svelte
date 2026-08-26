@@ -4,8 +4,8 @@
   import DndField from './DndField.svelte'
   import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
-  import { previewSeqDefCandidate, previewSeqDefRoot, type SeqDefCandidatePreview, type SeqDefPreview } from './api'
-  import { createGrammarExpr as createExpr, getGrammarPreviewStatus, grammarPreviewKey, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
+  import { previewSeqDefCandidate, type SeqDefCandidatePreview } from './api'
+  import { createGrammarExpr as createExpr, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -26,13 +26,6 @@
   ]
   let structureNodes: StructureNode[] = []
   let testInput = 'PN-SN-A'
-  let bindingValues: Record<string, string> = { family: 'SN-' }
-  let preview: SeqDefPreview | null = null
-  let previewedKey: string | null = null
-  let previewError = ''
-  let previewErrorKey: string | null = null
-  let previewRequestKey: string | null = null
-  let previewing = false
   let candidatePreview: SeqDefCandidatePreview | null = null
   let candidatePreviewKey: string | null = null
   let candidateError = ''
@@ -64,56 +57,10 @@
   $: structureNodes = rootSequence.map(toStructureNode)
   $: validationErrors = validateSequence(rootSequence)
   $: parsed = parseSequence(rootSequence, testInput)
-  $: bindingNames = collectBindingNames(rootSequence)
-  $: previewBindings = Object.fromEntries(bindingNames.map(name => [name, bindingValues[name] ?? '']))
-  $: previewKey = grammarPreviewKey(rootSequence, previewBindings)
-  $: currentPreview = previewedKey === previewKey ? preview : null
-  $: previewStatus = getGrammarPreviewStatus({ currentKey: previewKey, previewedKey, preview: currentPreview, requestKey: previewRequestKey, requestError: previewErrorKey === previewKey ? previewError : '', previewing })
   $: candidateKey = JSON.stringify({ grammar: rootSequence, value: testInput })
   $: currentCandidatePreview = candidatePreviewKey === candidateKey ? candidatePreview : null
   $: currentCandidateError = candidateErrorKey === candidateKey ? candidateError : ''
   $: candidatePending = candidatePreviewing && candidateRequestKey === candidateKey
-
-  function collectBindingNames(exprs: Expr[]): string[] {
-    const names: string[] = []
-    function visit(expr: Expr) {
-      if (expr.kind === 'bind') {
-        if (expr.name.trim() && !names.includes(expr.name.trim())) names.push(expr.name.trim())
-        if (expr.child) visit(expr.child)
-      } else if (expr.kind === 'choice') expr.children.flat().forEach(visit)
-      else if (expr.kind === 'range_radix') expr.children.forEach(visit)
-    }
-    exprs.forEach(visit)
-    return names
-  }
-
-  function setBindingValue(name: string, event: Event) {
-    bindingValues = { ...bindingValues, [name]: (event.currentTarget as HTMLInputElement).value }
-  }
-
-  async function requestPreview() {
-    const requestKey = previewKey
-    preview = null
-    previewedKey = null
-    previewError = ''
-    previewErrorKey = null
-    previewRequestKey = requestKey
-    previewing = true
-    try {
-      const result = await previewSeqDefRoot(toSeqDefRoot(rootSequence), previewBindings)
-      if (requestKey === previewKey) {
-        preview = result
-        previewedKey = requestKey
-      }
-    } catch (reason) {
-      if (requestKey === previewKey) {
-        previewError = reason instanceof Error ? reason.message : 'Unable to preview sequence'
-        previewErrorKey = requestKey
-      }
-    } finally {
-      if (previewRequestKey === requestKey) previewing = false
-    }
-  }
 
   async function requestCandidatePreview() {
     const requestKey = candidateKey
@@ -273,7 +220,6 @@
         <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-test-heading">Test parse</span></div>
         <label class="grammar-input-label">Input to parse<input bind:value={testInput} placeholder="Type a candidate value" /></label>
         {#if testInput}<div class:grammar-valid={!('error' in parsed)} class="grammar-parse-result">{#if 'error' in parsed}Invalid: {parsed.error}{:else}Valid input{#each Object.entries(parsed.bindings) as [name, value]}<span>{name} = {value}</span>{/each}{/if}</div>{/if}
-        <div class="grammar-output"><span>Canonical generated value</span>{#if previewStatus.kind === 'success' && currentPreview}<strong>{currentPreview.value || '(empty)'}</strong>{:else}<strong>{previewStatus.label}</strong><span>{previewStatus.message}</span>{/if}</div>
         <section class="grammar-candidate-preview" aria-labelledby="grammar-candidate-preview-heading">
           <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-candidate-preview-heading">Candidate validation</span></div>
           <p class="muted">Validate the complete test input against this grammar on the server.</p>
@@ -293,25 +239,6 @@
               <strong>Candidate not previewed</strong>
               <span>Preview the complete test input to see the authoritative server result.</span>
             {/if}
-          </div>
-        </section>
-        <section class="grammar-preview" aria-labelledby="grammar-preview-heading">
-          <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-preview-heading">Binding generation preview</span></div>
-          <p class="muted">Generate a value from the binding values below; this does not validate the test input.</p>
-          {#if bindingNames.length}
-            <div class="grammar-preview-bindings">
-              {#each bindingNames as name}
-                <label class="grammar-input-label">{name}<input value={bindingValues[name] ?? ''} oninput={(event) => setBindingValue(name, event)} /></label>
-              {/each}
-            </div>
-          {:else}
-            <p class="muted">This sequence has no bindings.</p>
-          {/if}
-          <button class="grammar-preview-button" type="button" disabled={previewing || validationErrors.length > 0} onclick={requestPreview}>{previewing ? 'Generating preview...' : 'Generate value on server'}</button>
-            <div class="grammar-preview-result" class:grammar-preview-failed={previewStatus.kind === 'server-rejected' || previewStatus.kind === 'request-failed'} class:grammar-preview-pending={previewStatus.kind === 'previewing'} role="status" aria-live="polite">
-            <strong>{previewStatus.label}</strong>
-            <span>{previewStatus.message}</span>
-            {#if previewStatus.kind === 'success' && currentPreview}<span>Bindings returned: {Object.entries(currentPreview.bindings).map(([name, value]) => `${name} = ${value}`).join(', ') || 'none'}</span>{/if}
           </div>
         </section>
       </section>

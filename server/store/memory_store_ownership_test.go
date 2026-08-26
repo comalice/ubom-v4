@@ -8,7 +8,7 @@ import (
 
 func TestMemoryStoreCopiesMutableValues(t *testing.T) {
 	store := NewMemoryStore()
-	seqDef := ubom.NewSeqDef(ubom.Literal("PN-1")).WithID("pn")
+	seqDef := ubom.NewSeqDef(ubom.Concat(ubom.Literal("PN-"), ubom.Bind("kind", ubom.Literal("one")))).WithID("pn")
 	if err := store.CreateSeqDef(seqDef); err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestMemoryStoreCopiesMutableValues(t *testing.T) {
 	if err != nil || gotTaxonomy.Taxonomy.Root.Matches["kind"] != "one" {
 		t.Fatalf("taxonomy was not isolated: %#v, %v", gotTaxonomy, err)
 	}
-	part, err := store.CreatePartNumber(ubom.PartNumber{Value: "PN-1", SeqDefID: seqDef.ID, TaxonomyDefID: taxonomy.ID, TaxonomyNodeID: "root", Attributes: []ubom.PartNumberAttribute{{AttributeDefID: "x", Value: "y"}}})
+	part, err := store.CreatePartNumber(ubom.PartNumber{Value: "PN-one", SeqDefID: seqDef.ID, TaxonomyDefID: taxonomy.ID, TaxonomyNodeID: "root", Attributes: []ubom.PartNumberAttribute{{AttributeDefID: "x", Value: "y"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

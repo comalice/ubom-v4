@@ -21,37 +21,12 @@ func validatePartNumberReferences(s Store, part ubom.PartNumber) error {
 	if !taxonomyNodeExists(taxonomyDef.Taxonomy.Root, part.TaxonomyNodeID) {
 		return ErrNotFound
 	}
-	if taxonomyHasTypedPredicates(taxonomyDef.Taxonomy.Root) {
-		// Typed predicates use the composed schema contract.
-		materialized, err := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{}).NewPartNumber(part.Value, part.Attributes)
-		if err != nil {
-			return err
-		}
-		if materialized.TaxonomyNodeID != part.TaxonomyNodeID {
-			return fmt.Errorf("part number value projects to taxonomy node %q, not %q", materialized.TaxonomyNodeID, part.TaxonomyNodeID)
-		}
-		return nil
-	}
-	parsed, err := seqDef.ParseValues(part.Value)
-	if err != nil {
-		return fmt.Errorf("invalid part number value: %w", err)
-	}
-	if parsed.Value != part.Value {
-		return fmt.Errorf("part number value is not canonical")
-	}
-	projectedNodeID, err := taxonomyDef.Taxonomy.ProjectNode(parsed)
+	materialized, err := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{}).NewPartNumber(part.Value, part.Attributes)
 	if err != nil {
 		return err
 	}
-	if projectedNodeID != part.TaxonomyNodeID {
-		return fmt.Errorf("part number value projects to taxonomy node %q, not %q", projectedNodeID, part.TaxonomyNodeID)
-	}
-	assignments, err := taxonomyDef.Taxonomy.EffectiveAttributes(part.TaxonomyNodeID)
-	if err != nil {
-		return err
-	}
-	if err := ubom.ValidatePartNumberAttributes(part.Attributes, assignments, taxonomyDef.AttributeDefs); err != nil {
-		return err
+	if materialized.TaxonomyNodeID != part.TaxonomyNodeID {
+		return fmt.Errorf("part number value projects to taxonomy node %q, not %q", materialized.TaxonomyNodeID, part.TaxonomyNodeID)
 	}
 	return nil
 }

@@ -69,6 +69,7 @@ func Populate(s store.Store, options Options) (Result, error) {
 	if err := s.CreateTaxonomyDef(taxonomyDef); err != nil {
 		return Result{}, err
 	}
+	schema := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{})
 
 	parts := make([]ubom.PartNumber, 0, options.Parts)
 	for i := 0; i < options.Parts; i++ {
@@ -76,17 +77,17 @@ func Populate(s store.Store, options Options) (Result, error) {
 		if i%2 == 1 {
 			category = "B"
 		}
-		part, err := ubom.NewPartNumber(fmt.Sprintf("PN-%s%04d", category, i/2), seqDef, taxonomyDef)
-		if err != nil {
-			return Result{}, err
-		}
-		part.Attributes = []ubom.PartNumberAttribute{{AttributeDefID: "footprint", Value: "0603"}}
+		attributes := []ubom.PartNumberAttribute{{AttributeDefID: "footprint", Value: "0603"}}
 		if category == "A" {
-			part.Attributes = append(part.Attributes,
+			attributes = append(attributes,
 				ubom.PartNumberAttribute{AttributeDefID: "resistance", Value: fmt.Sprintf("%d", 1000+(i/2)*1000)},
 				ubom.PartNumberAttribute{AttributeDefID: "tolerance", Value: "1"},
 				ubom.PartNumberAttribute{AttributeDefID: "power_rating", Value: "0.1"},
 			)
+		}
+		part, err := schema.NewPartNumber(fmt.Sprintf("PN-%s%04d", category, i/2), attributes)
+		if err != nil {
+			return Result{}, err
 		}
 		part, err = s.CreatePartNumber(part)
 		if err != nil {

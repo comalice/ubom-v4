@@ -16,9 +16,11 @@
   export let interactive: string[] = []
   export let onRemove: (() => void) | undefined = undefined
   let open = initiallyOpen
+
+  function stopNestedDragEvent(event: Event) { event.stopPropagation() }
 </script>
 
-<article class:component-size-small={size === 'small'} class:block-shell-draggable={container !== ''} class:block-shell-collapsible={collapsible} class:block-shell-removable={onRemove !== undefined} class:block-shell-open={open} class="block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
+<article on:pointerdown={stopNestedDragEvent} on:dragstart={stopNestedDragEvent} class:component-size-small={size === 'small'} class:block-shell-draggable={container !== ''} class:block-shell-collapsible={collapsible} class:block-shell-removable={onRemove !== undefined} class:block-shell-open={open} class="block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
   <header class="block-shell-header">
     <span class="grammar-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>

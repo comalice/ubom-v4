@@ -4,7 +4,8 @@
   import DndField from './DndField.svelte'
   import StructureTree, { type StructureNode } from './StructureTree.svelte'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
-  import { createGrammarExpr as createExpr, generateGrammarSequence as generateSequence, parseGrammarSequence as parseSequence, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
+  import { previewSeqDefRoot, type SeqDefPreview } from './api'
+  import { createGrammarExpr as createExpr, generateGrammarSequence as generateSequence, parseGrammarSequence as parseSequence, toSeqDefRoot, validateGrammarSequence as validateSequence, type GrammarDragPayload as DragPayload, type GrammarDropTarget as DropTarget, type GrammarExpr as Expr, type GrammarExprKind as ExprKind } from './GrammarEditorModel'
 
   const paletteTiles = [
     { type: 'literal', title: 'Literal', description: 'Exact text' },
@@ -25,6 +26,10 @@
   ]
   let structureNodes: StructureNode[] = []
   let testInput = 'PN-SN-A'
+  let bindingValues: Record<string, string> = { family: 'SN-' }
+  let preview: SeqDefPreview | null = null
+  let previewError = ''
+  let previewing = false
 
   function summary(expr: Expr): string {
     if (expr.kind === 'literal') return JSON.stringify(expr.text)
@@ -50,6 +55,38 @@
   $: validationErrors = validateSequence(rootSequence)
   $: parsed = parseSequence(rootSequence, testInput)
   $: generated = generateSequence(rootSequence)
+  $: bindingNames = collectBindingNames(rootSequence)
+
+  function collectBindingNames(exprs: Expr[]): string[] {
+    const names: string[] = []
+    function visit(expr: Expr) {
+      if (expr.kind === 'bind') {
+        if (expr.name.trim() && !names.includes(expr.name.trim())) names.push(expr.name.trim())
+        if (expr.child) visit(expr.child)
+      } else if (expr.kind === 'choice') expr.children.flat().forEach(visit)
+      else if (expr.kind === 'range_radix') expr.children.forEach(visit)
+    }
+    exprs.forEach(visit)
+    return names
+  }
+
+  function setBindingValue(name: string, event: Event) {
+    bindingValues = { ...bindingValues, [name]: (event.currentTarget as HTMLInputElement).value }
+  }
+
+  async function requestPreview() {
+    preview = null
+    previewError = ''
+    previewing = true
+    try {
+      const bindings = Object.fromEntries(bindingNames.map(name => [name, bindingValues[name] ?? '']))
+      preview = await previewSeqDefRoot(toSeqDefRoot(rootSequence), bindings)
+    } catch (reason) {
+      previewError = reason instanceof Error ? reason.message : 'Unable to preview sequence'
+    } finally {
+      previewing = false
+    }
+  }
 
   function updateRoot(index: number, value: Expr) { rootSequence = rootSequence.map((expr, exprIndex) => exprIndex === index ? value : expr) }
   function removeRoot(index: number) { rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
@@ -184,6 +221,25 @@
         <label class="grammar-input-label">Input to parse<input bind:value={testInput} placeholder="Type a candidate value" /></label>
         {#if testInput}<div class:grammar-valid={!('error' in parsed)} class="grammar-parse-result">{#if 'error' in parsed}Invalid: {parsed.error}{:else}Valid input{#each Object.entries(parsed.bindings) as [name, value]}<span>{name} = {value}</span>{/each}{/if}</div>{/if}
         <div class="grammar-output"><span>Canonical generated value</span><strong>{generated || '(empty)'}</strong></div>
+        <section class="grammar-preview" aria-labelledby="grammar-preview-heading">
+          <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-preview-heading">Server preview</span></div>
+          {#if bindingNames.length}
+            <div class="grammar-preview-bindings">
+              {#each bindingNames as name}
+                <label class="grammar-input-label">{name}<input value={bindingValues[name] ?? ''} oninput={(event) => setBindingValue(name, event)} /></label>
+              {/each}
+            </div>
+          {:else}
+            <p class="muted">This sequence has no bindings.</p>
+          {/if}
+          <button class="grammar-preview-button" type="button" disabled={previewing || validationErrors.length > 0} onclick={requestPreview}>{previewing ? 'Previewing...' : 'Preview on server'}</button>
+          {#if previewError}<p class="error" role="alert">{previewError}</p>{/if}
+          {#if preview}
+            <div class:grammar-preview-failed={preview.error} class="grammar-preview-result" role="status">
+              {#if preview.error}<strong>Server rejected the values</strong><span>{preview.error}</span>{:else}<strong>{preview.value || '(empty)'}</strong><span>Bindings returned: {Object.entries(preview.bindings).map(([name, value]) => `${name} = ${value}`).join(', ') || 'none'}</span>{/if}
+            </div>
+          {/if}
+        </section>
       </section>
     </aside>
   </div>

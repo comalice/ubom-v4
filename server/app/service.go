@@ -342,15 +342,7 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 	if err != nil {
 		return PartNumberView{}, err
 	}
-	seqDef, err := s.store.GetSeqDef(part.SeqDefID)
-	if err != nil {
-		return PartNumberView{}, err
-	}
-	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
-	if err != nil {
-		return PartNumberView{}, err
-	}
-	parsed, err := seqDef.ParseValues(part.Value)
+	interpreted, taxonomyDef, err := s.interpretPart(part)
 	if err != nil {
 		return PartNumberView{}, err
 	}
@@ -362,7 +354,7 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 	view := PartNumberView{
 		ID:           part.ID,
 		Value:        part.Value,
-		TaxonomyPath: taxonomyDef.Taxonomy.Project(parsed),
+		TaxonomyPath: interpreted.Classification.Labels,
 		Attributes:   attributes,
 		Revisions:    make([]RevisionView, 0, len(part.PartRevisionID)),
 	}
@@ -592,19 +584,35 @@ func (s *Service) buildRevisionView(revision ubom.PartRevision, active map[ubom.
 }
 
 func (s *Service) partTaxonomyPath(part ubom.PartNumber) ([]string, error) {
-	seqDef, err := s.store.GetSeqDef(part.SeqDefID)
+	interpreted, _, err := s.interpretPart(part)
 	if err != nil {
 		return nil, err
+	}
+	return interpreted.Classification.Labels, nil
+}
+
+// interpretPart is the application boundary for durable part-number meaning.
+// Views must consume Schema's parsed and classified result rather than
+// reimplementing SeqDef parsing or taxonomy projection.
+func (s *Service) interpretPart(part ubom.PartNumber) (ubom.InterpretedValue, ubom.TaxonomyDef, error) {
+	seqDef, err := s.store.GetSeqDef(part.SeqDefID)
+	if err != nil {
+		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, err
 	}
 	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
 	if err != nil {
-		return nil, err
+		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, err
 	}
-	parsed, err := seqDef.ParseValues(part.Value)
+	// Root-only classifications remain valid for the open policy used by the
+	// durable part-number contract.
+	interpreted, err := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{}).Interpret(part.Value)
 	if err != nil {
-		return nil, err
+		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, err
 	}
-	return taxonomyDef.Taxonomy.Project(parsed), nil
+	if interpreted.Classification == nil || interpreted.Classification.NodeID != part.TaxonomyNodeID {
+		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, ubom.NewDomainError(ubom.ErrorCategoryConflict, "part number classification does not match its stored taxonomy node")
+	}
+	return interpreted, taxonomyDef, nil
 }
 
 func findTaxonomyPath(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) ([]TaxonomyPathItem, bool) {

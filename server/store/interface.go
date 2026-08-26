@@ -26,6 +26,8 @@ type Store interface {
 	GetPartNumber(string) (ubom.PartNumber, error)
 	GetPartNumberByID(ubom.PartNumberID) (ubom.PartNumber, error)
 	ListPartNumbers() ([]ubom.PartNumber, error)
+	// ListPartNumbersByTaxonomyNode has exact-node semantics. It does not
+	// include parts classified at descendants of nodeID.
 	ListPartNumbersByTaxonomyNode(ubom.TaxonomyDefID, ubom.TaxonomyNodeID) ([]ubom.PartNumber, error)
 	CreatePartNumberDraft(ubom.PartNumberDraft) error
 	GetPartNumberDraft(ubom.PartNumberDraftID) (ubom.PartNumberDraft, error)

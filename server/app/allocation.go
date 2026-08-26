@@ -2,6 +2,8 @@ package app
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 
 	ubom "ubom-v4"
 	"ubom-v4/store"
@@ -41,6 +43,14 @@ func (s *Service) AllocatePartNumberDraft(id ubom.PartNumberDraftID) (Allocation
 		return Allocation{}, err
 	}
 	bindings := cloneStringMap(draft.Bindings)
+	constraints, err := taxonomy.Taxonomy.Constraints(draft.ContextNodeID)
+	if err != nil {
+		return Allocation{}, ubom.WrapDomainError(ubom.ErrorCategoryDefinition, "draft references an invalid taxonomy context", err)
+	}
+	bindings, err = taxonomyDirectedBindings(seqDef, bindings, constraints)
+	if err != nil {
+		return Allocation{}, err
+	}
 	for {
 		interpreted, err := schema.Generate(bindings)
 		if err != nil {
@@ -74,6 +84,40 @@ func (s *Service) AllocatePartNumberDraft(id ubom.PartNumberDraftID) (Allocation
 		}
 		bindings = cloneStringMap(next.Parsed.Bindings)
 	}
+}
+
+// taxonomyDirectedBindings uses the context's reverse constraints to choose a
+// valid starting point. Candidates are still classified below because a
+// successor can cross taxonomy boundaries, and the store remains authoritative
+// for uniqueness.
+func taxonomyDirectedBindings(seqDef ubom.SeqDef, bindings map[string]string, constraints []ubom.TaxonomyPredicate) (map[string]string, error) {
+	fields := make(map[string]ubom.SeqDefNode)
+	for _, field := range seqDef.BindableFields() {
+		fields[field.Name] = field.Node
+	}
+	for _, constraint := range constraints {
+		if constraint.Kind == ubom.PredicateExact {
+			bindings[constraint.Field.String()] = constraint.Value
+			continue
+		}
+		field, ok := fields[constraint.Field.String()]
+		if !ok {
+			return nil, ubom.WrapDomainError(ubom.ErrorCategoryDefinition, fmt.Sprintf("taxonomy constraint references unknown field %q", constraint.Field), nil)
+		}
+		rangeNode, ok := field.(ubom.RangeNode)
+		if !ok {
+			return nil, ubom.WrapDomainError(ubom.ErrorCategoryDefinition, fmt.Sprintf("taxonomy constraint for field %q is not generatable", constraint.Field), nil)
+		}
+		value, parseErr := strconv.ParseInt(bindings[constraint.Field.String()], 10, 64)
+		if parseErr != nil || value < constraint.Min || value > constraint.Max {
+			formatted, formatErr := rangeNode.Format(int(constraint.Min))
+			if formatErr != nil {
+				return nil, ubom.WrapDomainError(ubom.ErrorCategoryAllocation, "taxonomy context has no generatable candidate", formatErr)
+			}
+			bindings[constraint.Field.String()] = formatted
+		}
+	}
+	return bindings, nil
 }
 
 func allocationAdvanceError(err error) error {

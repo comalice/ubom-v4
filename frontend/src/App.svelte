@@ -10,7 +10,7 @@
   import Authoring from './Authoring.svelte'
   import Settings from './Settings.svelte'
   import SequenceGeneratorMock from './SequenceGeneratorMock.svelte'
-  import GrammarMock from './GrammarMock.svelte'
+  import GrammarEditor from './GrammarEditor.svelte'
   import Playground from './Playground.svelte'
   import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
@@ -185,7 +185,7 @@
   {:else if route.kind === 'seq-def-mock'}
     <SequenceGeneratorMock navigate={navigate} />
   {:else if route.kind === 'grammar-mock'}
-    <GrammarMock navigate={navigate} />
+    <GrammarEditor />
   {:else if route.kind === 'playground'}
     <Playground navigate={navigate} page={route.page} />
   {:else if route.kind === 'settings'}

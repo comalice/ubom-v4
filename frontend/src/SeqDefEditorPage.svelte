@@ -2,6 +2,7 @@
   import { createSeqDef, createSeqDefVersion, getSeqDef, type SeqDefDefinition, type SeqDefNode } from './api'
   import GrammarEditor from './GrammarEditor.svelte'
   import AsyncState from './AsyncState.svelte'
+  import PrimitiveButton from './PrimitiveButton.svelte'
   import { fromSeqDefRoot, validateGrammarSequence } from './GrammarEditorModel'
 
   export let id: string | undefined = undefined
@@ -119,17 +120,17 @@
   {#if !id}
     <form class="seq-def-toolbar" on:submit|preventDefault={save}>
       <label>ID<input bind:value={definition.id} placeholder="part-number-v1" autocomplete="off" /></label>
-      <button type="submit" disabled={saveDisabled}>{saving ? 'Creating...' : 'Create definition'}</button>
+      <PrimitiveButton type="submit" disabled={saveDisabled}>{saving ? 'Creating...' : 'Create definition'}</PrimitiveButton>
     </form>
     {#if !dirty}<p class="muted">Add an ID or change the document to enable creation.</p>{/if}
   {:else}
     {#if !editingVersion}
       <p class="muted">Immutable definition. This document is read-only.</p>
-      <button type="button" on:click={beginVersionEdit}>Save as new version</button>
+      <PrimitiveButton type="button" on:click={beginVersionEdit}>Save as new version</PrimitiveButton>
     {:else}
       <form class="seq-def-toolbar" on:submit|preventDefault={saveAsVersion}>
         <p class="muted">Editing a copy. The next version will be created automatically.</p>
-        <button type="submit" disabled={saveDisabled}>{saving ? 'Saving...' : 'Save as new version'}</button>
+        <PrimitiveButton type="submit" disabled={saveDisabled}>{saving ? 'Saving...' : 'Save as new version'}</PrimitiveButton>
       </form>
     {/if}
   {/if}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { createPartDraft, getSeqDefFields, previewPartDraft, releasePartDraft, updatePartDraft, type SeqDefField, type TaxonomyNodeView } from './api'
+  import PrimitiveButton from './PrimitiveButton.svelte'
 
   export let taxonomy: TaxonomyNodeView
   let fields: SeqDefField[] = []
@@ -71,11 +72,11 @@
         {:else}<input bind:value={attributes[attribute.id]} required={attribute.required} placeholder={attribute.unit ?? 'Enter value'} />{/if}
       </label>
     {/each}
-    <button type="submit" disabled={saving}>{saving ? 'Checking...' : 'Preview draft'}</button>
+    <PrimitiveButton type="submit" disabled={saving}>{saving ? 'Checking...' : 'Preview draft'}</PrimitiveButton>
   </form>
   {#if preview}
     <p class={preview.error ? 'error' : 'success'}>{preview.error ?? `Suggested: ${preview.value}`}</p>
-    {#if preview.complete}<button type="button" on:click={release} disabled={saving}>Release part number</button>{/if}
+    {#if preview.complete}<PrimitiveButton type="button" on:click={release} disabled={saving}>Release part number</PrimitiveButton>{/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>

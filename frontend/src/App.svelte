@@ -3,13 +3,13 @@
   import PartTable from './PartTable.svelte'
   import BomTable from './BomTable.svelte'
   import ArtifactTable from './ArtifactTable.svelte'
+  import SnapshotTable from './SnapshotTable.svelte'
+  import RevisionTable from './RevisionTable.svelte'
   import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
-  import IdentityLink from './IdentityLink.svelte'
   import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
   import Authoring from './Authoring.svelte'
   import Settings from './Settings.svelte'
-  import TableFrame from './TableFrame.svelte'
   import SeqDefList from './SeqDefList.svelte'
   import GrammarEditor from './GrammarEditor.svelte'
   import SeqDefEditorPage from './SeqDefEditorPage.svelte'
@@ -124,7 +124,7 @@
     <p class="artifact-meta">{artifact.kind} from <span class="artifact-code">{artifact.sourceId}</span> at <span class="artifact-code">{artifact.path}</span></p>
     <h2>Snapshots</h2>
     {#if snapshots.length > 0}
-      <TableFrame><table class="revision-table"><caption class="sr-only">Artifact snapshots</caption><thead><tr><th scope="col">Reference</th><th scope="col">Digest</th><th scope="col">Size</th><th scope="col">Media type</th></tr></thead><tbody>{#each snapshots as snapshot}<tr><th scope="row">{snapshot.reference || 'Unspecified'}</th><td class="artifact-code">{snapshot.digest}</td><td>{snapshot.size} bytes</td><td>{snapshot.mediaType}</td></tr>{/each}</tbody></table></TableFrame>
+      <SnapshotTable snapshots={snapshots} />
     {:else}<p class="empty-state">No snapshots captured.</p>{/if}
   {:else if taxonomy && route.kind === 'taxonomy'}
     <p class="eyebrow">Parts</p>
@@ -156,29 +156,7 @@
     <PartIdentity partNumber={part.value} taxonomy={part.taxonomyPath} attributes={part.attributes} />
     <h2>Revisions</h2>
     {#if part.revisions.length > 0}
-      <TableFrame>
-        <table class="revision-table">
-          <caption class="sr-only">Part revisions</caption>
-          <thead>
-            <tr>
-              <th scope="col">Rev</th>
-              <th scope="col">Status</th>
-              <th scope="col">ECO/ECR</th>
-              <th scope="col">Effectivity date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each part.revisions as item}
-              <tr>
-                <th scope="row"><IdentityLink partNumber={part.value} revision={item.revision} revisionID={item.id} /></th>
-                <td class="unsupported" aria-label="Status not supported">—</td>
-                <td class="unsupported" aria-label="ECO or ECR not supported">—</td>
-                <td class="unsupported" aria-label="Effectivity date not supported">—</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </TableFrame>
+      <RevisionTable partNumber={part.value} revisions={part.revisions} />
     {:else}<p class="muted">No revisions.</p>{/if}
   {:else if revision}
     <p class="eyebrow">Revision {revision.revision}</p>

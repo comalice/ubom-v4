@@ -1,5 +1,6 @@
 <script lang="ts">
   import IdentityLink from './IdentityLink.svelte'
+  import TableFrame from './TableFrame.svelte'
   import { taxonomyPath } from './routes'
   import type { AttributeColumn, PartAttribute, PartListItem } from './api'
 
@@ -11,7 +12,7 @@
   }
 </script>
 
-<div class="table-frame part-table-frame">
+<TableFrame className="part-table-frame">
   <table class="part-table">
     <caption class="sr-only">Part numbers</caption>
     <thead>
@@ -52,4 +53,4 @@
       {/each}
     </tbody>
   </table>
-</div>
+</TableFrame>

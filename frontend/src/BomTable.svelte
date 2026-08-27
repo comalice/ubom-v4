@@ -1,11 +1,12 @@
 <script lang="ts">
   import BomRow from './BomRow.svelte'
+  import TableFrame from './TableFrame.svelte'
   import type { BomNode } from './api'
 
   export let nodes: BomNode[] = []
 </script>
 
-<div class="table-frame bom-table-frame">
+<TableFrame className="bom-table-frame">
   <table class="bom-table">
     <caption class="sr-only">Indented bill of materials</caption>
     <thead>
@@ -23,4 +24,4 @@
       {/each}
     </tbody>
   </table>
-</div>
+</TableFrame>

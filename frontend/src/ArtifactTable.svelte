@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { ArtifactView } from './api'
+  import TableFrame from './TableFrame.svelte'
 
   export let artifacts: ArtifactView[] = []
 </script>
 
-<div class="table-frame artifact-table-frame">
+<TableFrame className="artifact-table-frame">
   <table class="revision-table">
     <caption class="sr-only">Artifacts</caption>
     <thead><tr><th scope="col">Name</th><th scope="col">Kind</th><th scope="col">Source</th><th scope="col">Path</th></tr></thead>
@@ -17,4 +18,4 @@
       {/each}
     </tbody>
   </table>
-</div>
+</TableFrame>

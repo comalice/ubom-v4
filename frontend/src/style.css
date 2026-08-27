@@ -217,7 +217,7 @@ ul { line-height: 1.8; }
 .grammar-editor-drop-target-over > .component-mark { opacity: 1; transform: scale(1); }
 .grammar-editor-drop-target > .component-mark.component-move { display: none; }
 .grammar-editor-drop-target:not(.grammar-editor-drop-target-palette) > .component-mark.component-new { display: none; }
-.grammar-editor-drop-target:not(.grammar-editor-drop-target-palette) > .component-mark.component-move { display: grid; }
+.grammar-editor-drop-target-over:not(.grammar-editor-drop-target-palette) > .component-mark.component-move { display: grid; }
 .grammar-editor-drop-target-labeled { display: block; }
 .grammar-editor-drop-target-label { display: block; width: 100%; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
 .grammar-editor-drop-target-over .grammar-editor-drop-target-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }

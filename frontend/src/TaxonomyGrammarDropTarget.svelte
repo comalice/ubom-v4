@@ -27,7 +27,7 @@
   }
 </script>
 
-<DropZone variant={filled ? 'filled' : 'slot'} {container} {getMode} className="taxonomy-drop-zone taxonomy-grammar-drop-zone dnd-insert-zone" ariaLabel={`${label} drop zone`} showHint={!filled} showLabel={depth > 1 || filled} label={depth > 1 ? label : ''} onDrop={(state) => onDrop(state, String(node.id))}>
+<DropZone variant="slot" {container} {getMode} className={`taxonomy-drop-zone taxonomy-grammar-drop-zone grammar-editor-drop-target${filled ? ' taxonomy-drop-zone-filled' : ''}`} ariaLabel={`${label} drop zone`} showHint={!filled} showLabel={depth > 1 || filled} label={depth > 1 ? label : ''} onDrop={(state) => onDrop(state, String(node.id))}>
   {#if filled}
     {#each placements as placement (placement.id)}
       {#if placement.type === 'category'}

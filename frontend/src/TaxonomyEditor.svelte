@@ -1,14 +1,21 @@
 <script lang="ts">
   import TaxonomyPalette from './TaxonomyPalette.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
-  import type { TaxonomyDragPayload, TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { flattenTaxonomyDraft, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
-  let placements: TaxonomyPlacement[] = [{
-    id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
-    label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
-  }]
+  let taxonomyDraft: TaxonomyDraftNode = {
+    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [{
+      id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
+      label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
+    }], children: [],
+  }
+  $: placements = flattenTaxonomyDraft(taxonomyDraft)
+
+  function updatePlacements(next: TaxonomyPlacement[]) {
+    taxonomyDraft = { ...taxonomyDraft, placements: next }
+  }
 
   function newPlacement(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, targetId: string): TaxonomyPlacement {
     const id = `taxonomy-${payload.taxonomyType}-${placementNumber++}`
@@ -24,7 +31,7 @@
     if (item.kind === 'palette') {
       const next = [...targetPlacements]
       next.splice(targetIndex, 0, newPlacement(item, targetId))
-      placements = [...placements.filter((placement) => placement.targetId !== targetId), ...next]
+      updatePlacements([...placements.filter((placement) => placement.targetId !== targetId), ...next])
       return
     }
     const existing = placements.find((placement) => placement.id === item.placementId)
@@ -33,11 +40,11 @@
     const next = targetPlacements.filter((placement) => placement.id !== item.placementId)
     const insertIndex = existing.targetId === targetId && sourceIndex >= 0 && sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
     next.splice(insertIndex, 0, { ...existing, targetId })
-    placements = [...placements.filter((placement) => placement.targetId !== existing.targetId && placement.targetId !== targetId), ...next]
+    updatePlacements([...placements.filter((placement) => placement.targetId !== existing.targetId && placement.targetId !== targetId), ...next])
   }
 
   function removePlacement(placementId: string) {
-    placements = placements.filter((placement) => placement.id !== placementId)
+    updatePlacements(placements.filter((placement) => placement.id !== placementId))
   }
 
   function handleDragEnd() {}

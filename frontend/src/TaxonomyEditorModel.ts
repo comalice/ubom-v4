@@ -31,8 +31,20 @@ export type TaxonomyPlacement = {
   value?: string
 }
 
+export type TaxonomyDraftNode = {
+  id: string
+  label: string
+  targetId: string
+  placements: TaxonomyPlacement[]
+  children: TaxonomyDraftNode[]
+}
+
 export const taxonomyEditorContainer = 'taxonomy-editor'
 
 export function taxonomyTargetContainer(targetId: string) {
   return `${taxonomyEditorContainer}:target:${targetId}`
+}
+
+export function flattenTaxonomyDraft(node: TaxonomyDraftNode): TaxonomyPlacement[] {
+  return [...node.placements, ...node.children.flatMap(flattenTaxonomyDraft)]
 }

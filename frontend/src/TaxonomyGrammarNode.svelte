@@ -14,7 +14,7 @@
 
 <li>
   <span class="dnd-structure-node">{node.label}<small>{node.summary}</small></span>
-  <TaxonomyGrammarDropTarget {node} {depth} placements={placements.filter((placement) => placement.targetId === String(node.id))} {onDrop} {onRemove} {onDragEnd} />
+  <TaxonomyGrammarDropTarget {node} placements={placements.filter((placement) => placement.targetId === String(node.id))} {onDrop} {onRemove} {onDragEnd} />
   {#if node.children.length}
     <ul class="dnd-structure-tree">
       {#each node.children as child (child.id)}

@@ -219,6 +219,7 @@ ul { line-height: 1.8; }
 .drop-zone > .drop-zone-bar { z-index: 0; }
 .drop-zone > .component-mark { z-index: 1; }
 .drop-zone-available > .component-mark { opacity: .28; }
+.drop-zone-available > .component-inactive { color: var(--muted); background: var(--surface); border-color: var(--muted); opacity: .9; transform: translateY(-50%) scale(1); }
 .drop-zone-new-hover > .component-mark, .drop-zone-move-hover > .component-mark { opacity: 1; transform: translateY(-50%) scale(1); }
 .drop-zone-new-hover > .drop-zone-bar { background: #4c9a68; opacity: .65; }
 .drop-zone-move-hover > .drop-zone-bar { background: #4d7fc4; opacity: .65; }

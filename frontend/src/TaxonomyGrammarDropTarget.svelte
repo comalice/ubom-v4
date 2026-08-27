@@ -7,7 +7,6 @@
   import type { StructureNode } from './StructureNode'
 
   export let node: StructureNode
-  export let depth = 0
   export let placements: TaxonomyPlacement[] = []
   export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
@@ -40,7 +39,5 @@
   {/each}
   <DropZone variant="gap" {container} {getMode} accepts={(session) => session.sourceContainer === 'taxonomy-editor' || session.sourceContainer.startsWith('taxonomy-editor:target:')} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), placements.length)} />
 {:else}
-  <DropZone variant="gap" {container} {getMode} accepts={(session) => session.sourceContainer === 'taxonomy-editor' || session.sourceContainer.startsWith('taxonomy-editor:target:')} className="taxonomy-drop-zone" ariaLabel={`${label} drop zone`} showLabel={depth > 1} label={depth > 1 ? label : ''} onDrop={(state) => onDrop(state, String(node.id), 0)}>
-    {#if depth <= 1}<span class="taxonomy-drop-label">{label}</span>{/if}
-  </DropZone>
+  <DropZone variant="gap" {container} {getMode} accepts={(session) => session.sourceContainer === 'taxonomy-editor' || session.sourceContainer.startsWith('taxonomy-editor:target:')} className="taxonomy-drop-zone" ariaLabel={`${label} drop zone`} onDrop={(state) => onDrop(state, String(node.id), 0)} />
 {/if}

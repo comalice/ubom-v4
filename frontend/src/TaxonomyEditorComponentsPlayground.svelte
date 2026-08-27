@@ -17,7 +17,7 @@
 
 <p class="eyebrow">Taxonomy editor components</p>
 <h2>Taxonomy editor components</h2>
-<p class="taxonomy-blocks-intro">Hard-coded sketches for the blocks and drop targets that will make up the taxonomy editor.</p>
+<p class="taxonomy-blocks-intro">Hard-coded sketches for the taxonomy nodes, predicates, and attribute assignments that will make up the editor.</p>
 
 <section class="block-examples taxonomy-grammar-example" aria-labelledby="taxonomy-grammar-heading">
   <span class="mock-section-label" id="taxonomy-grammar-heading">Grammar tree</span>
@@ -30,7 +30,11 @@
   <div class="grammar-basic-example-list">
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[0]} variant="catalogue" />
-        <TaxonomyCategoryBlock title={taxonomyCategoryExample.title} summary={taxonomyCategoryExample.summary} label={taxonomyCategoryExample.label} nodeId={taxonomyCategoryExample.nodeId} predicate={taxonomyCategoryExample.predicate} />
+        <TaxonomyCategoryBlock title="Resistors" summary="category = RES" label="Resistors" nodeId="resistors" predicate="category = RES" showChildren addChildLabel="Drop a category here">
+          <svelte:fragment slot="children">
+            <TaxonomyCategoryBlock title="High Power" summary="number = 100..199" label="High Power" nodeId="high-power" predicate="number = 100..199" showChildren addChildLabel="Drop a category here" />
+          </svelte:fragment>
+        </TaxonomyCategoryBlock>
         <div class="grammar-block-meta"><p class="grammar-block-description">{taxonomyCategoryExample.description}</p><div class="grammar-block-example"><span>Example</span><code>{taxonomyCategoryExample.example}</code></div></div>
       </article>
       <article class="grammar-basic-example">

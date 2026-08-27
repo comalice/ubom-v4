@@ -6,15 +6,17 @@
 </script>
 
 <script lang="ts">
+  import PrimitiveLink from './PrimitiveLink.svelte'
+
   export let items: Breadcrumb[] = []
 </script>
 
 <nav class="breadcrumbs" aria-label="Breadcrumb">
-  <a href="/parts">Home</a>
+  <PrimitiveLink variant="muted" href="/parts">Home</PrimitiveLink>
   {#each items as item, index}
     <span class="breadcrumb-separator" aria-hidden="true">/</span>
     {#if item.href && index < items.length - 1}
-      <a href={item.href}>{item.label}</a>
+      <PrimitiveLink variant="muted" href={item.href}>{item.label}</PrimitiveLink>
     {:else}
       <span aria-current="page">{item.label}</span>
     {/if}

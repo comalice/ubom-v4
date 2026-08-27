@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ArtifactView } from './api'
+  import PrimitiveLink from './PrimitiveLink.svelte'
   import TableFrame from './TableFrame.svelte'
 
   export let artifacts: ArtifactView[] = []
@@ -12,7 +13,7 @@
     <tbody>
       {#each artifacts as artifact}
         <tr>
-          <th scope="row"><a href={`/artifacts/${encodeURIComponent(artifact.id)}`}>{artifact.name}</a></th>
+          <th scope="row"><PrimitiveLink href={`/artifacts/${encodeURIComponent(artifact.id)}`}>{artifact.name}</PrimitiveLink></th>
           <td>{artifact.kind}</td><td class="artifact-code">{artifact.sourceId}</td><td class="artifact-code">{artifact.path}</td>
         </tr>
       {/each}

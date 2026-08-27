@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PrimitiveLink from './PrimitiveLink.svelte'
+
   export let title = 'UBOM'
   export let fullWidth = false
 </script>
@@ -7,10 +9,10 @@
 
 <header class="site-header">
   <div class="header-inner">
-    <a class="brand" href="/parts">UBOM</a>
+    <PrimitiveLink className="brand" href="/parts">UBOM</PrimitiveLink>
     <span class="header-caption">Parts and bills of material</span>
-    <a class="header-artifacts" href="/artifacts">Artifacts</a>
-    <a class="header-settings" href="/settings">Settings</a>
+    <PrimitiveLink className="header-artifacts" href="/artifacts">Artifacts</PrimitiveLink>
+    <PrimitiveLink className="header-settings" href="/settings">Settings</PrimitiveLink>
   </div>
 </header>
 

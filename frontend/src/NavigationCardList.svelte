@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PrimitiveLink from './PrimitiveLink.svelte'
+
   export interface NavigationCardItem {
     label: string
     description: string
@@ -13,9 +15,9 @@
 <div class="settings-list">
   {#each items as item}
     {#if item.href}
-      <a class="settings-item" href={item.href}>
+      <PrimitiveLink className="settings-item" href={item.href}>
         <span><strong>{item.label}</strong><small>{item.description}</small></span><span class="card-arrow" aria-hidden={arrowAriaHidden}>→</span>
-      </a>
+      </PrimitiveLink>
     {:else}
       <div class="settings-item settings-item-disabled"><span><strong>{item.label}</strong><small>{item.description}</small></span>{#if item.status}<span class="muted">{item.status}</span>{/if}</div>
     {/if}

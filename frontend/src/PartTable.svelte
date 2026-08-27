@@ -1,5 +1,6 @@
 <script lang="ts">
   import IdentityLink from './IdentityLink.svelte'
+  import PrimitiveLink from './PrimitiveLink.svelte'
   import TableFrame from './TableFrame.svelte'
   import { taxonomyPath } from './routes'
   import type { AttributeColumn, PartAttribute, PartListItem } from './api'
@@ -34,7 +35,7 @@
           <td class="part-taxonomy">
             {#each part.taxonomyPath as label, index}
               {#if index > 0}<span class="breadcrumb-separator" aria-hidden="true"> / </span>{/if}
-              <a href={taxonomyPath(part.taxonomyPath.slice(0, index + 1))}>{label}</a>
+              <PrimitiveLink href={taxonomyPath(part.taxonomyPath.slice(0, index + 1))}>{label}</PrimitiveLink>
             {/each}
           </td>
           {#each columns as column}

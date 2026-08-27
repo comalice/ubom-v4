@@ -3,6 +3,7 @@
   import { getSeqDefs, type SeqDefView } from './api'
   import AsyncState from './AsyncState.svelte'
   import NavigationCardList, { type NavigationCardItem } from './NavigationCardList.svelte'
+  import PrimitiveLink from './PrimitiveLink.svelte'
   import SectionHeading from './SectionHeading.svelte'
 
   let definitions: SeqDefView[] = []
@@ -24,7 +25,7 @@
   <div>
     <SectionHeading eyebrow="Sequence definitions" title="Sequence definitions" description="Immutable languages used to describe part numbers." />
   </div>
-  <a class="seq-def-new-link" href="/settings/sequence-definitions/new">New</a>
+  <PrimitiveLink className="seq-def-new-link" href="/settings/sequence-definitions/new">New</PrimitiveLink>
 </div>
 
 {#if loading}

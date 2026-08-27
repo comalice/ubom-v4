@@ -455,6 +455,10 @@ ul { line-height: 1.8; }
 .primitive-link-disabled { color: var(--muted); opacity: .6; cursor: not-allowed; }
 .primitive-link-disabled:hover { color: var(--muted); }
 .primitive-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.site-header .brand { color: var(--ink); }
+.site-header .brand:hover { color: var(--accent); text-decoration: none; }
+.seq-def-new-link { color: var(--surface); }
+.seq-def-new-link:hover { color: var(--surface); background: var(--ink); text-decoration: none; }
 .html-primitives .primitive-group { margin-top: 2rem; }
 .html-primitives .primitive-group:first-of-type { margin-top: 0; }
 .html-primitives .primitive-group > .mock-section-label { margin: 0 0 .25rem; }

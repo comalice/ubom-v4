@@ -2,6 +2,8 @@
   import { onMount } from 'svelte'
   import { createPartDraft, getSeqDefFields, previewPartDraft, releasePartDraft, updatePartDraft, type SeqDefField, type TaxonomyNodeView } from './api'
   import PrimitiveButton from './PrimitiveButton.svelte'
+  import SelectInput from './SelectInput.svelte'
+  import TextInput from './TextInput.svelte'
 
   export let taxonomy: TaxonomyNodeView
   let fields: SeqDefField[] = []
@@ -11,6 +13,11 @@
   let preview: { complete: boolean; value?: string; error?: string } | null = null
   let error = ''
   let saving = false
+
+  function inputId(prefix: string, key: string, index: number) {
+    const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '-')
+    return `${prefix}-${safeKey}-${index}`
+  }
 
   onMount(async () => {
     try {
@@ -50,27 +57,19 @@
   <h2 id="authoring-heading">Create from {taxonomy.label}</h2>
   <p class="muted">Choose the known segments. The suggested number is not reserved until release.</p>
   <form on:submit|preventDefault={saveDraft}>
-    {#each fields as field}
-      <label>{field.name}
+    {#each fields as field, index}
+      {@const id = inputId('field', field.name, index)}
         {#if field.kind === 'choice'}
-          <select bind:value={bindings[field.name]}>
-            <option value="">Choose...</option>
-            {#each field.options ?? [] as option}<option value={option}>{option}</option>{/each}
-          </select>
+          <SelectInput {id} name={field.name} label={field.name} placeholder="Choose..." options={(field.options ?? []).map(option => ({ value: option, label: option }))} bind:value={bindings[field.name]} />
         {:else}
-          <input bind:value={bindings[field.name]} placeholder={field.kind === 'range' ? `1-${field.max ?? ''}` : 'Enter value'} />
+          <TextInput {id} name={field.name} label={field.name} placeholder={field.kind === 'range' ? `1-${field.max ?? ''}` : 'Enter value'} bind:value={bindings[field.name]} />
         {/if}
-      </label>
     {/each}
-    {#each taxonomy.attributes as attribute}
-      <label>{attribute.label}{attribute.required ? ' *' : ''}
+    {#each taxonomy.attributes as attribute, index}
+      {@const id = inputId('attribute', attribute.id, index)}
         {#if attribute.valueType === 'enum'}
-          <select bind:value={attributes[attribute.id]} required={attribute.required}>
-            <option value="">Choose...</option>
-            {#each attribute.enumValues ?? [] as option}<option value={option}>{option}</option>{/each}
-          </select>
-        {:else}<input bind:value={attributes[attribute.id]} required={attribute.required} placeholder={attribute.unit ?? 'Enter value'} />{/if}
-      </label>
+          <SelectInput {id} name={attribute.id} label={attribute.label} required={attribute.required} placeholder="Choose..." options={(attribute.enumValues ?? []).map(option => ({ value: option, label: option }))} bind:value={attributes[attribute.id]} />
+        {:else}<TextInput {id} name={attribute.id} label={attribute.label} required={attribute.required} placeholder={attribute.unit ?? 'Enter value'} bind:value={attributes[attribute.id]} />{/if}
     {/each}
     <PrimitiveButton type="submit" disabled={saving}>{saving ? 'Checking...' : 'Preview draft'}</PrimitiveButton>
   </form>
@@ -80,3 +79,15 @@
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>
+
+<style>
+  .authoring-panel :global(.primitive-field label) {
+    color: var(--muted);
+    font-size: .8rem;
+    font-weight: 400;
+  }
+
+  .authoring-panel :global(.primitive-input) {
+    padding: .65rem .7rem;
+  }
+</style>

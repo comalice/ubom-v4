@@ -7,6 +7,7 @@
   export let options: SelectOption[] = []
   export let value = ''
   export let name = ''
+  export let placeholder = ''
   export let help = ''
   export let required = false
   export let error = ''
@@ -16,6 +17,7 @@
 
 <FormField {id} {label} {help} {required} {error} {invalid} {disabled} let:describedBy>
   <select class="primitive-input" {id} {name} {required} {disabled} aria-describedby={describedBy || undefined} aria-invalid={invalid || Boolean(error) || undefined} bind:value>
+    {#if placeholder}<option value="">{placeholder}</option>{/if}
     {#each options as option}<option value={option.value}>{option.label}</option>{/each}
   </select>
 </FormField>

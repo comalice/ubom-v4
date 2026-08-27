@@ -19,6 +19,13 @@
   export let onChildDragOver: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
   export let onChildDragLeave: (() => void) | undefined
   export let onChildDrop: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
+  export let showRuleDropZone = false
+  export let ruleDropLabel = 'Drop a rule here'
+  export let ruleContainer = ''
+  export let ruleDropMode: DropZoneMode = 'inactive'
+  export let onRuleDragOver: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
+  export let onRuleDragLeave: (() => void) | undefined
+  export let onRuleDrop: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
   export let layout: TaxonomyCategoryBlockLayout = 'catalogue'
   export let container = ''
   export let dragData: TaxonomyDragPayload | undefined = undefined
@@ -33,12 +40,14 @@
       <label>Node ID<input value={nodeId} /></label>
     </div>
     <div class="taxonomy-block-meta"><span>{predicateLabel}</span><strong>{predicate}</strong></div>
+    {#if showRuleDropZone}<div class="taxonomy-category-rules"><span class="taxonomy-category-rules-label">Rules</span><DropZone variant="slot" mode={ruleDropMode} className="taxonomy-rule-drop-zone" container={ruleContainer} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'rule'} onDragOver={onRuleDragOver} onDragLeave={onRuleDragLeave} onDrop={onRuleDrop} ariaLabel={ruleDropLabel} /></div>{/if}
     {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span><DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} /><slot name="children" /></div>{/if}
   {:else}
     <div class="taxonomy-block-body">
       <label>Label<input value={label} aria-label="Category label" /></label>
       <label>Node ID<input value={nodeId} aria-label="Category node ID" /></label>
       <div class="taxonomy-block-rule"><span>{predicateLabel}</span><strong>{predicate}</strong></div>
+      {#if showRuleDropZone}<div class="taxonomy-category-rules"><span class="taxonomy-category-rules-label">Rules</span><DropZone variant="slot" mode={ruleDropMode} className="taxonomy-rule-drop-zone" container={ruleContainer} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'rule'} onDragOver={onRuleDragOver} onDragLeave={onRuleDragLeave} onDrop={onRuleDrop} ariaLabel={ruleDropLabel} /></div>{/if}
       {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span><DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} /><slot name="children" /></div>{/if}
     </div>
   {/if}

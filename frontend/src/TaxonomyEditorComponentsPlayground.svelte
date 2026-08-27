@@ -30,7 +30,7 @@
   <div class="grammar-basic-example-list">
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[0]} variant="catalogue" />
-        <TaxonomyCategoryBlock title="Resistors" summary="category = RES" label="Resistors" nodeId="resistors" predicate="category = RES" showChildren addChildLabel="Drop a category here">
+        <TaxonomyCategoryBlock title="Resistors" summary="category = RES" label="Resistors" nodeId="resistors" predicate="category = RES" showRuleDropZone showChildren addChildLabel="Drop a category here">
           <svelte:fragment slot="children">
             <TaxonomyCategoryBlock title="High Power" summary="number = 100..199" label="High Power" nodeId="high-power" predicate="number = 100..199" showChildren addChildLabel="Drop a category here" />
           </svelte:fragment>

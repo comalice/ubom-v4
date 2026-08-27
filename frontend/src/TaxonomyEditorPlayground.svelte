@@ -1,11 +1,8 @@
 <script lang="ts">
+  import TaxonomyExampleTile, { taxonomyTileModels } from './TaxonomyExampleTile.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
 
-  const paletteItems = [
-    { title: 'Category', description: 'Classify this branch', color: 'var(--accent)' },
-    { title: 'Rule', description: 'Match a grammar field', color: '#7655a8' },
-    { title: 'Attribute', description: 'Assign a part property', color: '#337d91' },
-  ]
+  const paletteItems = Object.values(taxonomyTileModels)
 </script>
 
 <section class="taxonomy-editor-playground" aria-labelledby="taxonomy-editor-heading">
@@ -15,13 +12,10 @@
 
   <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
     <div class="taxonomy-editor-palette">
-      <span class="mock-section-label">Taxonomy palette</span>
+        <span class="mock-section-label">Taxonomy palette</span>
       <div class="taxonomy-editor-palette-grid">
         {#each paletteItems as item}
-          <button class="taxonomy-palette-item" style={`--taxonomy-color: ${item.color}`} type="button">
-            <i aria-hidden="true"></i>
-            <span><strong>{item.title}</strong><small>{item.description}</small></span>
-          </button>
+          <TaxonomyExampleTile tile={item} variant="palette" />
         {/each}
       </div>
       <p class="taxonomy-palette-help">Drag taxonomy blocks onto the grammar. The grammar remains an immutable map of available fields.</p>

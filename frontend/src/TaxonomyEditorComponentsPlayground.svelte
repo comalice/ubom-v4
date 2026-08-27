@@ -2,7 +2,14 @@
   import BlockShell from './BlockShell.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import TableFrame from './TableFrame.svelte'
+  import TaxonomyExampleTile, { taxonomyTileModels } from './TaxonomyExampleTile.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
+
+  const catalogueTiles = [
+    { ...taxonomyTileModels.category, description: 'Classify a grammar branch' },
+    taxonomyTileModels.rule,
+    taxonomyTileModels.attribute,
+  ]
 </script>
 
 <p class="eyebrow">Taxonomy editor components</p>
@@ -18,15 +25,29 @@
 <section class="block-examples taxonomy-block-examples" aria-labelledby="taxonomy-category-heading">
   <span class="mock-section-label" id="taxonomy-category-heading">Category block</span>
   <div class="grammar-basic-example-list">
-    <article class="grammar-basic-example">
-      <div class="taxonomy-example-tile taxonomy-example-tile-category"><span class="taxonomy-example-dot" aria-hidden="true"></span><span><strong>Category</strong><small>Classify a grammar branch</small></span></div>
-      <BlockShell title="category" summary="Resistors" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
-        <div class="taxonomy-block-body"><label>Label<input value="Resistors" aria-label="Category label" /></label><label>Node ID<input value="resistors" aria-label="Category node ID" /></label><div class="taxonomy-block-rule"><span>Rule</span><strong>category = A</strong></div><button class="taxonomy-block-add" type="button">+ add child category</button></div>
-      </BlockShell>
-      <div class="grammar-block-meta"><p class="grammar-block-description">A named classification node attached to a grammar location.</p><div class="grammar-block-example"><span>Example</span><code>Resistors</code></div></div>
-    </article>
-  </div>
-</section>
+      <article class="grammar-basic-example">
+        <TaxonomyExampleTile tile={catalogueTiles[0]} variant="catalogue" />
+        <BlockShell title="category" summary="Resistors" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
+          <div class="taxonomy-block-body"><label>Label<input value="Resistors" aria-label="Category label" /></label><label>Node ID<input value="resistors" aria-label="Category node ID" /></label><div class="taxonomy-block-rule"><span>Rule</span><strong>category = A</strong></div><button class="taxonomy-block-add" type="button">+ add child category</button></div>
+        </BlockShell>
+        <div class="grammar-block-meta"><p class="grammar-block-description">A named classification node attached to a grammar location.</p><div class="grammar-block-example"><span>Example</span><code>Resistors</code></div></div>
+      </article>
+      <article class="grammar-basic-example">
+        <TaxonomyExampleTile tile={catalogueTiles[1]} variant="catalogue" />
+        <BlockShell title="rule" summary="category = A" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
+          <div class="taxonomy-block-body"><label>Grammar field<select aria-label="Rule grammar field"><option>category</option><option>number</option></select></label><label>Match type<select aria-label="Rule match type"><option>Exact value</option><option>Numeric range</option></select></label><label>Value<input value="A" aria-label="Rule value" /></label><div class="taxonomy-block-rule"><span>Predicate</span><strong>category = A</strong></div></div>
+        </BlockShell>
+        <div class="grammar-block-meta"><p class="grammar-block-description">A predicate that narrows the meaning of a taxonomy branch using a captured field.</p><div class="grammar-block-example"><span>Example</span><code>category = A</code></div></div>
+      </article>
+      <article class="grammar-basic-example">
+        <TaxonomyExampleTile tile={catalogueTiles[2]} variant="catalogue" />
+        <BlockShell title="attribute" summary="Resistance value" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
+          <div class="taxonomy-block-body"><label>Attribute<select aria-label="Assigned attribute"><option>Resistance value</option><option>Tolerance</option><option>Footprint</option></select></label><label>Value<input value="10" aria-label="Attribute value" /></label><label class="taxonomy-checkbox"><input type="checkbox" checked aria-label="Attribute required" /> Required</label><div class="taxonomy-block-rule"><span>Type</span><strong>decimal · ohm</strong></div></div>
+        </BlockShell>
+        <div class="grammar-block-meta"><p class="grammar-block-description">A domain property assigned to every part classified by this taxonomy node.</p><div class="grammar-block-example"><span>Example</span><code>10 ohm</code></div></div>
+      </article>
+    </div>
+  </section>
 
 <section class="block-examples taxonomy-attribute-inspector" aria-labelledby="taxonomy-attributes-heading">
   <div class="taxonomy-inspector-title"><div><span class="mock-section-label" id="taxonomy-attributes-heading">Attributes for Resistors</span><h3>Assigned part properties</h3></div><span class="taxonomy-editor-count">selected grammar node: category</span></div>

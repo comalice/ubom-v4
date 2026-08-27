@@ -1,8 +1,6 @@
 <script lang="ts">
-  import TaxonomyExampleTile, { taxonomyTileModels } from './TaxonomyExampleTile.svelte'
+  import TaxonomyPalette from './TaxonomyPalette.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
-
-  const paletteItems = Object.values(taxonomyTileModels)
 </script>
 
 <section class="taxonomy-editor-playground" aria-labelledby="taxonomy-editor-heading">
@@ -11,15 +9,7 @@
   <p class="taxonomy-editor-intro">Build a classification overlay against an existing grammar. The grammar is fixed; taxonomy nodes are added at the drop zones.</p>
 
   <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
-    <div class="taxonomy-editor-palette">
-        <span class="mock-section-label">Taxonomy palette</span>
-      <div class="taxonomy-editor-palette-grid">
-        {#each paletteItems as item}
-          <TaxonomyExampleTile tile={item} variant="palette" />
-        {/each}
-      </div>
-      <p class="taxonomy-palette-help">Drag taxonomy blocks onto the grammar. The grammar remains an immutable map of available fields.</p>
-    </div>
+    <TaxonomyPalette />
 
     <section class="taxonomy-editor-canvas" aria-labelledby="taxonomy-canvas-heading">
       <div class="taxonomy-editor-heading">

@@ -27,10 +27,10 @@
 </script>
 
 {#if variant === 'palette'}
-  <button class="taxonomy-palette-item" style={`--taxonomy-color: ${tile.color}`} type="button" use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
+  <div class="taxonomy-palette-item" style={`--taxonomy-color: ${tile.color}`} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
     <i aria-hidden="true"></i>
     <span><strong>{tile.title}</strong><small>{tile.description}</small></span>
-  </button>
+  </div>
 {:else}
   <div class={`taxonomy-example-tile taxonomy-example-tile-${tile.type}`} style={`--taxonomy-color: ${tile.color}`}>
     <span class="taxonomy-example-dot" aria-hidden="true"></span>

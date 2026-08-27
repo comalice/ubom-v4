@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { droppable, type DragDropState } from '@thisux/sveltednd'
-  import { clearDndSession, dndSession, type DndSession } from './DndSession'
+  import { dndState, droppable, type DragDropState } from '@thisux/sveltednd'
   import InactiveDropMarker from './InactiveDropMarker.svelte'
   import MoveDropMarker from './MoveDropMarker.svelte'
   import NewDropMarker from './NewDropMarker.svelte'
@@ -23,27 +21,19 @@
   export let onDragLeave: (() => void) | undefined
   export let onDrop: ((state: DragDropState<any>) => void) | undefined
   export let getMode: DropZoneModeResolver | undefined
-  export let accepts: ((session: DndSession) => boolean) | undefined
+  export let accepts: ((state: DragDropState<any>) => boolean) | undefined
 
   let over = false
   let dragMode: DropZoneMode = 'inactive'
   $: interactive = Boolean(container && (onDragOver || onDragLeave || onDrop))
-  $: session = $dndSession
-  $: sessionAccepted = Boolean(session && (!accepts || accepts(session)))
   $: staticMode = !interactive && mode !== 'inactive' ? mode : 'inactive'
-  $: currentMode = interactive
-    ? (over ? dragMode : sessionAccepted ? (session?.kind === 'new' ? 'new' : 'move') : 'inactive')
-    : mode
+  $: currentMode = interactive ? (over ? dragMode : 'inactive') : mode
   $: dropLabel = ariaLabel || label
 
   function handleDragOver(state: DragDropState<any>) {
     over = true
     const nextMode = getMode?.(state) ?? (state.draggedItem?.kind === 'palette' ? 'new' : 'move')
-    const dragSession: DndSession = {
-      kind: nextMode === 'new' ? 'new' : 'move',
-      sourceContainer: state.sourceContainer,
-    }
-    dragMode = accepts && !accepts(dragSession) ? 'inactive' : nextMode
+    dragMode = accepts && !accepts(state) ? 'inactive' : nextMode
     onDragOver?.(state)
   }
 
@@ -56,36 +46,14 @@
   function handleDrop(state: DragDropState<any>) {
     onDrop?.(state)
     handleDragLeave()
-    clearDndSession()
+    // The DnD library resets its global state after the drop callback returns.
   }
-
-  onMount(() => {
-    const handleDragStart = (event: Event) => {
-      const source = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-dnd-kind]')
-      if (!source) return
-      const kind = source.dataset.dndKind === 'new' ? 'new' : 'move'
-      dndSession.set({ kind, sourceContainer: source.dataset.dndContainer ?? '' })
-    }
-    const clearDragState = () => handleDragLeave()
-    document.addEventListener('dragstart', handleDragStart)
-    document.addEventListener('dragend', clearDragState)
-    document.addEventListener('dragend', clearDndSession)
-    document.addEventListener('pointercancel', clearDragState)
-    document.addEventListener('pointercancel', clearDndSession)
-    return () => {
-      document.removeEventListener('dragstart', handleDragStart)
-      document.removeEventListener('dragend', clearDragState)
-      document.removeEventListener('dragend', clearDndSession)
-      document.removeEventListener('pointercancel', clearDragState)
-      document.removeEventListener('pointercancel', clearDndSession)
-    }
-  })
 
 </script>
 
 <div
   class={`drop-zone drop-zone-${variant} ${className}`}
-  class:drop-zone-available={currentMode !== 'inactive'}
+  class:drop-zone-available={currentMode !== 'inactive' || (dndState.isDragging && !over && (!accepts || accepts(dndState)))}
   class:drop-zone-new-hover={over && currentMode === 'new'}
   class:drop-zone-move-hover={over && currentMode === 'move'}
   class:drop-zone-static-new={staticMode === 'new'}
@@ -97,7 +65,7 @@
 >
   {#if currentMode === 'new'}<i class="drop-zone-bar" aria-hidden="true"></i><NewDropMarker />
   {:else if currentMode === 'move'}<i class="drop-zone-bar" aria-hidden="true"></i><MoveDropMarker />
-  {:else if session && accepts && sessionAccepted}<i class="drop-zone-bar" aria-hidden="true"></i><InactiveDropMarker />{/if}
+  {:else if dndState.isDragging && !over && (!accepts || accepts(dndState))}<i class="drop-zone-bar" aria-hidden="true"></i><InactiveDropMarker />{/if}
   {#if showHint}<span class="drop-zone-hint" aria-hidden="true">+</span>{/if}
   {#if showLabel}<span class="drop-zone-label">{label}</span>{/if}
   <slot />

@@ -48,3 +48,17 @@ export function taxonomyTargetContainer(targetId: string) {
 export function flattenTaxonomyDraft(node: TaxonomyDraftNode): TaxonomyPlacement[] {
   return [...node.placements, ...node.children.flatMap(flattenTaxonomyDraft)]
 }
+
+export function replaceTaxonomyDraftPlacements(node: TaxonomyDraftNode, placements: TaxonomyPlacement[]): TaxonomyDraftNode {
+  const existingIDs = new Set(flattenTaxonomyDraft(node).map((placement) => placement.id))
+  return replace(node, placements, existingIDs)
+}
+
+function replace(node: TaxonomyDraftNode, placements: TaxonomyPlacement[], existingIDs: Set<string>): TaxonomyDraftNode {
+  const nodeIDs = new Set(node.placements.map((placement) => placement.id))
+  return {
+    ...node,
+    placements: placements.filter((placement) => nodeIDs.has(placement.id) || (!existingIDs.has(placement.id) && node.id === 'taxonomy-root')),
+    children: node.children.map((child) => replace(child, placements, existingIDs)),
+  }
+}

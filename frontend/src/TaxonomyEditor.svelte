@@ -1,20 +1,22 @@
 <script lang="ts">
   import TaxonomyPalette from './TaxonomyPalette.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
-  import { flattenTaxonomyDraft, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { flattenTaxonomyDraft, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
   let taxonomyDraft: TaxonomyDraftNode = {
-    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [{
-      id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
-      label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
-    }], children: [],
+    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], children: [{
+      id: 'high-power', label: 'High Power', targetId: 'number', placements: [{
+        id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
+        label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
+      }], children: [],
+    }],
   }
   $: placements = flattenTaxonomyDraft(taxonomyDraft)
 
   function updatePlacements(next: TaxonomyPlacement[]) {
-    taxonomyDraft = { ...taxonomyDraft, placements: next }
+    taxonomyDraft = replaceTaxonomyDraftPlacements(taxonomyDraft, next)
   }
 
   function newPlacement(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, targetId: string): TaxonomyPlacement {
@@ -29,8 +31,17 @@
     if (!item) return
     const targetPlacements = placements.filter((placement) => placement.targetId === targetId)
     if (item.kind === 'palette') {
+      const placement = newPlacement(item, targetId)
+      if (item.taxonomyType === 'category') {
+        const targetChildren = taxonomyDraft.children.filter((child) => child.targetId === targetId)
+        const nextChildren = [...taxonomyDraft.children]
+        const childIndex = nextChildren.findIndex((child) => child === targetChildren[targetIndex])
+        nextChildren.splice(childIndex < 0 ? nextChildren.length : childIndex, 0, { id: placement.id, label: placement.label ?? placement.title, targetId, placements: [placement], children: [] })
+        taxonomyDraft = { ...taxonomyDraft, children: nextChildren }
+        return
+      }
       const next = [...targetPlacements]
-      next.splice(targetIndex, 0, newPlacement(item, targetId))
+      next.splice(targetIndex, 0, placement)
       updatePlacements([...placements.filter((placement) => placement.targetId !== targetId), ...next])
       return
     }

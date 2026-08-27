@@ -17,12 +17,17 @@
 </script>
 
 <script lang="ts">
+  import { draggable } from '@thisux/sveltednd'
+  import type { TaxonomyDragPayload } from './TaxonomyEditorModel'
   export let tile: TaxonomyTile
   export let variant: 'palette' | 'catalogue'
+  export let container = ''
+  export let dragData: TaxonomyDragPayload | undefined = undefined
+  export let onDragEnd: () => void = () => {}
 </script>
 
 {#if variant === 'palette'}
-  <button class="taxonomy-palette-item" style={`--taxonomy-color: ${tile.color}`} type="button">
+  <button class="taxonomy-palette-item" style={`--taxonomy-color: ${tile.color}`} type="button" use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
     <i aria-hidden="true"></i>
     <span><strong>{tile.title}</strong><small>{tile.description}</small></span>
   </button>

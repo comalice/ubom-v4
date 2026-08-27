@@ -644,6 +644,12 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-kind-field { color: #7655a8; }
 .taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; color: var(--accent); text-align: center; background: var(--accent-light); border: 1px dashed var(--accent); border-radius: .25rem; font: .62rem ui-monospace, monospace; }
 .taxonomy-drop-zone-filled { place-items: stretch; }
+.taxonomy-placed-attribute { display: flex; align-items: center; gap: .5rem; padding: .55rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; text-align: left; cursor: grab; }
+.taxonomy-placed-attribute > span:nth-child(2) { flex: 1; min-width: 0; }
+.taxonomy-placed-attribute strong, .taxonomy-placed-attribute small { display: block; }
+.taxonomy-placed-attribute strong { font: .7rem ui-monospace, monospace; }
+.taxonomy-placed-attribute small { margin-top: .15rem; color: var(--muted); font-size: .62rem; }
+.taxonomy-placed-attribute button { color: var(--muted); background: none; border: 0; cursor: pointer; }
 .taxonomy-grammar-drop-zone { min-height: 3rem; }
 .taxonomy-grammar-drop-zone:not(.dnd-insert-zone-active) { min-height: 1.5rem; padding: .15rem; color: transparent; background: transparent; border-color: transparent; }
 .taxonomy-grammar-drop-zone:not(.dnd-insert-zone-active) .taxonomy-drop-label { display: none; }

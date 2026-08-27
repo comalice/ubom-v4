@@ -1,23 +1,24 @@
 <script lang="ts">
   import TaxonomyGrammarDropTarget from './TaxonomyGrammarDropTarget.svelte'
-  import { taxonomyGrammarDropTargetFixtures } from './TaxonomyEditorFixtures'
-  import type { DropZoneMode } from './DropZone.svelte'
+  import type { DragDropState } from '@thisux/sveltednd'
+  import type { TaxonomyDragPayload, TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { StructureNode } from './StructureNode'
 
   export let node: StructureNode
   export let depth = 0
-
-  $: dropTargetFixture = taxonomyGrammarDropTargetFixtures[String(node.id)]
-  $: dropMode = dropTargetFixture?.dropMode ?? (node.id === 'grammar-root' ? 'new' : 'inactive') as DropZoneMode
+  export let placements: TaxonomyPlacement[] = []
+  export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string) => void = () => {}
+  export let onRemove: (placementId: string) => void = () => {}
+  export let onDragEnd: () => void = () => {}
 </script>
 
 <li>
   <span class="dnd-structure-node">{node.label}<small>{node.summary}</small></span>
-  <TaxonomyGrammarDropTarget {node} {depth} filled={dropTargetFixture?.filled ?? false} {dropMode} categoryLabel={dropTargetFixture?.categoryLabel ?? ''} categoryBlock={dropTargetFixture?.categoryBlock} />
+  <TaxonomyGrammarDropTarget {node} {depth} placements={placements.filter((placement) => placement.targetId === String(node.id))} {onDrop} {onRemove} {onDragEnd} />
   {#if node.children.length}
     <ul class="dnd-structure-tree">
       {#each node.children as child (child.id)}
-        <svelte:self node={child} depth={depth + 1} />
+        <svelte:self node={child} depth={depth + 1} {placements} {onDrop} {onRemove} {onDragEnd} />
       {/each}
     </ul>
   {/if}

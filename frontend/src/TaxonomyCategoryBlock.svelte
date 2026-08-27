@@ -1,5 +1,6 @@
 <script lang="ts">
   import BlockShell from './BlockShell.svelte'
+  import type { TaxonomyDragPayload } from './TaxonomyEditorModel'
 
   export type TaxonomyCategoryBlockLayout = 'catalogue' | 'tree'
 
@@ -11,9 +12,13 @@
   export let predicateLabel: string = 'Rule'
   export let addChildLabel: string = '+ add child category'
   export let layout: TaxonomyCategoryBlockLayout = 'catalogue'
+  export let container = ''
+  export let dragData: TaxonomyDragPayload | undefined = undefined
+  export let onDragEnd: () => void = () => {}
+  export let onRemove: (() => void) | undefined = undefined
 </script>
 
-<BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
+<BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} {onDragEnd} {onRemove}>
   {#if layout === 'tree'}
     <div class="taxonomy-block-fields">
       <label>Label<input value={label} /></label>

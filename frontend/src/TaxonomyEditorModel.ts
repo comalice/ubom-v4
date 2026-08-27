@@ -54,6 +54,16 @@ export function replaceTaxonomyDraftPlacements(node: TaxonomyDraftNode, placemen
   return replace(node, placements, existingIDs)
 }
 
+export function findTaxonomyDraftNode(node: TaxonomyDraftNode, placementID: string): TaxonomyDraftNode | undefined {
+  if (node.placements.some((placement) => placement.id === placementID)) return node
+  return node.children.map((child) => findTaxonomyDraftNode(child, placementID)).find(Boolean)
+}
+
+export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string, child: TaxonomyDraftNode): TaxonomyDraftNode {
+  if (node.id === parentID) return { ...node, children: [...node.children, child] }
+  return { ...node, children: node.children.map((current) => addTaxonomyDraftChild(current, parentID, child)) }
+}
+
 function replace(node: TaxonomyDraftNode, placements: TaxonomyPlacement[], existingIDs: Set<string>): TaxonomyDraftNode {
   const nodeIDs = new Set(node.placements.map((placement) => placement.id))
   return {

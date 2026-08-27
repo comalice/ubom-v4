@@ -1,7 +1,7 @@
 <script lang="ts">
   import TaxonomyPalette from './TaxonomyPalette.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
-  import { flattenTaxonomyDraft, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { addTaxonomyDraftChild, flattenTaxonomyDraft, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
@@ -54,6 +54,13 @@
     updatePlacements([...placements.filter((placement) => placement.targetId !== existing.targetId && placement.targetId !== targetId), ...next])
   }
 
+  function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string) {
+    const item = state.draggedItem
+    if (!item || item.kind !== 'palette' || item.taxonomyType !== 'category') return
+    const placement = newPlacement(item, parentID)
+    taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], children: [] })
+  }
+
   function removePlacement(placementId: string) {
     updatePlacements(placements.filter((placement) => placement.id !== placementId))
   }
@@ -71,7 +78,7 @@
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} onDrop={handleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">

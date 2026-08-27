@@ -15,7 +15,7 @@
 </script>
 
 <li>
-  <span class="dnd-structure-node">{node.label}<small>{node.summary}</small></span>
+  <span class="dnd-structure-node">{#if node.blockType === 'binding'}<span class="taxonomy-grammar-kind">binding</span>{/if}{node.label}<small>{node.summary}</small></span>
     <TaxonomyGrammarDropTarget {node} {taxonomyDraft} placements={placements.filter((placement) => placement.targetId === String(node.id))} {onDrop} {onChildDrop} {onRemove} {onDragEnd} />
   {#if node.children.length}
     <ul class="dnd-structure-tree">

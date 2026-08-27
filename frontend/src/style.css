@@ -618,7 +618,7 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-grammar-label { display: flex; align-items: baseline; gap: .55rem; min-height: 2rem; padding: .45rem .55rem; background: var(--surface); border: 1px solid var(--hairline-light); border-radius: .2rem; }
 .taxonomy-grammar-label strong { color: var(--ink); font-size: .78rem; font-weight: 500; }
 .taxonomy-grammar-label code, .taxonomy-overlay-card code { color: var(--muted); font: .62rem ui-monospace, monospace; }
-.taxonomy-grammar-kind { color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
+.taxonomy-grammar-kind { margin-right: .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .taxonomy-kind-field { color: #7655a8; }
 .taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; text-align: center; font: .62rem ui-monospace, monospace; }
 .taxonomy-placed-attribute { display: flex; align-items: center; gap: .5rem; padding: .55rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; text-align: left; cursor: grab; }

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { getSeqDefs, type SeqDefView } from './api'
   import AsyncState from './AsyncState.svelte'
+  import NavigationCardList, { type NavigationCardItem } from './NavigationCardList.svelte'
   import SectionHeading from './SectionHeading.svelte'
 
   let definitions: SeqDefView[] = []
@@ -33,12 +34,10 @@
 {:else if definitions.length === 0}
   <AsyncState state="empty" message="No sequence definitions." />
 {:else}
-  <div class="settings-list">
-    {#each definitions as definition}
-      <a class="settings-item" href={`/settings/sequence-definitions/${encodeURIComponent(definition.id)}`}>
-         <span><strong>{definition.id}</strong><small>{definition.definitionId} · v{definition.version}</small></span>
-        <span class="card-arrow" aria-hidden="true">→</span>
-      </a>
-    {/each}
-  </div>
+  {@const items: NavigationCardItem[] = definitions.map((definition) => ({
+    label: definition.id,
+    description: `${definition.definitionId} · v${definition.version}`,
+    href: `/settings/sequence-definitions/${encodeURIComponent(definition.id)}`,
+  }))}
+  <NavigationCardList {items} arrowAriaHidden />
 {/if}

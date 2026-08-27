@@ -1,4 +1,6 @@
 <script lang="ts">
+  import FormField from './FormField.svelte'
+
   export let id: string
   export let label: string
   export let value = ''
@@ -8,10 +10,11 @@
   export let placeholder = ''
   export let help = ''
   export let required = false
+  export let error = ''
+  export let invalid = false
+  export let disabled = false
 </script>
 
-<div class="primitive-field">
-  <label for={id}>{label}{#if required}<span aria-hidden="true">*</span>{/if}</label>
-  <input class="primitive-input" {id} {name} {type} {min} {placeholder} {required} bind:value />
-  {#if help}<small>{help}</small>{/if}
-</div>
+<FormField {id} {label} {help} {required} {error} {invalid} {disabled} let:describedBy>
+  <input class="primitive-input" {id} {name} {type} {min} {placeholder} {required} {disabled} aria-describedby={describedBy || undefined} aria-invalid={invalid || Boolean(error) || undefined} bind:value />
+</FormField>

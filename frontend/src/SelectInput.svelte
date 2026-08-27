@@ -1,4 +1,6 @@
 <script lang="ts">
+  import FormField from './FormField.svelte'
+
   export type SelectOption = { value: string; label: string }
   export let id: string
   export let label: string
@@ -6,12 +8,14 @@
   export let value = ''
   export let name = ''
   export let help = ''
+  export let required = false
+  export let error = ''
+  export let invalid = false
+  export let disabled = false
 </script>
 
-<div class="primitive-field">
-  <label for={id}>{label}</label>
-  <select class="primitive-input" {id} {name} bind:value>
+<FormField {id} {label} {help} {required} {error} {invalid} {disabled} let:describedBy>
+  <select class="primitive-input" {id} {name} {required} {disabled} aria-describedby={describedBy || undefined} aria-invalid={invalid || Boolean(error) || undefined} bind:value>
     {#each options as option}<option value={option.value}>{option.label}</option>{/each}
   </select>
-  {#if help}<small>{help}</small>{/if}
-</div>
+</FormField>

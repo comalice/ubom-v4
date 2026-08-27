@@ -1,8 +1,10 @@
 <script lang="ts">
+  import BlockShell from './BlockShell.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
   import TaxonomyExampleTile, { taxonomyTileModels } from './TaxonomyExampleTile.svelte'
+  import { taxonomyCategoryExample, taxonomyRuleExample } from './TaxonomyEditorFixtures'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
   import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
 
@@ -28,13 +30,13 @@
   <div class="grammar-basic-example-list">
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[0]} variant="catalogue" />
-        <TaxonomyCategoryBlock title="category" summary="Resistors" label="Resistors" nodeId="resistors" predicate="category = A" />
-        <div class="grammar-block-meta"><p class="grammar-block-description">A named classification node attached to a grammar location.</p><div class="grammar-block-example"><span>Example</span><code>Resistors</code></div></div>
+        <TaxonomyCategoryBlock title={taxonomyCategoryExample.title} summary={taxonomyCategoryExample.summary} label={taxonomyCategoryExample.label} nodeId={taxonomyCategoryExample.nodeId} predicate={taxonomyCategoryExample.predicate} />
+        <div class="grammar-block-meta"><p class="grammar-block-description">{taxonomyCategoryExample.description}</p><div class="grammar-block-example"><span>Example</span><code>{taxonomyCategoryExample.example}</code></div></div>
       </article>
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[1]} variant="catalogue" />
-        <TaxonomyRuleBlock title="rule" summary="category = A" predicate={{ kind: 'exact', field: 'category', value: 'A' }} />
-        <div class="grammar-block-meta"><p class="grammar-block-description">A predicate that narrows the meaning of a taxonomy branch using a captured field.</p><div class="grammar-block-example"><span>Example</span><code>category = A</code></div></div>
+        <TaxonomyRuleBlock title={taxonomyRuleExample.title} summary={taxonomyRuleExample.summary} predicate={taxonomyRuleExample.predicate} />
+        <div class="grammar-block-meta"><p class="grammar-block-description">{taxonomyRuleExample.description}</p><div class="grammar-block-example"><span>Example</span><code>{taxonomyRuleExample.example}</code></div></div>
       </article>
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[2]} variant="catalogue" />

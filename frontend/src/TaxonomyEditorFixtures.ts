@@ -9,3 +9,43 @@ export const grammarNodes: StructureNode[] = [
     { id: 'number', label: 'number', blockType: 'binding', summary: 'range: 0000..9999', children: [] },
   ] },
 ]
+
+export type TaxonomyCategoryExample = {
+  title: string
+  summary: string
+  label: string
+  nodeId: string
+  predicate: string
+  description: string
+  example: string
+}
+
+export const taxonomyCategoryExample: TaxonomyCategoryExample = {
+  title: 'category',
+  summary: 'Resistors',
+  label: 'Resistors',
+  nodeId: 'resistors',
+  predicate: 'category = A',
+  description: 'A named classification node attached to a grammar location.',
+  example: 'Resistors',
+}
+
+export type TaxonomyRulePredicateExample =
+  | { kind: 'exact'; field: string; value: string }
+  | { kind: 'numeric-range'; field: string; min: number; max: number }
+
+export type TaxonomyRuleExample = {
+  title: string
+  summary: string
+  predicate: TaxonomyRulePredicateExample
+  description: string
+  example: string
+}
+
+export const taxonomyRuleExample: TaxonomyRuleExample = {
+  title: 'rule',
+  summary: 'category = A',
+  predicate: { kind: 'exact', field: 'category', value: 'A' },
+  description: 'A predicate that narrows the meaning of a taxonomy branch using a captured field.',
+  example: 'category = A',
+}

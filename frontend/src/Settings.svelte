@@ -1,4 +1,6 @@
-  <script lang="ts">
+<script lang="ts">
+  import SectionHeading from './SectionHeading.svelte'
+
   const items = [
     { label: 'Sequence definitions', description: 'Create and inspect immutable sequence languages.', href: '/settings/sequence-definitions', available: true },
     { label: 'Taxonomies', description: 'Organize parts and assign their attributes.', href: '', available: false },
@@ -7,9 +9,7 @@
   ]
 </script>
 
-<p class="eyebrow">Settings</p>
-<h1>Settings</h1>
-<p class="muted settings-intro">Rules and connections that shape the UBOM.</p>
+<SectionHeading eyebrow="Settings" title="Settings" description="Rules and connections that shape the UBOM." />
 <div class="settings-list">
   {#each items as item}
     {#if item.available}

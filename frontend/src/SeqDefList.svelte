@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { getSeqDefs, type SeqDefView } from './api'
   import AsyncState from './AsyncState.svelte'
+  import SectionHeading from './SectionHeading.svelte'
 
   let definitions: SeqDefView[] = []
   let loading = true
@@ -20,9 +21,7 @@
 
 <div class="seq-def-list-header">
   <div>
-    <p class="eyebrow">Sequence definitions</p>
-    <h1>Sequence definitions</h1>
-    <p class="muted settings-intro">Immutable languages used to describe part numbers.</p>
+    <SectionHeading eyebrow="Sequence definitions" title="Sequence definitions" description="Immutable languages used to describe part numbers." />
   </div>
   <a class="seq-def-new-link" href="/settings/sequence-definitions/new">New</a>
 </div>

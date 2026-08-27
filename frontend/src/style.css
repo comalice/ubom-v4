@@ -212,25 +212,22 @@ ul { line-height: 1.8; }
 .mock-results span { overflow: hidden; padding: .15rem 0; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
 .mock-branch-divider { grid-column: 1 / -1; display: flex; align-items: baseline; gap: .6rem; margin: .7rem 0 .2rem; padding-top: .5rem; color: var(--accent); border-top: 1px solid var(--hairline); font: .68rem ui-monospace, monospace; }
 .mock-branch-divider small { color: var(--muted); font: .6rem ui-monospace, monospace; }
-.grammar-editor-drop-target { position: relative; display: grid; min-height: 2.25rem; place-items: center; color: var(--accent); }
-.grammar-editor-drop-target > .component-mark { opacity: .28; transform: scale(.75); transition: opacity .12s, transform .12s; }
-.grammar-editor-drop-target-over > .component-mark { opacity: 1; transform: scale(1); }
-.grammar-editor-drop-target > .component-mark.component-move { display: none; }
-.grammar-editor-drop-target:not(.grammar-editor-drop-target-palette) > .component-mark.component-new { display: none; }
-.grammar-editor-drop-target-over:not(.grammar-editor-drop-target-palette) > .component-mark.component-move { display: grid; }
-.grammar-editor-drop-target-labeled { display: block; }
-.grammar-editor-drop-target-label { display: block; width: 100%; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
-.grammar-editor-drop-target-over .grammar-editor-drop-target-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
 .drop-zone-slot { position: relative; display: grid; min-height: 2.25rem; place-items: center; color: var(--accent); }
-.drop-zone-slot > .component-mark { opacity: .28; transform: scale(.75); transition: opacity .12s, transform .12s; }
-.drop-zone-active > .component-mark { opacity: 1; transform: scale(1); }
-.drop-zone-slot:not(.drop-zone-new) > .dnd-insert-marker-new { display: none; }
-.drop-zone-slot:not(.drop-zone-move) > .dnd-insert-marker-move { display: none; }
-.drop-zone-label { display: block; width: 100%; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
+.drop-zone-slot > .component-mark { position: absolute; top: 50%; right: 0; left: 0; margin: auto; opacity: .28; transform: translateY(-50%) scale(.75); transition: opacity .12s, transform .12s; }
+.drop-zone-slot > .component-mark.component-move { display: none; }
+.drop-zone-slot:not(.drop-zone-new) > .component-mark.component-new { display: none; }
+.drop-zone-slot:not(.drop-zone-move) > .component-mark.component-move { display: none; }
+.drop-zone-slot.drop-zone-move > .component-mark.component-move { display: grid; }
+.drop-zone-active > .component-mark { opacity: 1; transform: translateY(-50%) scale(1); }
+.drop-zone > i { display: none !important; }
+:where(.drop-zone, .block-shell, .dnd-structure-tree li).drop-before::before,
+:where(.drop-zone, .block-shell, .dnd-structure-tree li).drop-after::after { display: none !important; content: none !important; }
+.taxonomy-grammar-tree .drop-before::before, .taxonomy-grammar-tree .drop-after::after { display: none !important; content: none !important; }
+.drop-zone-label { display: block; width: 100%; box-sizing: border-box; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
 .drop-zone-active .drop-zone-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
 .grammar-binding-target { position: relative; padding: .25rem; border: 1px dashed var(--hairline); border-radius: .2rem; }
 .grammar-binding-target:hover { border-color: var(--accent); }
-.grammar-drag { color: var(--muted); font: .65rem ui-monospace, monospace; }
+.block-shell-drag { color: var(--muted); font: .65rem ui-monospace, monospace; }
 .grammar-remove { padding: 0 .2rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: .7rem ui-monospace, monospace !important; }
 .grammar-remove:hover { color: #f87171; }
 .grammar-expr-body { display: grid; gap: .35rem; padding: .6rem; }
@@ -308,7 +305,6 @@ ul { line-height: 1.8; }
 .grammar-editor-sequence-row { display: grid; gap: .45rem; }
 .grammar-editor-sequence-row .block-shell { min-width: 0; }
 .grammar-editor-block-body { padding: .55rem .6rem; color: var(--muted); background: var(--surface); border-top: 1px solid var(--hairline); font: .62rem ui-monospace, monospace; }
-.grammar-editor-drop-zone { display: grid; min-height: 5rem; margin-top: 1rem; place-items: center; color: var(--muted); background: var(--ground); border: 1px dashed var(--hairline); border-radius: .25rem; font: .65rem ui-monospace, monospace; text-align: center; }
 .grammar-editor-map { padding: 1rem .7rem; background: var(--ground); border-left: 1px solid var(--hairline); }
 .grammar-editor-map-tree { margin-top: .8rem; }
 .grammar-editor-map-tree .dnd-structure-tree { margin: 0; padding-left: 1rem; }
@@ -642,22 +638,13 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-grammar-label code, .taxonomy-overlay-card code { color: var(--muted); font: .62rem ui-monospace, monospace; }
 .taxonomy-grammar-kind { color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .taxonomy-kind-field { color: #7655a8; }
-.taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; color: var(--accent); text-align: center; background: var(--accent-light); border: 1px dashed var(--accent); border-radius: .25rem; font: .62rem ui-monospace, monospace; }
-.taxonomy-drop-zone-filled { place-items: stretch; }
+.taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; text-align: center; font: .62rem ui-monospace, monospace; }
 .taxonomy-placed-attribute { display: flex; align-items: center; gap: .5rem; padding: .55rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; text-align: left; cursor: grab; }
 .taxonomy-placed-attribute > span:nth-child(2) { flex: 1; min-width: 0; }
 .taxonomy-placed-attribute strong, .taxonomy-placed-attribute small { display: block; }
 .taxonomy-placed-attribute strong { font: .7rem ui-monospace, monospace; }
 .taxonomy-placed-attribute small { margin-top: .15rem; color: var(--muted); font-size: .62rem; }
 .taxonomy-placed-attribute button { color: var(--muted); background: none; border: 0; cursor: pointer; }
-.taxonomy-grammar-drop-zone { min-height: 3rem; }
-.taxonomy-grammar-drop-zone:not(.dnd-insert-zone-active) { min-height: 1.5rem; padding: .15rem; color: transparent; background: transparent; border-color: transparent; }
-.taxonomy-grammar-drop-zone:not(.dnd-insert-zone-active) .taxonomy-drop-label { display: none; }
-.taxonomy-grammar-drop-zone > .taxonomy-drop-label { position: static; display: block; width: auto; height: auto; margin: 0; color: inherit; background: transparent; border: 0; border-radius: 0; font: inherit; opacity: 1; transform: none; }
-.taxonomy-grammar-drop-zone .taxonomy-drop-hint { position: static; display: grid; width: 1rem; height: 1rem; place-items: center; margin: auto; color: var(--hairline); background: transparent; border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; opacity: 1; transform: none; pointer-events: none; }
-.taxonomy-grammar-drop-zone.dnd-insert-zone-active .taxonomy-drop-hint { display: none; }
-.taxonomy-grammar-drop-zone.dnd-insert-zone-new { color: #39724a; background: #f1faf3; border-color: #4c9a68; }
-.taxonomy-grammar-drop-zone.dnd-insert-zone-move { color: #4d7fc4; background: #f1f6fc; border-color: #4d7fc4; }
 .taxonomy-overlay-card { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .55rem; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: .2rem; }
 .taxonomy-overlay-card strong { color: var(--accent); font-size: .75rem; font-weight: 500; }
 .taxonomy-inspector-rule { display: grid; gap: .3rem; margin-top: 1rem; padding: .7rem; background: var(--accent-light); border: 1px solid var(--hairline); border-radius: .25rem; }

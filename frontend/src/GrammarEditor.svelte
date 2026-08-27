@@ -1,7 +1,6 @@
 <script lang="ts">
   import GrammarEditorRow, { type GrammarDragItem, type GrammarDropSlot } from './GrammarEditorRow.svelte'
   import { type DragDropState } from '@thisux/sveltednd'
-  import DndField from './DndField.svelte'
   import StructureTree from './StructureTree.svelte'
   import type { StructureNode } from './StructureNode'
   import SequenceExampleTile from './SequenceExampleTile.svelte'
@@ -112,7 +111,6 @@
       if (target.type === 'row') rootSequence = insertPath(rootSequence, target.path, createExpr(item.exprKind), target.index)
       else if (target.type === 'binding-child') rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'bind' ? { ...expr, child: createExpr(item.exprKind) } : expr)
       else if (target.type === 'choice-alternative') rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'choice' ? { ...expr, children: [...expr.children, [createExpr(item.exprKind)]] } : expr)
-      else rootSequence = replaceExpr(rootSequence, target.path, (expr) => expr.kind === 'range_radix' ? { ...expr, children: [...expr.children, createExpr(item.exprKind)] } : expr)
     } else {
       const sourceRow = getPath(rootSequence, item.sourcePath)
       const sourceIndex = sourceRow.findIndex((expr) => expr.id === item.expr.id)
@@ -122,7 +120,6 @@
       const without = removePath(rootSequence, item.sourcePath, item.expr.id)
       if (target.type === 'binding-child') rootSequence = replaceExpr(without, target.path, (expr) => expr.kind === 'bind' ? { ...expr, child: item.expr } : expr)
       else if (target.type === 'choice-alternative') rootSequence = replaceExpr(without, target.path, (expr) => expr.kind === 'choice' ? { ...expr, children: [...expr.children, [item.expr]] } : expr)
-      else if (target.type === 'range-radix-children') rootSequence = replaceExpr(without, target.path, (expr) => expr.kind === 'range_radix' ? { ...expr, children: [...expr.children, item.expr] } : expr)
       else {
         const index = target.path.join('/') === item.sourcePath.join('/') && sourceIndex < target.index ? target.index - 1 : target.index
         rootSequence = insertPath(without, target.path, item.expr, index)
@@ -205,12 +202,9 @@
     <fieldset class="grammar-editor-canvas" disabled={readOnly}>
       <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
       {#if validationErrors.length}<section class="grammar-validation" aria-labelledby="grammar-validation-heading" role="alert"><strong id="grammar-validation-heading">Fix editor structure</strong><ul>{#each validationErrors as validationError}<li><code>{validationError.path}</code> {validationError.message}</li>{/each}</ul></section>{/if}
-      <DndField filled container="grammar-editor:root" onDrop={() => {}} onDragOver={() => {}} onGapDragLeave={() => {}} onGapDrop={() => {}} onDragEnd={() => {}} onRemove={() => {}}>
-        <div class="grammar-editor-sequence-row">
-          <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" validationErrors={validationErrors} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
-        </div>
-        {#if !readOnly}<div class="grammar-editor-drop-zone">Drop a block here to add it to the root sequence</div>{/if}
-      </DndField>
+      <div class="grammar-editor-sequence-row">
+        <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" validationErrors={validationErrors} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
+      </div>
     </fieldset>
     <aside class="grammar-editor-map" aria-labelledby="grammar-editor-map-heading">
       <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>

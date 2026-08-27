@@ -86,7 +86,6 @@ export type GrammarDropTarget =
   | { type: 'row'; path: string[]; index: number }
   | { type: 'binding-child'; path: string[] }
   | { type: 'choice-alternative'; path: string[] }
-  | { type: 'range-radix-children'; path: string[] }
 
 export type GrammarDragPayload =
   | { kind: 'expression'; expr: GrammarExpr; sourcePath: string[] }

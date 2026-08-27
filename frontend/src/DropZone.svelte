@@ -41,8 +41,8 @@
   }
 
   function handleDrop(state: DragDropState<any>) {
-    handleDragLeave()
     onDrop?.(state)
+    handleDragLeave()
   }
 
   onMount(() => {
@@ -67,9 +67,6 @@
   class:dnd-insert-zone-move={currentMode === 'move'}
   class:drop-zone-filled={variant === 'filled'}
   class:dnd-insert-zone={variant === 'gap'}
-  class:grammar-editor-drop-target-over={over}
-  class:grammar-editor-drop-target-palette={currentMode === 'new'}
-  class:grammar-editor-drop-target-labeled={showLabel}
   aria-label={dropLabel}
   {role}
   use:droppable={{ container, disabled: !interactive, callbacks: { onDragEnter: handleDragOver, onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop } }}
@@ -77,7 +74,7 @@
   <i aria-hidden="true"></i>
   <NewDropMarker />
   <MoveDropMarker />
-  {#if showHint}<span class="drop-zone-hint taxonomy-drop-hint" aria-hidden="true">+</span>{/if}
-  {#if showLabel}<span class="drop-zone-label taxonomy-drop-label grammar-editor-drop-target-label">{label}</span>{/if}
+  {#if showHint}<span class="drop-zone-hint" aria-hidden="true">+</span>{/if}
+  {#if showLabel}<span class="drop-zone-label">{label}</span>{/if}
   <slot />
 </div>

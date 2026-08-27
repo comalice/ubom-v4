@@ -5,7 +5,7 @@
   import type { TaxonomyDragPayload, TaxonomyPlacement } from './TaxonomyEditorModel'
 
   export let placements: TaxonomyPlacement[] = []
-  export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string) => void = () => {}
+  export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
 </script>

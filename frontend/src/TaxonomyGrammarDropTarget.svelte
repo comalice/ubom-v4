@@ -9,7 +9,7 @@
   export let node: StructureNode
   export let depth = 0
   export let placements: TaxonomyPlacement[] = []
-  export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string) => void = () => {}
+  export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
 
@@ -27,18 +27,20 @@
   }
 </script>
 
-<DropZone variant="slot" {container} {getMode} className={`taxonomy-drop-zone taxonomy-grammar-drop-zone grammar-editor-drop-target${filled ? ' taxonomy-drop-zone-filled' : ''}`} ariaLabel={`${label} drop zone`} showHint={!filled} showLabel={depth > 1 || filled} label={depth > 1 ? label : ''} onDrop={(state) => onDrop(state, String(node.id))}>
-  {#if filled}
-    {#each placements as placement (placement.id)}
-      {#if placement.type === 'category'}
-        <TaxonomyCategoryBlock title={placement.title} summary={placement.summary} label={placement.label ?? placement.title} nodeId={placement.nodeId ?? placement.id} predicate={placement.predicate ?? ''} layout="tree" container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
-      {:else if placement.type === 'rule'}
-        <TaxonomyRuleBlock title={placement.title} summary={placement.summary} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
-      {:else}
-        <div class="taxonomy-placed-attribute" use:draggable={{ container, dragData: { kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }, callbacks: { onDragEnd } }}><span class="taxonomy-tree-mark" aria-hidden="true"></span><span><strong>{placement.title}</strong><small>{placement.attribute ?? 'Part property'}: {placement.value ?? '10'}</small></span><button type="button" aria-label="Remove {placement.title}" on:click={() => onRemove(placement.id)}>x</button></div>
-      {/if}
-    {/each}
-  {:else if depth <= 1}
-    <span class="taxonomy-drop-label">{label}</span>
-  {/if}
-</DropZone>
+{#if filled}
+  {#each placements as placement, index (placement.id)}
+    <DropZone variant="gap" {container} {getMode} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy ${index + 1} for ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), index)} />
+    {#if placement.type === 'category'}
+      <TaxonomyCategoryBlock title={placement.title} summary={placement.summary} label={placement.label ?? placement.title} nodeId={placement.nodeId ?? placement.id} predicate={placement.predicate ?? ''} layout="tree" container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
+    {:else if placement.type === 'rule'}
+      <TaxonomyRuleBlock title={placement.title} summary={placement.summary} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
+    {:else}
+      <div class="taxonomy-placed-attribute" use:draggable={{ container, dragData: { kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }, callbacks: { onDragEnd } }}><span class="taxonomy-tree-mark" aria-hidden="true"></span><span><strong>{placement.title}</strong><small>{placement.attribute ?? 'Part property'}: {placement.value ?? '10'}</small></span><button type="button" aria-label="Remove {placement.title}" on:click={() => onRemove(placement.id)}>x</button></div>
+    {/if}
+  {/each}
+  <DropZone variant="gap" {container} {getMode} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), placements.length)} />
+{:else}
+  <DropZone variant="gap" {container} {getMode} className="taxonomy-drop-zone" ariaLabel={`${label} drop zone`} showLabel={depth > 1} label={depth > 1 ? label : ''} onDrop={(state) => onDrop(state, String(node.id), 0)}>
+    {#if depth <= 1}<span class="taxonomy-drop-label">{label}</span>{/if}
+  </DropZone>
+{/if}

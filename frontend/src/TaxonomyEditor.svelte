@@ -17,16 +17,23 @@
     return { id, targetId, type: 'attribute', title: 'Attribute', summary: 'Part property', attribute: 'Resistance value', value: '10' }
   }
 
-  function handleDrop(state: DragDropState<TaxonomyDragPayload>, targetId: string) {
+  function handleDrop(state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) {
     const item = state.draggedItem
     if (!item) return
+    const targetPlacements = placements.filter((placement) => placement.targetId === targetId)
     if (item.kind === 'palette') {
-      placements = [...placements, newPlacement(item, targetId)]
+      const next = [...targetPlacements]
+      next.splice(targetIndex, 0, newPlacement(item, targetId))
+      placements = [...placements.filter((placement) => placement.targetId !== targetId), ...next]
       return
     }
     const existing = placements.find((placement) => placement.id === item.placementId)
-    if (!existing || existing.targetId === targetId) return
-    placements = placements.map((placement) => placement.id === item.placementId ? { ...placement, targetId } : placement)
+    if (!existing) return
+    const sourceIndex = targetPlacements.findIndex((placement) => placement.id === item.placementId)
+    const next = targetPlacements.filter((placement) => placement.id !== item.placementId)
+    const insertIndex = existing.targetId === targetId && sourceIndex >= 0 && sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+    next.splice(insertIndex, 0, { ...existing, targetId })
+    placements = [...placements.filter((placement) => placement.targetId !== existing.targetId && placement.targetId !== targetId), ...next]
   }
 
   function removePlacement(placementId: string) {

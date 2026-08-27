@@ -15,7 +15,7 @@
   export let onRemove: (() => void) | undefined = undefined
 </script>
 
-<BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} {onDragEnd} {onRemove}>
+  <BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} {onRemove}>
   <div class="taxonomy-block-body">
     <label>Grammar field<select value={predicate.field} aria-label="Rule grammar field"><option>category</option><option>number</option></select></label>
     <label>Match type<select value={predicate.kind} aria-label="Rule match type"><option value="exact">Exact value</option><option value="numeric-range">Numeric range</option></select></label>

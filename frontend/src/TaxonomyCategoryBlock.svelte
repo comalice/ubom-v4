@@ -18,7 +18,7 @@
   export let onRemove: (() => void) | undefined = undefined
 </script>
 
-<BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} {onDragEnd} {onRemove}>
+  <BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} {onRemove}>
   {#if layout === 'tree'}
     <div class="taxonomy-block-fields">
       <label>Label<input value={label} /></label>

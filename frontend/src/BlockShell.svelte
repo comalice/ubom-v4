@@ -23,7 +23,7 @@
 
 <article on:pointerdown={stopNestedDragEvent} on:dragstart={stopNestedDragEvent} class:component-size-small={size === 'small'} class:block-shell-draggable={container !== ''} class:block-shell-collapsible={collapsible} class:block-shell-removable={onRemove !== undefined} class:block-shell-open={open} class="block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
   <header class="block-shell-header">
-    <span class="grammar-drag" aria-hidden="true">::</span>
+    <span class="block-shell-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>
     {#if summary}<span class="block-shell-summary">{summary}</span>{/if}
     {#if collapsible}<ControlButton kind="chevron" className="block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}

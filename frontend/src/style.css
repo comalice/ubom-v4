@@ -609,6 +609,7 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-block-fields input { min-width: 0; padding: .35rem .45rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .2rem; font: .68rem ui-monospace, monospace; }
 .taxonomy-block-meta { display: flex; align-items: baseline; gap: .55rem; padding-top: .5rem; color: var(--muted); border-top: 1px solid var(--hairline-light); font: .62rem ui-monospace, monospace; }
 .taxonomy-block-meta strong { color: var(--ink); font-weight: 500; }
+.taxonomy-rule-range { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .taxonomy-category-children { display: grid; gap: .4rem; margin: .15rem 0 0 .7rem; padding: .5rem 0 0 .7rem; border-top: 1px solid var(--hairline-light); border-left: 1px solid var(--hairline); }
 .taxonomy-category-children-label { color: var(--muted); font: .58rem ui-monospace, monospace; text-transform: uppercase; }
 .taxonomy-child-drop-zone { min-height: 2.25rem; }

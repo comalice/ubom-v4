@@ -43,7 +43,7 @@
         <svelte:fragment slot="children">{#if draftNode}{#each draftNode.children as child}{#if child.placements[0]}<TaxonomyCategoryBlock title={child.placements[0].title} summary={child.placements[0].summary} label={child.placements[0].label ?? child.label} nodeId={child.placements[0].nodeId ?? child.id} predicate={child.placements[0].predicate ?? ''} layout="tree" showChildren addChildLabel="Drop a category here" />{/if}{/each}{/if}</svelte:fragment>
       </TaxonomyCategoryBlock>
     {:else if placement.type === 'rule'}
-      <TaxonomyRuleBlock title={placement.title} summary={placement.summary} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
+      <TaxonomyRuleBlock title={placement.title} field={node.label} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
     {:else}
       <div data-dnd-kind="move" data-dnd-container={container} class="taxonomy-placed-attribute" use:draggable={{ container, dragData: { kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }, callbacks: { onDragEnd } }}><span class="taxonomy-tree-mark" aria-hidden="true"></span><span><strong>{placement.title}</strong><small>{placement.attribute ?? 'Part property'}: {placement.value ?? '10'}</small></span><button type="button" aria-label="Remove {placement.title}" on:click={() => onRemove(placement.id)}>x</button></div>
     {/if}

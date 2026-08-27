@@ -39,7 +39,7 @@
       </article>
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[1]} variant="catalogue" />
-        <TaxonomyRuleBlock title={taxonomyRuleExample.title} summary={taxonomyRuleExample.summary} predicate={taxonomyRuleExample.predicate} />
+        <TaxonomyRuleBlock title={taxonomyRuleExample.title} field="category" predicate={taxonomyRuleExample.predicate} />
         <div class="grammar-block-meta"><p class="grammar-block-description">{taxonomyRuleExample.description}</p><div class="grammar-block-example"><span>Example</span><code>{taxonomyRuleExample.example}</code></div></div>
       </article>
       <article class="grammar-basic-example">

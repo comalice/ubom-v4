@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createSeqDef, createSeqDefVersion, getSeqDef, type SeqDefDefinition, type SeqDefNode } from './api'
   import GrammarEditor from './GrammarEditor.svelte'
+  import AsyncState from './AsyncState.svelte'
   import { fromSeqDefRoot, validateGrammarSequence } from './GrammarEditorModel'
 
   export let id: string | undefined = undefined
@@ -108,9 +109,9 @@
 </script>
 
 {#if !loaded}
-  <p class="muted">Loading sequence definition...</p>
+  <AsyncState state="loading" message="Loading sequence definition..." />
 {:else if error && id && !definition.id}
-  <p class="error" role="alert">{error}</p>
+  <AsyncState state="error" message={error} />
 {:else}
   <p class="eyebrow">Sequence definition</p>
   <h1>{id ? definition.id : 'New sequence definition'}</h1>

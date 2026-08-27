@@ -13,6 +13,7 @@
   import SeqDefList from './SeqDefList.svelte'
   import GrammarEditor from './GrammarEditor.svelte'
   import SeqDefEditorPage from './SeqDefEditorPage.svelte'
+  import AsyncState from './AsyncState.svelte'
   import Playground from './Playground.svelte'
   import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
@@ -105,9 +106,9 @@
 <Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts'}>
   <Breadcrumbs items={breadcrumbs} />
   {#if loading}
-    <p class="muted">Loading...</p>
+    <AsyncState state="loading" message="Loading..." />
   {:else if error}
-    <p class="error">{error}</p>
+    <AsyncState state="error" message={error} />
   {:else if route.kind === 'parts'}
     <p class="eyebrow">Parts</p>
     <h1>All parts</h1>

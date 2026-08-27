@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { getSeqDefs, type SeqDefView } from './api'
+  import AsyncState from './AsyncState.svelte'
 
   let definitions: SeqDefView[] = []
   let loading = true
@@ -27,11 +28,11 @@
 </div>
 
 {#if loading}
-  <p class="muted">Loading sequence definitions...</p>
+  <AsyncState state="loading" message="Loading sequence definitions..." />
 {:else if error}
-  <p class="error" role="alert">{error}</p>
+  <AsyncState state="error" message={error} />
 {:else if definitions.length === 0}
-  <p class="empty-state">No sequence definitions.</p>
+  <AsyncState state="empty" message="No sequence definitions." />
 {:else}
   <div class="settings-list">
     {#each definitions as definition}

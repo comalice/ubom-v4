@@ -219,7 +219,6 @@ ul { line-height: 1.8; }
 .drop-zone-slot:not(.drop-zone-move) > .component-mark.component-move { display: none; }
 .drop-zone-slot.drop-zone-move > .component-mark.component-move { display: grid; }
 .drop-zone-active > .component-mark { opacity: 1; transform: translateY(-50%) scale(1); }
-.drop-zone > i { display: none !important; }
 :where(.drop-zone, .block-shell, .dnd-structure-tree li).drop-before::before,
 :where(.drop-zone, .block-shell, .dnd-structure-tree li).drop-after::after { display: none !important; content: none !important; }
 .taxonomy-grammar-tree .drop-before::before, .taxonomy-grammar-tree .drop-after::after { display: none !important; content: none !important; }

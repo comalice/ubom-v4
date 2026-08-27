@@ -15,6 +15,7 @@
   import SeqDefEditorPage from './SeqDefEditorPage.svelte'
   import AsyncState from './AsyncState.svelte'
   import Playground from './Playground.svelte'
+  import TaxonomyCardGrid from './TaxonomyCardGrid.svelte'
   import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
@@ -129,19 +130,7 @@
   {:else if taxonomy && route.kind === 'taxonomy'}
     <p class="eyebrow">Parts</p>
     <h1>{taxonomy.label}</h1>
-    {#if taxonomy.children.length > 0}
-      <section aria-labelledby="categories-heading">
-        <h2 id="categories-heading">Categories</h2>
-        <div class="cards">
-          {#each taxonomy.children as child}
-            <a class="card" href={taxonomyPath([...taxonomy.path.map(item => item.label), child.label])}>
-              <span>{child.label}</span>
-              <span class="card-arrow" aria-hidden="true">→</span>
-            </a>
-          {/each}
-        </div>
-      </section>
-    {/if}
+    <TaxonomyCardGrid taxonomyPath={taxonomy.path} childCategories={taxonomy.children} />
     <section aria-labelledby="parts-heading">
       <Authoring taxonomy={taxonomy} />
       <h2 id="parts-heading">Parts</h2>

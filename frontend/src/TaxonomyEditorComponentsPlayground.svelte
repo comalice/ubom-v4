@@ -4,6 +4,7 @@
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
   import TaxonomyExampleTile, { taxonomyTileModels } from './TaxonomyExampleTile.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
+  import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
 
   const catalogueTiles = [
     { ...taxonomyTileModels.category, description: 'Classify a grammar branch' },
@@ -32,9 +33,7 @@
       </article>
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[1]} variant="catalogue" />
-        <BlockShell title="rule" summary="category = A" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
-          <div class="taxonomy-block-body"><label>Grammar field<select aria-label="Rule grammar field"><option>category</option><option>number</option></select></label><label>Match type<select aria-label="Rule match type"><option>Exact value</option><option>Numeric range</option></select></label><label>Value<input value="A" aria-label="Rule value" /></label><div class="taxonomy-block-rule"><span>Predicate</span><strong>category = A</strong></div></div>
-        </BlockShell>
+        <TaxonomyRuleBlock title="rule" summary="category = A" predicate={{ kind: 'exact', field: 'category', value: 'A' }} />
         <div class="grammar-block-meta"><p class="grammar-block-description">A predicate that narrows the meaning of a taxonomy branch using a captured field.</p><div class="grammar-block-example"><span>Example</span><code>category = A</code></div></div>
       </article>
       <article class="grammar-basic-example">

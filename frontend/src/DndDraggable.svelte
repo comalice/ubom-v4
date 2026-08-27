@@ -14,7 +14,7 @@
   export let onRemove: (() => void) | undefined = undefined
 </script>
 
-<div class:component-size-small={size === 'small'} class={variant === 'palette' ? 'dnd-palette-card' : 'dnd-placed-component'} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
+<div data-dnd-kind={variant === 'palette' ? 'new' : 'move'} data-dnd-container={container} class:component-size-small={size === 'small'} class={variant === 'palette' ? 'dnd-palette-card' : 'dnd-placed-component'} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
   <span class="dnd-grip" aria-hidden="true">::</span>
   <span>
     <strong>{title}</strong>

@@ -27,7 +27,7 @@
 </script>
 
 {#if variant === 'palette'}
-  <div class="taxonomy-palette-item" style={`--taxonomy-color: ${tile.color}`} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
+  <div data-dnd-kind="new" data-dnd-container={container} class="taxonomy-palette-item" style={`--taxonomy-color: ${tile.color}`} use:draggable={{ container, dragData, callbacks: { onDragEnd } }}>
     <i aria-hidden="true"></i>
     <span><strong>{tile.title}</strong><small>{tile.description}</small></span>
   </div>

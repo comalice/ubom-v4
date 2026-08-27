@@ -21,7 +21,7 @@
   function stopNestedDragEvent(event: Event) { event.stopPropagation() }
 </script>
 
-<article on:pointerdown={stopNestedDragEvent} on:dragstart={stopNestedDragEvent} class:component-size-small={size === 'small'} class:block-shell-draggable={container !== ''} class:block-shell-collapsible={collapsible} class:block-shell-removable={onRemove !== undefined} class:block-shell-open={open} class="block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
+<article data-dnd-kind={dragData && typeof dragData === 'object' && 'kind' in dragData && (dragData as { kind?: string }).kind === 'palette' ? 'new' : 'move'} data-dnd-container={container} on:pointerdown={stopNestedDragEvent} on:dragstart={stopNestedDragEvent} class:component-size-small={size === 'small'} class:block-shell-draggable={container !== ''} class:block-shell-collapsible={collapsible} class:block-shell-removable={onRemove !== undefined} class:block-shell-open={open} class="block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
   <header class="block-shell-header">
     <span class="block-shell-drag" aria-hidden="true">::</span>
     <strong>{title}</strong>

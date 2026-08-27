@@ -212,18 +212,28 @@ ul { line-height: 1.8; }
 .mock-results span { overflow: hidden; padding: .15rem 0; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
 .mock-branch-divider { grid-column: 1 / -1; display: flex; align-items: baseline; gap: .6rem; margin: .7rem 0 .2rem; padding-top: .5rem; color: var(--accent); border-top: 1px solid var(--hairline); font: .68rem ui-monospace, monospace; }
 .mock-branch-divider small { color: var(--muted); font: .6rem ui-monospace, monospace; }
-.drop-zone-slot { position: relative; display: grid; min-height: 2.25rem; place-items: center; color: var(--accent); }
-.drop-zone-slot > .component-mark { position: absolute; top: 50%; right: 0; left: 0; margin: auto; opacity: .28; transform: translateY(-50%) scale(.75); transition: opacity .12s, transform .12s; }
-.drop-zone-slot > .component-mark.component-move { display: none; }
-.drop-zone-slot:not(.drop-zone-new) > .component-mark.component-new { display: none; }
-.drop-zone-slot:not(.drop-zone-move) > .component-mark.component-move { display: none; }
-.drop-zone-slot.drop-zone-move > .component-mark.component-move { display: grid; }
-.drop-zone-active > .component-mark { opacity: 1; transform: translateY(-50%) scale(1); }
-:where(.drop-zone, .block-shell, .dnd-structure-tree li).drop-before::before,
-:where(.drop-zone, .block-shell, .dnd-structure-tree li).drop-after::after { display: none !important; content: none !important; }
-.taxonomy-grammar-tree .drop-before::before, .taxonomy-grammar-tree .drop-after::after { display: none !important; content: none !important; }
+.drop-zone { position: relative; }
+.drop-zone-slot, .drop-zone-gap { display: grid; min-height: 2.25rem; place-items: center; color: var(--accent); }
+.drop-zone-bar { position: absolute; top: 50%; right: 0; left: 0; height: 1px; margin: 0; background: var(--hairline); opacity: .65; pointer-events: none; }
+.drop-zone > .component-mark { position: absolute; top: 50%; right: 0; left: 0; margin: auto; transform: translateY(-50%) scale(.75); transition: opacity .12s, transform .12s; pointer-events: none; }
+.drop-zone > .drop-zone-bar { z-index: 0; }
+.drop-zone > .component-mark { z-index: 1; }
+.drop-zone-available > .component-mark { opacity: .28; }
+.drop-zone-new-hover > .component-mark, .drop-zone-move-hover > .component-mark { opacity: 1; transform: translateY(-50%) scale(1); }
+.drop-zone-new-hover > .drop-zone-bar { background: #4c9a68; opacity: .65; }
+.drop-zone-move-hover > .drop-zone-bar { background: #4d7fc4; opacity: .65; }
+.drop-zone-static-new > .drop-zone-bar { background: #4c9a68; }
+.drop-zone-static-move > .drop-zone-bar { background: #4d7fc4; }
+.drop-zone-static-new > .component-mark, .drop-zone-static-move > .component-mark { opacity: 1; transform: none; }
+.component-mark { display: grid; width: 1.35rem; height: 1.35rem; flex: none; place-items: center; }
+.component-new { color: white; background: #4c9a68; border-radius: 50%; font: 1rem/1 ui-monospace, monospace; }
+.component-move { position: relative; background: #4d7fc4; border-radius: 50%; }
+.component-move::after { width: .15rem; height: .8rem; background: white; border-radius: .15rem; content: ''; }
+.component-inactive { color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; }
 .drop-zone-label { display: block; width: 100%; box-sizing: border-box; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
-.drop-zone-active .drop-zone-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
+.drop-zone-available .drop-zone-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
+.grammar-editor .drop-before::before, .grammar-editor .drop-after::after,
+.taxonomy-editor .drop-before::before, .taxonomy-editor .drop-after::after { display: none !important; content: none !important; }
 .grammar-binding-target { position: relative; padding: .25rem; border: 1px dashed var(--hairline); border-radius: .2rem; }
 .grammar-binding-target:hover { border-color: var(--accent); }
 .block-shell-drag { color: var(--muted); font: .65rem ui-monospace, monospace; }
@@ -376,17 +386,6 @@ ul { line-height: 1.8; }
 .sequence-example-field { min-height: 9rem; padding: .6rem; background: var(--surface); border: 1px dashed var(--hairline); border-radius: .25rem; }
 .sequence-example-dropped-tile { min-height: 2.3rem; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent); }
 .sequence-example-dropped-tile button { position: absolute; top: .25rem; right: .3rem; padding: 0 .15rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: .7rem ui-monospace, monospace; }
-.sequence-example-slot { position: relative; display: grid; height: 1.5rem; place-items: center; cursor: copy; }
-.sequence-example-slot > i { position: absolute; right: 0; left: 0; height: 1px; background: #4c9a68; opacity: 0; transition: opacity .12s; pointer-events: none; }
-.sequence-example-slot > span { position: absolute; right: 0; left: 0; z-index: 1; display: grid; width: 1.2rem; height: 1.2rem; margin: auto; place-items: center; opacity: 0; transform: scale(.7); transition: opacity .12s, transform .12s; pointer-events: none; }
-.sequence-example-slot > .component-new { color: white; background: #4c9a68; border: 2px solid var(--surface); border-radius: 50%; font: 1rem/1 ui-monospace, monospace; }
-.sequence-example-slot > .component-move { display: none; background: #4d7fc4; border: 2px solid var(--surface); border-radius: 50%; }
-.sequence-example-slot > .component-move::after { width: .15rem; height: .8rem; background: white; border-radius: .15rem; content: ''; }
-.sequence-example-slot-active > i { opacity: .65; }
-.sequence-example-slot-active > .dnd-insert-zone-new { opacity: 1; transform: scale(1); }
-.sequence-example-slot.dnd-insert-zone-move > i { background: #4d7fc4; }
-.sequence-example-slot.dnd-insert-zone-move > .dnd-insert-zone-new { display: none; }
-.sequence-example-slot.dnd-insert-zone-move > .dnd-insert-zone-move { display: grid; opacity: 1; transform: scale(1); }
 .sequence-example-empty { color: var(--muted); font: .62rem ui-monospace, monospace; text-align: center; }
 .playground-components { margin-top: 1.2rem; padding: .8rem 1rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
 .playground-component-list { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-top: .6rem; }
@@ -394,11 +393,6 @@ ul { line-height: 1.8; }
 .playground-component-item strong, .playground-component-item small { display: block; }
 .playground-component-item strong { color: var(--ink); font: .68rem ui-monospace, monospace; }
 .playground-component-item small { margin-top: .15rem; font-size: .62rem; }
-.component-mark { display: grid; width: 1.35rem; height: 1.35rem; flex: none; place-items: center; }
-.component-new { color: white; background: #4c9a68; border-radius: 50%; font: 1rem/1 ui-monospace, monospace; }
-.component-inactive { color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; }
-.component-move { position: relative; width: 1.35rem; height: 1.35rem; background: #4d7fc4; border-radius: 50%; }
-.component-move::after { width: .15rem; height: .8rem; background: white; border-radius: .15rem; content: ''; }
 .dnd-ops-playground { margin-top: 1.5rem; padding: 1rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
 .dnd-structure-preview { margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--hairline); }
 .dnd-structure-tree { margin: .45rem 0 0; padding-left: 1.1rem; color: var(--muted); font: .62rem ui-monospace, monospace; }
@@ -421,8 +415,8 @@ ul { line-height: 1.8; }
 .dnd-static-drop-zone .drop-zone-hint { display: grid; width: 1.2rem; height: 1.2rem; place-items: center; margin: 0; color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; }
 .dnd-static-drop-zone > .component-mark, .dnd-static-drop-zone > .drop-zone-hint { grid-column: 1; grid-row: 2; position: static; width: 1.2rem; height: 1.2rem; margin: 0; transform: none; }
 .dnd-static-drop-zone > .drop-zone-label { grid-column: 1; grid-row: 3; width: 100%; box-sizing: border-box; margin: 0; padding: .35rem .5rem; }
-.dnd-static-drop-zone.drop-zone-new { color: #39724a; background: #f1faf3; border-color: #4c9a68; }
-.dnd-static-drop-zone.drop-zone-move { color: #4d7fc4; background: #f1f6fc; border-color: #4d7fc4; }
+.dnd-static-drop-zone.drop-zone-static-new { color: #39724a; background: #f1faf3; border-color: #4c9a68; }
+.dnd-static-drop-zone.drop-zone-static-move { color: #4d7fc4; background: #f1f6fc; border-color: #4d7fc4; }
 .dnd-static-drop-zone.drop-zone-filled { grid-template-rows: 0 1.2rem auto auto; align-content: center; }
 .dnd-static-drop-zone-content { display: grid; grid-column: 1; grid-row: 4; min-height: 2rem; place-items: center; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .2rem; font: .65rem ui-monospace, monospace; }
 .dnd-palette-card { display: flex; align-items: flex-start; gap: .5rem; padding: .65rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; cursor: grab; }
@@ -450,17 +444,8 @@ ul { line-height: 1.8; }
 .dnd-placed-list { display: grid; width: 100%; }
 .dnd-nested-list { margin: .5rem 0 0 1.5rem; padding: .65rem; background: var(--surface); border-left: 2px solid var(--hairline); }
 .dnd-nested-list > .mock-section-label { display: block; margin-bottom: .25rem; }
-.dnd-insert-zone { position: relative; display: grid; height: 3rem; place-items: center; cursor: copy; }
+.dnd-insert-zone { display: grid; height: 3rem; place-items: center; cursor: copy; }
 .dnd-insert-zone-edge { height: 1.5rem; }
-.dnd-insert-zone.drop-before::before, .dnd-insert-zone.drop-after::after { display: none; }
-.dnd-insert-zone > i { position: absolute; right: 0; left: 0; height: 1px; background: #4c9a68; opacity: 0; transition: opacity .12s; pointer-events: none; }
-.dnd-insert-zone > span { position: absolute; right: 0; left: 0; z-index: 1; display: grid; width: 1.2rem; height: 1.2rem; margin: auto; place-items: center; color: white; background: #4c9a68; border: 2px solid var(--surface); border-radius: 50%; font: 1rem/1 ui-monospace, monospace; opacity: 0; transform: scale(.7); transition: opacity .12s, transform .12s; pointer-events: none; }
-.dnd-insert-zone > .dnd-insert-marker-move { display: none; background: #4d7fc4; }
-.dnd-insert-zone-active > i { opacity: .65; }
-.dnd-insert-zone-active > .dnd-insert-marker-new { opacity: 1; transform: scale(1); }
-.dnd-insert-zone-move > i { background: #4d7fc4; }
-.dnd-insert-zone-move > .dnd-insert-marker-new { display: none; }
-.dnd-insert-zone-move > .dnd-insert-marker-move { display: grid; opacity: 1; transform: scale(1); }
 .dnd-placed-component { position: relative; display: flex; align-items: center; gap: .5rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); border: 1px solid var(--accent); border-radius: .2rem; }
 .dnd-placed-component.component-size-small { min-height: 1.5rem; padding: .1rem 1.7rem .1rem .45rem; }
 .dnd-placed-component strong { font: .68rem ui-monospace, monospace; }
@@ -557,13 +542,9 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-example-grammar-label { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; padding: .5rem; color: var(--ink); background: var(--ground); border-bottom: 1px solid var(--hairline-light); font-size: .75rem; }
 .taxonomy-example-grammar-label small { color: var(--muted); font: .62rem ui-monospace, monospace; }
 .taxonomy-example-drop-zone { display: flex; align-items: center; justify-content: center; gap: .45rem; min-height: 4rem; margin-top: .5rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .25rem; font: .62rem ui-monospace, monospace; }
-.taxonomy-example-drop-zone .component-mark { display: grid; width: 1.2rem; height: 1.2rem; place-items: center; color: white; background: #4c9a68; border: 2px solid var(--surface); border-radius: 50%; font: 1rem/1 ui-monospace, monospace; }
-.taxonomy-example-drop-zone .dnd-insert-marker-move { background: #4d7fc4; }
 .taxonomy-drop-examples .grammar-basic-example-list { gap: .8rem; }
 .taxonomy-drop-example { grid-template-columns: minmax(3rem, .2fr) minmax(12rem, .7fr) minmax(16rem, 1.1fr); align-items: center; }
 .taxonomy-drop-marker-demo { display: grid; min-height: 4.5rem; place-items: center; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
-.taxonomy-drop-marker-demo .component-mark { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; color: white; background: #4c9a68; border: 2px solid var(--surface); border-radius: 50%; font: 1.1rem/1 ui-monospace, monospace; }
-.taxonomy-drop-marker-demo .dnd-insert-marker-move { background: #4d7fc4; }
 .taxonomy-drop-description { margin: 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
 .taxonomy-attribute-inspector { margin-top: 1.5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
 .taxonomy-inspector-title { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }

@@ -2,6 +2,7 @@
   import DropZone from './DropZone.svelte'
   import type { DragDropState } from '@thisux/sveltednd'
   import type { GrammarDragPayload, GrammarDropTarget } from './GrammarEditorModel'
+  import type { DndSession } from './DndSession'
 
   export let container: string
   export let target: GrammarDropTarget
@@ -16,4 +17,4 @@
 
 </script>
 
-<DropZone variant="slot" className="grammar-editor-drop-target" {container} {label} {showLabel} {getMode} {onDragOver} {onDragLeave} role="listitem" onDrop={handleDrop} />
+<DropZone variant="slot" className="grammar-editor-drop-target" {container} {label} {showLabel} {getMode} {onDragOver} {onDragLeave} accepts={(session: DndSession) => session.sourceContainer.startsWith('grammar-editor:')} role="listitem" onDrop={handleDrop} />

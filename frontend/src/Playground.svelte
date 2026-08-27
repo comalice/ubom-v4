@@ -1,14 +1,17 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'grammar-editor'
+  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor'
   import CoreComponentsPlayground from './CoreComponentsPlayground.svelte'
   import HtmlPrimitivesPlayground from './HtmlPrimitivesPlayground.svelte'
   import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
   import DndOpsPlayground from './DndOpsPlayground.svelte'
   import GrammarBlocksPlayground from './GrammarBlocksPlayground.svelte'
   import GrammarEditorPlayground from './GrammarEditorPlayground.svelte'
+  import TaxonomyEditorPlayground from './TaxonomyEditorPlayground.svelte'
+  import TaxonomyEditorComponentsPlayground from './TaxonomyEditorComponentsPlayground.svelte'
   import MoveDropMarker from './MoveDropMarker.svelte'
   import NewDropMarker from './NewDropMarker.svelte'
+  import InactiveDropMarker from './InactiveDropMarker.svelte'
 
   const links = [
     { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
@@ -16,7 +19,9 @@
     { label: 'DnD operations', path: '/playground/dnd-ops', page: 'dnd-ops' as const },
     { label: 'Block examples', path: '/playground/block-examples', page: 'block-examples' as const },
     { label: 'Grammar blocks', path: '/playground/grammar-blocks', page: 'grammar-blocks' as const },
+    { label: 'Taxonomy editor components', path: '/playground/taxonomy-editor-components', page: 'taxonomy-editor-components' as const },
     { label: 'Grammar editor', path: '/playground/grammar-editor', page: 'grammar-editor' as const },
+    { label: 'Taxonomy editor', path: '/playground/taxonomy-editor', page: 'taxonomy-editor' as const },
   ]
 </script>
 
@@ -45,6 +50,8 @@
         <div class="playground-component-list">
           <div class="playground-component-item"><NewDropMarker /><span><strong>New item</strong><small>Creates a new component at the target</small></span></div>
           <div class="playground-component-item"><MoveDropMarker /><span><strong>Moving item</strong><small>Moves an existing component to the target</small></span></div>
+          <div class="playground-component-item"><InactiveDropMarker /><span><strong>Inactive item</strong><small>Inactive drop zone.</small></span>
+      </div>
         </div>
       </section>
       <DndOpsPlayground />
@@ -52,8 +59,12 @@
       <BlockExamplesPlayground />
     {:else if page === 'grammar-blocks'}
       <GrammarBlocksPlayground />
+    {:else if page === 'taxonomy-editor-components'}
+      <TaxonomyEditorComponentsPlayground />
     {:else if page === 'grammar-editor'}
       <GrammarEditorPlayground />
+    {:else if page === 'taxonomy-editor'}
+      <TaxonomyEditorPlayground />
     {/if}
   </main>
 </div>

@@ -20,4 +20,12 @@ describe('playground routes', () => {
   it('parses the HTML primitives page', () => {
     expect(parseRoute('/playground/html-primitives')).toEqual({ kind: 'playground', page: 'html-primitives' })
   })
+
+  it('parses the taxonomy editor page', () => {
+    expect(parseRoute('/playground/taxonomy-editor')).toEqual({ kind: 'playground', page: 'taxonomy-editor' })
+  })
+
+  it('parses the taxonomy editor components page', () => {
+    expect(parseRoute('/playground/taxonomy-editor-components')).toEqual({ kind: 'playground', page: 'taxonomy-editor-components' })
+  })
 })

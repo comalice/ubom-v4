@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { droppable, type DragDropState } from '@thisux/sveltednd'
+  import { type DragDropState } from '@thisux/sveltednd'
   import GrammarEditorBlock from './GrammarEditorBlock.svelte'
-  import MoveDropMarker from './MoveDropMarker.svelte'
-  import NewDropMarker from './NewDropMarker.svelte'
+  import DropZone from './DropZone.svelte'
   import type { GrammarDragPayload as DragPayload, GrammarDropTarget as DropTarget, GrammarExpr as Expr, GrammarValidationError } from './GrammarEditorModel'
 
   export type GrammarDragItem = DragPayload
@@ -24,8 +23,8 @@
 
 <div class="grammar-editor-row">
   {#each exprs as expr, index (expr.id)}
-    <div class:dnd-insert-zone-edge={index === 0} class="dnd-insert-zone" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop(state, { type: 'row', path, index }) } }}><i aria-hidden="true"></i><NewDropMarker /><MoveDropMarker /></div>
+    <DropZone variant="gap" className={index === 0 ? 'dnd-insert-zone-edge' : ''} {container} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop(state, { type: 'row', path, index })} />
     <GrammarEditorBlock {expr} {path} container={container} dragData={blockData(expr)} errors={validationErrors.filter((error) => error.nodeId === expr.id)} onChange={(value) => onChange(index, value)} onRemove={() => onRemove(index)} onDrop={onDrop} onRowDragOver={onDragOver} onRowDragLeave={onDragLeave} {onDragEnd} />
   {/each}
-  <div class="dnd-insert-zone dnd-insert-zone-edge" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop(state, { type: 'row', path, index: exprs.length }) } }}><i aria-hidden="true"></i><NewDropMarker /><MoveDropMarker /></div>
+  <DropZone variant="gap" className="dnd-insert-zone-edge" {container} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop(state, { type: 'row', path, index: exprs.length })} />
 </div>

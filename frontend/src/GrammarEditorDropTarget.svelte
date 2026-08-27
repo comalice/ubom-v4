@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { droppable, type DragDropState } from '@thisux/sveltednd'
-  import MoveDropMarker from './MoveDropMarker.svelte'
-  import NewDropMarker from './NewDropMarker.svelte'
+  import DropZone from './DropZone.svelte'
+  import type { DragDropState } from '@thisux/sveltednd'
   import type { GrammarDragPayload, GrammarDropTarget } from './GrammarEditorModel'
 
   export let container: string
@@ -27,19 +25,6 @@
     handleDragLeave()
   }
 
-  onMount(() => {
-    const clearDragState = () => handleDragLeave()
-    document.addEventListener('dragend', clearDragState)
-    document.addEventListener('pointercancel', clearDragState)
-    return () => {
-      document.removeEventListener('dragend', clearDragState)
-      document.removeEventListener('pointercancel', clearDragState)
-    }
-  })
 </script>
 
-<div class:grammar-editor-drop-target-over={over} class:grammar-editor-drop-target-palette={palette} class:grammar-editor-drop-target-labeled={showLabel} class="grammar-editor-drop-target" role="listitem" aria-label={label} use:droppable={{ container, callbacks: { onDragEnter: handleDragOver, onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop } }}>
-  <NewDropMarker />
-  <MoveDropMarker />
-  {#if showLabel}<span class="grammar-editor-drop-target-label">{label}</span>{/if}
-</div>
+<DropZone variant="slot" className="grammar-editor-drop-target" {container} {label} {showLabel} role="listitem" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} />

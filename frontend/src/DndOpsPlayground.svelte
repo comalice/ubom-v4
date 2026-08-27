@@ -3,6 +3,7 @@
   import type { DropSlot } from './DndComponentList.svelte'
   import DndDraggable, { type DraggableComponent } from './DndDraggable.svelte'
   import DndField from './DndField.svelte'
+  import DropZone from './DropZone.svelte'
   import type { ComponentNode } from './DndDraggable.svelte'
   import StructureTree from './StructureTree.svelte'
 
@@ -102,4 +103,15 @@
       <DndField nodes={placedComponents} container={rootListId} onDrop={handleDrop} onDragOver={handleGapDragOver} onGapDragLeave={handleGapDragLeave} onGapDrop={handleGapDrop} onDragEnd={handleDragEnd} onRemove={(id) => placedComponents = removeNode(placedComponents, id)} />
     </section>
   </div>
+  <section class="dnd-drop-zone-demo" aria-labelledby="drop-zone-demo-heading">
+    <span class="mock-section-label" id="drop-zone-demo-heading">Drop-zone states</span>
+    <div class="dnd-drop-zone-demo-grid">
+      <DropZone variant="slot" mode="inactive" className="dnd-static-drop-zone" label="Inactive target" showHint showLabel />
+      <DropZone variant="slot" mode="new" className="dnd-static-drop-zone" label="New item target" showLabel />
+      <DropZone variant="slot" mode="move" className="dnd-static-drop-zone" label="Move item target" showLabel />
+      <DropZone variant="filled" mode="move" className="dnd-static-drop-zone" label="Filled target" showLabel>
+        <span class="dnd-static-drop-zone-content">Existing component</span>
+      </DropZone>
+    </div>
+  </section>
 </div>

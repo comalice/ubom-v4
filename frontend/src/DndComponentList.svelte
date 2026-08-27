@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { droppable, type DragDropState } from '@thisux/sveltednd'
-  import MoveDropMarker from './MoveDropMarker.svelte'
-  import NewDropMarker from './NewDropMarker.svelte'
+  import { type DragDropState } from '@thisux/sveltednd'
+  import DropZone from './DropZone.svelte'
   import BasicBlock from './BasicBlock.svelte'
   import NestedBlock from './NestedBlock.svelte'
   import { type ComponentNode, type DraggableComponent } from './DndDraggable.svelte'
@@ -19,7 +18,7 @@
 
 <div class="dnd-placed-list">
   {#each nodes as item, index (item.id)}
-    <div data-parent-id={parentId ?? 'root'} data-slot-index={index} class:dnd-insert-zone-edge={index === 0} class="dnd-insert-zone" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop({ parentId, index }, state) } }}><i aria-hidden="true"></i><NewDropMarker /><MoveDropMarker /></div>
+    <DropZone variant="gap" className={index === 0 ? 'dnd-insert-zone-edge' : ''} {container} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop({ parentId, index }, state)} />
     {#if item.blockType === 'nested'}
       <NestedBlock item={item} parentId={parentId} container={container} onDragEnd={onDragEnd} onRemove={() => onRemove(item.id)}>
         <svelte:self nodes={item.children} parentId={item.id} container={`component-list:${item.id}`} {onDragOver} {onDragLeave} {onDrop} {onDragEnd} {onRemove} />
@@ -28,5 +27,5 @@
       <BasicBlock item={item} parentId={parentId} container={container} onDragEnd={onDragEnd} onRemove={() => onRemove(item.id)} />
     {/if}
   {/each}
-  <div data-parent-id={parentId ?? 'root'} data-slot-index={nodes.length} class="dnd-insert-zone dnd-insert-zone-edge" use:droppable={{ container, callbacks: { onDragOver, onDragLeave, onDrop: (state) => onDrop({ parentId, index: nodes.length }, state) } }}><i aria-hidden="true"></i><NewDropMarker /><MoveDropMarker /></div>
+  <DropZone variant="gap" className="dnd-insert-zone-edge" {container} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop({ parentId, index: nodes.length }, state)} />
 </div>

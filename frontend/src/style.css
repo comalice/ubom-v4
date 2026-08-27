@@ -221,6 +221,13 @@ ul { line-height: 1.8; }
 .grammar-editor-drop-target-labeled { display: block; }
 .grammar-editor-drop-target-label { display: block; width: 100%; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
 .grammar-editor-drop-target-over .grammar-editor-drop-target-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
+.drop-zone-slot { position: relative; display: grid; min-height: 2.25rem; place-items: center; color: var(--accent); }
+.drop-zone-slot > .component-mark { opacity: .28; transform: scale(.75); transition: opacity .12s, transform .12s; }
+.drop-zone-active > .component-mark { opacity: 1; transform: scale(1); }
+.drop-zone-slot:not(.drop-zone-new) > .dnd-insert-marker-new { display: none; }
+.drop-zone-slot:not(.drop-zone-move) > .dnd-insert-marker-move { display: none; }
+.drop-zone-label { display: block; width: 100%; padding: .45rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
+.drop-zone-active .drop-zone-label { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-light); }
 .grammar-binding-target { position: relative; padding: .25rem; border: 1px dashed var(--hairline); border-radius: .2rem; }
 .grammar-binding-target:hover { border-color: var(--accent); }
 .grammar-drag { color: var(--muted); font: .65rem ui-monospace, monospace; }
@@ -394,6 +401,7 @@ ul { line-height: 1.8; }
 .playground-component-item small { margin-top: .15rem; font-size: .62rem; }
 .component-mark { display: grid; width: 1.35rem; height: 1.35rem; flex: none; place-items: center; }
 .component-new { color: white; background: #4c9a68; border-radius: 50%; font: 1rem/1 ui-monospace, monospace; }
+.component-inactive { color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; }
 .component-move { position: relative; width: 1.35rem; height: 1.35rem; background: #4d7fc4; border-radius: 50%; }
 .component-move::after { width: .15rem; height: .8rem; background: white; border-radius: .15rem; content: ''; }
 .dnd-ops-playground { margin-top: 1.5rem; padding: 1rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
@@ -401,6 +409,8 @@ ul { line-height: 1.8; }
 .dnd-structure-tree { margin: .45rem 0 0; padding-left: 1.1rem; color: var(--muted); font: .62rem ui-monospace, monospace; }
 .dnd-structure-tree ul { margin: .25rem 0 0; padding-left: 1.1rem; }
 .dnd-structure-tree li { padding: .12rem 0; }
+.dnd-structure-drop-zone { min-height: 2.2rem; margin: .35rem 0 .25rem; padding: .55rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
+.taxonomy-grammar-tree .dnd-structure-drop-zone { color: var(--accent); background: var(--accent-light); border-color: var(--accent); }
 .dnd-structure-node { color: var(--ink); }
 .dnd-structure-node small { margin-left: .45rem; color: var(--muted); font-size: .56rem; }
 .dnd-structure-empty { color: var(--muted); }
@@ -410,12 +420,27 @@ ul { line-height: 1.8; }
 .dnd-reset:hover { color: var(--accent); border-color: var(--accent); }
 .dnd-ops-stage { display: grid; grid-template-columns: minmax(10rem, .6fr) minmax(16rem, 1.4fr); gap: 1rem; }
 .dnd-component-palette, .dnd-field-area { display: grid; align-content: start; gap: .5rem; }
+.dnd-drop-zone-demo { display: grid; gap: .6rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+.dnd-drop-zone-demo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .6rem; }
+.dnd-static-drop-zone { display: grid; grid-template-rows: 0 1.2rem auto; row-gap: .35rem; align-content: center; justify-items: center; min-height: 4.4rem; padding: .6rem; box-sizing: border-box; background: var(--surface); border: 1px dashed var(--hairline); border-radius: .25rem; }
+.dnd-static-drop-zone .drop-zone-hint { display: grid; width: 1.2rem; height: 1.2rem; place-items: center; margin: 0; color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; }
+.dnd-static-drop-zone > .component-mark, .dnd-static-drop-zone > .drop-zone-hint { grid-column: 1; grid-row: 2; position: static; width: 1.2rem; height: 1.2rem; margin: 0; transform: none; }
+.dnd-static-drop-zone > .drop-zone-label { grid-column: 1; grid-row: 3; width: 100%; box-sizing: border-box; margin: 0; padding: .35rem .5rem; }
+.dnd-static-drop-zone.drop-zone-new { color: #39724a; background: #f1faf3; border-color: #4c9a68; }
+.dnd-static-drop-zone.drop-zone-move { color: #4d7fc4; background: #f1f6fc; border-color: #4d7fc4; }
+.dnd-static-drop-zone.drop-zone-filled { grid-template-rows: 0 1.2rem auto auto; align-content: center; }
+.dnd-static-drop-zone-content { display: grid; grid-column: 1; grid-row: 4; min-height: 2rem; place-items: center; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .2rem; font: .65rem ui-monospace, monospace; }
 .dnd-palette-card { display: flex; align-items: flex-start; gap: .5rem; padding: .65rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; cursor: grab; }
 .dnd-palette-card:hover { border-color: var(--accent); }
 .dnd-grip { color: var(--muted); font: .65rem ui-monospace, monospace; }
 .dnd-palette-card strong, .dnd-palette-card small { display: block; }
 .dnd-palette-card strong { color: var(--accent); font: .68rem ui-monospace, monospace; }
 .dnd-palette-card small { margin-top: .2rem; color: var(--muted); font-size: .62rem; }
+.dnd-inactive-target-example { display: flex; align-items: flex-start; gap: .5rem; padding: .65rem; color: var(--muted); background: var(--surface); border: 1px dashed var(--hairline); border-radius: .25rem; }
+.dnd-inactive-target-example strong, .dnd-inactive-target-example small { display: block; }
+.dnd-inactive-target-example strong { color: var(--muted); font: .68rem ui-monospace, monospace; }
+.dnd-inactive-target-example small { margin-top: .2rem; font-size: .62rem; }
+.dnd-inactive-target-mark { display: grid; width: 1.2rem; height: 1.2rem; flex: none; place-items: center; color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; }
 .dnd-field { display: grid; min-height: 9rem; place-items: center; padding: 1rem; color: var(--muted); background: var(--surface); border: 1px dashed var(--hairline); border-radius: .25rem; font: .68rem ui-monospace, monospace; }
 .dnd-field-over { border-color: var(--accent); outline: 2px dashed var(--accent); outline-offset: 3px; }
 .dnd-field-filled.dnd-field-over { border-color: var(--hairline); outline: none; }
@@ -425,6 +450,8 @@ ul { line-height: 1.8; }
 .dnd-field-filled { place-items: stretch; border-style: solid; }
 .dnd-new-drop-target { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; color: white; background: #4c9a68; border-radius: 50%; font: 1.5rem/1 ui-monospace, monospace; opacity: .35; transform: scale(.8); transition: opacity .12s, transform .12s; }
 .dnd-field-over .dnd-new-drop-target { opacity: 1; transform: scale(1.1); }
+.dnd-field:not(.dnd-field-filled) .dnd-drop-indicator { display: grid; width: 1.2rem; height: 1.2rem; margin: 0 auto .4rem; place-items: center; color: var(--hairline); border: 1px solid var(--hairline); border-radius: 50%; font: .8rem/1 ui-monospace, monospace; }
+.dnd-empty-drop-target { display: grid; place-items: center; }
 .dnd-placed-list { display: grid; width: 100%; }
 .dnd-nested-list { margin: .5rem 0 0 1.5rem; padding: .65rem; background: var(--surface); border-left: 2px solid var(--hairline); }
 .dnd-nested-list > .mock-section-label { display: block; margin-bottom: .25rem; }
@@ -511,6 +538,138 @@ select.primitive-input { min-height: 2.3rem; }
 .html-primitives .primitive-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding-top: .85rem; border-top: 1px solid var(--hairline-light); }
 .html-primitives .primitive-form-status { color: #39724a; font: .68rem ui-monospace, monospace; }
 .html-primitives button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.taxonomy-blocks-intro { max-width: 42rem; margin: .4rem 0 1.1rem; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.taxonomy-component-description { max-width: 42rem; margin: .5rem 0 .8rem; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+.taxonomy-block-examples .grammar-basic-example { grid-template-columns: minmax(10rem, .7fr) minmax(16rem, 1.3fr); }
+.taxonomy-example-tile { display: flex; align-items: flex-start; gap: .55rem; min-height: 100%; padding: .6rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-example-dot { flex: none; width: .45rem; height: .45rem; margin-top: .25rem; background: var(--taxonomy-color, var(--accent)); border-radius: .1rem; }
+.taxonomy-example-tile strong, .taxonomy-example-tile small { display: block; }
+.taxonomy-example-tile strong { color: var(--taxonomy-color, var(--accent)); font: .7rem ui-monospace, monospace; }
+.taxonomy-example-tile small { margin-top: .15rem; color: var(--muted); font-size: .62rem; }
+.taxonomy-example-tile-category { --taxonomy-color: var(--accent); }
+.taxonomy-example-tile-rule { --taxonomy-color: #7655a8; }
+.taxonomy-example-tile-attribute { --taxonomy-color: #337d91; }
+.taxonomy-block-body { display: grid; gap: .6rem; padding: .65rem; }
+.taxonomy-block-body label { display: grid; gap: .2rem; color: var(--muted); font-size: .62rem; }
+.taxonomy-block-body input, .taxonomy-block-body select { min-width: 0; padding: .35rem .45rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .2rem; font: .68rem ui-monospace, monospace; }
+.taxonomy-block-rule { display: flex; align-items: baseline; gap: .55rem; padding-top: .5rem; color: var(--muted); border-top: 1px solid var(--hairline-light); font: .62rem ui-monospace, monospace; }
+.taxonomy-block-rule strong { color: var(--ink); font-weight: 500; }
+.taxonomy-checkbox { display: flex !important; grid-template-columns: auto 1fr; align-items: center; gap: .4rem; }
+.taxonomy-checkbox input { width: auto; }
+.taxonomy-drop-example-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: .7rem; }
+.taxonomy-drop-example-grid article { padding: .8rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-drop-example-grid h3 { margin: 0 0 .65rem; color: var(--ink); font: 400 1rem Georgia, serif; }
+.taxonomy-example-grammar-label { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; padding: .5rem; color: var(--ink); background: var(--ground); border-bottom: 1px solid var(--hairline-light); font-size: .75rem; }
+.taxonomy-example-grammar-label small { color: var(--muted); font: .62rem ui-monospace, monospace; }
+.taxonomy-example-drop-zone { display: flex; align-items: center; justify-content: center; gap: .45rem; min-height: 4rem; margin-top: .5rem; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .25rem; font: .62rem ui-monospace, monospace; }
+.taxonomy-example-drop-zone .component-mark { display: grid; width: 1.2rem; height: 1.2rem; place-items: center; color: white; background: #4c9a68; border: 2px solid var(--surface); border-radius: 50%; font: 1rem/1 ui-monospace, monospace; }
+.taxonomy-example-drop-zone .dnd-insert-marker-move { background: #4d7fc4; }
+.taxonomy-drop-examples .grammar-basic-example-list { gap: .8rem; }
+.taxonomy-drop-example { grid-template-columns: minmax(3rem, .2fr) minmax(12rem, .7fr) minmax(16rem, 1.1fr); align-items: center; }
+.taxonomy-drop-marker-demo { display: grid; min-height: 4.5rem; place-items: center; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-drop-marker-demo .component-mark { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; color: white; background: #4c9a68; border: 2px solid var(--surface); border-radius: 50%; font: 1.1rem/1 ui-monospace, monospace; }
+.taxonomy-drop-marker-demo .dnd-insert-marker-move { background: #4d7fc4; }
+.taxonomy-drop-description { margin: 0; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+.taxonomy-attribute-inspector { margin-top: 1.5rem; padding: 1rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-inspector-title { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.taxonomy-inspector-title h3 { margin: .3rem 0 0; color: var(--ink); font: 400 1.15rem Georgia, serif; }
+.taxonomy-attribute-intro { max-width: 42rem; margin: .5rem 0 1rem; color: var(--muted); font-size: .68rem; line-height: 1.5; }
+.taxonomy-attribute-table-frame { margin-top: 0; }
+.taxonomy-attribute-table { width: 100%; min-width: 42rem; border-collapse: collapse; text-align: left; }
+.taxonomy-attribute-table th, .taxonomy-attribute-table td { padding: .65rem .8rem; border-bottom: 1px solid var(--hairline-light); white-space: nowrap; }
+.taxonomy-attribute-table thead th { color: var(--muted); font: .62rem ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.taxonomy-attribute-table tbody th { color: var(--ink); font-size: .75rem; font-weight: 500; }
+.taxonomy-attribute-table tbody td { color: var(--muted); font: .68rem ui-monospace, monospace; }
+.taxonomy-attribute-table tbody tr:last-child th, .taxonomy-attribute-table tbody tr:last-child td { border-bottom: 0; }
+.taxonomy-attribute-table tbody tr:hover { background: var(--accent-light); }
+.taxonomy-attribute-table .primitive-button { min-height: 0; padding: .25rem .35rem; font-size: .62rem; }
+.taxonomy-inherited { color: #7655a8; }
+.taxonomy-attribute-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin-top: .8rem; padding-top: .8rem; border-top: 1px solid var(--hairline-light); }
+.taxonomy-attribute-actions .primitive-button { min-height: 0; }
+.taxonomy-editor-playground { max-width: 72rem; }
+.taxonomy-editor-intro { max-width: 48rem; }
+.taxonomy-editor { margin-top: 1.5rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .35rem; overflow: hidden; }
+.taxonomy-editor-palette { display: flex; align-items: stretch; gap: .55rem; padding: .8rem 1rem; border-bottom: 1px solid var(--hairline); }
+.taxonomy-editor-palette-grid { display: flex; flex: 1; gap: .45rem; }
+.taxonomy-palette-item { display: flex; flex: 1; align-items: flex-start; gap: .5rem; max-width: 13rem; padding: .6rem; color: var(--ink); text-align: left; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; cursor: pointer; }
+.taxonomy-palette-item:hover { border-color: var(--taxonomy-color); background: var(--accent-light); }
+.taxonomy-palette-item i, .taxonomy-tree-mark { flex: none; width: .45rem; height: .45rem; margin-top: .25rem; background: var(--taxonomy-color, var(--accent)); border-radius: .1rem; }
+.taxonomy-palette-item strong, .taxonomy-palette-item small { display: block; }
+.taxonomy-palette-item strong { color: var(--taxonomy-color); font: .7rem ui-monospace, monospace; }
+.taxonomy-palette-item small { margin-top: .15rem; color: var(--muted); font-size: .62rem; }
+.taxonomy-palette-help { align-self: center; max-width: 14rem; margin: 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
+.taxonomy-editor-canvas, .taxonomy-editor-inspector { min-width: 0; padding: 1rem; }
+.taxonomy-editor-inspector { border-top: 1px solid var(--hairline); }
+.taxonomy-editor-heading, .taxonomy-inspector-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.taxonomy-editor-count { color: var(--muted); font: .62rem ui-monospace, monospace; }
+.taxonomy-tree { display: grid; gap: .25rem; padding: .5rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-tree-row { display: flex; align-items: center; gap: .45rem; min-height: 2.45rem; padding: .45rem .55rem; padding-left: calc(.55rem + var(--taxonomy-depth) * 1.35rem); background: var(--surface); border: 1px solid transparent; border-radius: .2rem; }
+.taxonomy-tree-row.selected { background: var(--accent-light); border-color: var(--accent); }
+.taxonomy-tree-row .control-button { width: 1.2rem; height: 1.2rem; min-height: 0; padding: 0; color: var(--muted); border: 0; }
+.taxonomy-tree-spacer { width: 1.2rem; flex: none; }
+.taxonomy-tree-label { color: var(--ink); font-size: .78rem; }
+.taxonomy-tree-id { margin-left: auto; color: var(--muted); font: .62rem ui-monospace, monospace; }
+.taxonomy-tree-drop-zone { display: grid; min-height: 4rem; margin-top: .6rem; place-items: center; color: var(--muted); text-align: center; border: 1px dashed var(--hairline); border-radius: .25rem; font: .65rem ui-monospace, monospace; }
+.taxonomy-grammar-note { margin: -.25rem 0 .8rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
+.taxonomy-grammar-tree { padding: .25rem .7rem .7rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-grammar-tree .dnd-structure-tree { margin: .45rem 0 0; padding-left: 1.15rem; color: var(--ink); font: 1rem Inter, ui-sans-serif, system-ui, sans-serif; }
+.taxonomy-grammar-tree .dnd-structure-tree ul { margin: .35rem 0 0; padding-left: 1.2rem; }
+.taxonomy-grammar-tree .dnd-structure-tree li { padding: .3rem 0; }
+.taxonomy-grammar-tree .dnd-structure-node { display: inline-flex; align-items: baseline; gap: .65rem; padding: 0; }
+.taxonomy-grammar-tree .dnd-structure-node small { margin-left: 0; color: var(--muted); font: .72rem ui-monospace, monospace; }
+.taxonomy-grammar-tree .dnd-structure-node:hover { color: var(--accent); }
+.taxonomy-grammar-structure-tree { margin: 0 !important; padding-left: 1.15rem !important; }
+.taxonomy-grammar-structure-tree ul { margin: .35rem 0 0; padding-left: 1.2rem; }
+.taxonomy-grammar-structure-tree li { padding: .3rem 0; }
+.taxonomy-grammar-structure-tree .taxonomy-drop-zone { margin-left: -.55rem; }
+.taxonomy-grammar-structure-tree .block-shell { margin-top: .25rem; }
+.taxonomy-grammar-structure-tree .block-shell-header { min-height: 2.25rem; padding: .45rem .55rem; }
+.taxonomy-grammar-structure-tree .block-shell-header strong { color: var(--accent); font: 600 .65rem ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
+.taxonomy-grammar-structure-tree .block-shell-summary { color: var(--muted); font: .65rem ui-monospace, monospace; }
+.taxonomy-grammar-structure-tree .block-shell-body { display: grid; gap: .65rem; padding: .65rem; }
+.taxonomy-block-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.taxonomy-block-fields label { display: grid; gap: .2rem; color: var(--muted); font-size: .62rem; }
+.taxonomy-block-fields input { min-width: 0; padding: .35rem .45rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .2rem; font: .68rem ui-monospace, monospace; }
+.taxonomy-block-meta { display: flex; align-items: baseline; gap: .55rem; padding-top: .5rem; color: var(--muted); border-top: 1px solid var(--hairline-light); font: .62rem ui-monospace, monospace; }
+.taxonomy-block-meta strong { color: var(--ink); font-weight: 500; }
+.taxonomy-block-add { justify-self: start; padding: .25rem 0; color: var(--accent); background: transparent; border: 0; cursor: pointer; font: .62rem ui-monospace, monospace; }
+.taxonomy-block-add:hover { color: var(--ink); }
+.taxonomy-grammar-node { display: grid; gap: .45rem; }
+.taxonomy-grammar-root { gap: .7rem; }
+.taxonomy-grammar-children { display: grid; gap: .6rem; margin-left: 1.1rem; padding-left: .9rem; border-left: 1px solid var(--hairline); }
+.taxonomy-grammar-label { display: flex; align-items: baseline; gap: .55rem; min-height: 2rem; padding: .45rem .55rem; background: var(--surface); border: 1px solid var(--hairline-light); border-radius: .2rem; }
+.taxonomy-grammar-label strong { color: var(--ink); font-size: .78rem; font-weight: 500; }
+.taxonomy-grammar-label code, .taxonomy-overlay-card code { color: var(--muted); font: .62rem ui-monospace, monospace; }
+.taxonomy-grammar-kind { color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
+.taxonomy-kind-field { color: #7655a8; }
+.taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; color: var(--accent); text-align: center; background: var(--accent-light); border: 1px dashed var(--accent); border-radius: .25rem; font: .62rem ui-monospace, monospace; }
+.taxonomy-drop-zone-filled { place-items: stretch; }
+.taxonomy-grammar-drop-zone { min-height: 3rem; }
+.taxonomy-grammar-drop-zone:not(.dnd-insert-zone-active) { min-height: 1.5rem; padding: .15rem; color: transparent; background: transparent; border-color: transparent; }
+.taxonomy-grammar-drop-zone:not(.dnd-insert-zone-active) .taxonomy-drop-label { display: none; }
+.taxonomy-grammar-drop-zone > .taxonomy-drop-label { position: static; display: block; width: auto; height: auto; margin: 0; color: inherit; background: transparent; border: 0; border-radius: 0; font: inherit; opacity: 1; transform: none; }
+.taxonomy-grammar-drop-zone .taxonomy-drop-hint { position: static; display: grid; width: 1rem; height: 1rem; place-items: center; margin: auto; color: var(--hairline); background: transparent; border: 1px solid var(--hairline); border-radius: 50%; font: .7rem/1 ui-monospace, monospace; opacity: 1; transform: none; pointer-events: none; }
+.taxonomy-grammar-drop-zone.dnd-insert-zone-active .taxonomy-drop-hint { display: none; }
+.taxonomy-grammar-drop-zone.dnd-insert-zone-new { color: #39724a; background: #f1faf3; border-color: #4c9a68; }
+.taxonomy-grammar-drop-zone.dnd-insert-zone-move { color: #4d7fc4; background: #f1f6fc; border-color: #4d7fc4; }
+.taxonomy-overlay-card { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .55rem; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: .2rem; }
+.taxonomy-overlay-card strong { color: var(--accent); font-size: .75rem; font-weight: 500; }
+.taxonomy-inspector-rule { display: grid; gap: .3rem; margin-top: 1rem; padding: .7rem; background: var(--accent-light); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-inspector-rule strong { font: .8rem ui-monospace, monospace; }
+.taxonomy-inspector-rule small { color: var(--muted); font-size: .65rem; }
+.taxonomy-inspector-fields { display: grid; gap: .7rem; }
+.taxonomy-inspector-section { margin-top: 1.35rem; padding-top: 1rem; border-top: 1px solid var(--hairline-light); }
+.taxonomy-rule-card { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; padding: .7rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+.taxonomy-rule-card .primitive-button { grid-column: 1 / -1; justify-self: start; }
+.taxonomy-assignment-list { display: grid; gap: .5rem; margin-bottom: .7rem; }
+.taxonomy-assignment-list label { display: flex; align-items: center; gap: .4rem; color: var(--ink); font-size: .75rem; }
+.taxonomy-assignment-list input { accent-color: var(--accent); }
+.taxonomy-assignment-list small { margin-left: auto; color: var(--muted); font: .6rem ui-monospace, monospace; }
+.taxonomy-inspector-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.35rem; padding-top: 1rem; border-top: 1px solid var(--hairline-light); }
+.taxonomy-editor-status { padding: 1rem; border-top: 1px solid var(--hairline); }
+.taxonomy-status-grid { display: grid; grid-template-columns: auto 1fr; gap: .35rem .5rem; color: var(--muted); font: .68rem ui-monospace, monospace; }
+.taxonomy-status-ok { color: #39724a; }
+.taxonomy-status-pending { color: var(--accent); }
 
 @media (max-width: 700px) {
   .grammar-basic-example { grid-template-columns: 1fr; }
@@ -550,4 +709,16 @@ select.primitive-input { min-height: 2.3rem; }
   .html-primitives .primitive-control-button-card { align-items: flex-start; flex-direction: column; }
   .html-primitives .primitive-choice-card fieldset { align-items: flex-start; flex-direction: column; gap: .55rem; }
   .html-primitives .primitive-form-actions button { width: 100%; }
+  .taxonomy-editor-palette { flex-wrap: wrap; padding: .6rem; }
+  .taxonomy-editor-palette > .mock-section-label { width: 100%; }
+  .taxonomy-editor-palette-grid { width: 100%; }
+  .taxonomy-palette-help { width: 100%; max-width: none; }
+  .taxonomy-editor-palette-grid { flex-wrap: wrap; }
+  .taxonomy-palette-item { min-width: 8rem; }
+  .taxonomy-grammar-label { align-items: flex-start; flex-wrap: wrap; gap: .25rem .55rem; }
+  .taxonomy-grammar-children { margin-left: .4rem; padding-left: .6rem; }
+  .taxonomy-drop-example-grid { grid-template-columns: 1fr; }
+  .taxonomy-drop-example { grid-template-columns: 3rem 1fr; }
+  .taxonomy-drop-example .taxonomy-drop-description { grid-column: 2; }
+  .taxonomy-inspector-title { align-items: flex-start; flex-direction: column; }
 }

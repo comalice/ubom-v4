@@ -39,5 +39,5 @@
     <slot>
       <DndComponentList {nodes} parentId={null} {container} onDragOver={onDragOver} onDragLeave={onGapDragLeave} onDrop={onGapDrop} onDragEnd={handleDragEnd} {onRemove} />
     </slot>
-  {:else if newItemOver}<span class="dnd-new-drop-target" aria-hidden="true">+</span>{:else}<span>Drop a component here</span>{/if}
+  {:else if newItemOver}<span class="dnd-new-drop-target" aria-hidden="true">+</span>{:else}<span class="dnd-empty-drop-target"><span class="dnd-drop-indicator" aria-hidden="true">+</span><span>Drop a component here</span></span>{/if}
 </div>

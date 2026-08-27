@@ -1,5 +1,5 @@
 <script lang="ts">
-  export type StructureNode = { id: string | number; label: string; blockType: string; summary?: string; children: StructureNode[] }
+  import type { StructureNode } from './StructureNode'
 
   export let nodes: StructureNode[] = []
   export let showIds = true

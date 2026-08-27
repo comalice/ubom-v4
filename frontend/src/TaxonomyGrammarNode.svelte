@@ -1,6 +1,6 @@
 <script lang="ts">
   import TaxonomyGrammarDropTarget from './TaxonomyGrammarDropTarget.svelte'
-  import type { StructureNode } from './StructureTree.svelte'
+  import type { StructureNode } from './StructureNode'
 
   export let node: StructureNode
   export let depth = 0

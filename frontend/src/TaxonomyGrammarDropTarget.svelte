@@ -1,7 +1,7 @@
 <script lang="ts">
   import DropZone from './DropZone.svelte'
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
-  import type { StructureNode } from './StructureTree.svelte'
+  import type { StructureNode } from './StructureNode'
 
   export let node: StructureNode
   export let depth = 0

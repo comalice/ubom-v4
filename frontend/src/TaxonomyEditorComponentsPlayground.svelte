@@ -1,7 +1,7 @@
 <script lang="ts">
-  import BlockShell from './BlockShell.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import TableFrame from './TableFrame.svelte'
+  import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
   import TaxonomyExampleTile, { taxonomyTileModels } from './TaxonomyExampleTile.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
 
@@ -27,9 +27,7 @@
   <div class="grammar-basic-example-list">
       <article class="grammar-basic-example">
         <TaxonomyExampleTile tile={catalogueTiles[0]} variant="catalogue" />
-        <BlockShell title="category" summary="Resistors" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
-          <div class="taxonomy-block-body"><label>Label<input value="Resistors" aria-label="Category label" /></label><label>Node ID<input value="resistors" aria-label="Category node ID" /></label><div class="taxonomy-block-rule"><span>Rule</span><strong>category = A</strong></div><button class="taxonomy-block-add" type="button">+ add child category</button></div>
-        </BlockShell>
+        <TaxonomyCategoryBlock title="category" summary="Resistors" label="Resistors" nodeId="resistors" predicate="category = A" />
         <div class="grammar-block-meta"><p class="grammar-block-description">A named classification node attached to a grammar location.</p><div class="grammar-block-example"><span>Example</span><code>Resistors</code></div></div>
       </article>
       <article class="grammar-basic-example">

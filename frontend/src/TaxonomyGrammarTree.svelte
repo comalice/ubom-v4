@@ -1,6 +1,6 @@
 <script lang="ts">
-  import BlockShell from './BlockShell.svelte'
   import DropZone from './DropZone.svelte'
+  import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
   import type { StructureNode } from './StructureTree.svelte'
 
   const grammarNodes: StructureNode[] = [
@@ -33,14 +33,7 @@
       <DropZone variant={node.id === 'number' ? 'filled' : 'slot'} mode={dropState(node)} className="taxonomy-drop-zone taxonomy-grammar-drop-zone dnd-insert-zone" ariaLabel={`${dropLabel(node)} drop zone`} showHint={dropState(node) === 'inactive'} showLabel={node.id === 'number' || dropState(node) !== 'inactive'}>
         {#if node.id === 'number'}
           <span class="taxonomy-drop-label">Drop a taxonomy node for number</span>
-          <BlockShell title="Category" summary="category = A" kind="taxonomy" collapsible onRemove={() => {}}>
-            <div class="taxonomy-block-fields">
-              <label>Label<input value="Resistors" /></label>
-              <label>Node ID<input value="resistors" /></label>
-            </div>
-            <div class="taxonomy-block-meta"><span>Rule</span><strong>category = A</strong></div>
-            <button class="taxonomy-block-add" type="button">+ Add child category</button>
-          </BlockShell>
+          <TaxonomyCategoryBlock title="Category" summary="category = A" label="Resistors" nodeId="resistors" predicate="category = A" addChildLabel="+ Add child category" layout="tree" />
         {:else}
           <span class="taxonomy-drop-label">{dropLabel(node)}</span>
         {/if}
@@ -53,14 +46,7 @@
               <DropZone variant={child.id === 'number' ? 'filled' : 'slot'} mode={dropState(child)} className="taxonomy-drop-zone taxonomy-grammar-drop-zone dnd-insert-zone" ariaLabel={`${dropLabel(child)} drop zone`} showHint={dropState(child) === 'inactive'} showLabel={child.id === 'number' || dropState(child) !== 'inactive'}>
                 {#if child.id === 'number'}
                   <span class="taxonomy-drop-label">Drop a taxonomy node for number</span>
-                  <BlockShell title="High Power" summary="number = 100..199" kind="taxonomy" collapsible onRemove={() => {}}>
-                    <div class="taxonomy-block-fields">
-                      <label>Label<input value="High Power" /></label>
-                      <label>Node ID<input value="high-power" /></label>
-                    </div>
-                    <div class="taxonomy-block-meta"><span>Rule</span><strong>number = 100..199</strong></div>
-                    <button class="taxonomy-block-add" type="button">+ Add child category</button>
-                  </BlockShell>
+                   <TaxonomyCategoryBlock title="High Power" summary="number = 100..199" label="High Power" nodeId="high-power" predicate="number = 100..199" addChildLabel="+ Add child category" layout="tree" />
                 {:else}
                   <span class="taxonomy-drop-label">{dropLabel(child)}</span>
                 {/if}

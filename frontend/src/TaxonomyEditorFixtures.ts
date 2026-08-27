@@ -10,6 +10,40 @@ export const grammarNodes: StructureNode[] = [
   ] },
 ]
 
+export type TaxonomyGrammarCategoryBlockFixture = {
+  title: string
+  summary: string
+  label: string
+  nodeId: string
+  predicate: string
+  addChildLabel: string
+  layout: 'catalogue' | 'tree'
+}
+
+export type TaxonomyGrammarDropTargetFixture = {
+  filled: boolean
+  dropMode: 'inactive' | 'new' | 'move'
+  categoryLabel: string
+  categoryBlock?: TaxonomyGrammarCategoryBlockFixture
+}
+
+export const taxonomyGrammarDropTargetFixtures: Record<string, TaxonomyGrammarDropTargetFixture> = {
+  number: {
+    filled: true,
+    dropMode: 'move',
+    categoryLabel: 'Drop a taxonomy node for number',
+    categoryBlock: {
+      title: 'High Power',
+      summary: 'number = 100..199',
+      label: 'High Power',
+      nodeId: 'high-power',
+      predicate: 'number = 100..199',
+      addChildLabel: '+ Add child category',
+      layout: 'tree',
+    },
+  },
+}
+
 export type TaxonomyCategoryExample = {
   title: string
   summary: string

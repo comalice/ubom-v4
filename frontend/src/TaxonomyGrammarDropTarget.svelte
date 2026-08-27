@@ -1,10 +1,15 @@
 <script lang="ts">
-  import DropZone from './DropZone.svelte'
+  import DropZone, { type DropZoneMode } from './DropZone.svelte'
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
   import type { StructureNode } from './StructureNode'
+  import type { TaxonomyGrammarCategoryBlockFixture } from './TaxonomyEditorFixtures'
 
   export let node: StructureNode
   export let depth = 0
+  export let filled = false
+  export let dropMode: DropZoneMode = 'inactive'
+  export let categoryLabel = ''
+  export let categoryBlock: TaxonomyGrammarCategoryBlockFixture | undefined
 
   function dropLabel(node: StructureNode) {
     if (node.id === 'grammar-root') return 'Drop a category at the root'
@@ -12,20 +17,15 @@
     return 'Taxonomy nodes cannot attach to this grammar item'
   }
 
-  function dropState(node: StructureNode) {
-    if (node.id === 'grammar-root') return 'new'
-    if (node.id === 'number') return 'move'
-    return 'inactive'
-  }
-
-  $: state = dropState(node)
   $: label = dropLabel(node)
 </script>
 
-<DropZone variant={node.id === 'number' ? 'filled' : 'slot'} mode={state} className="taxonomy-drop-zone taxonomy-grammar-drop-zone dnd-insert-zone" ariaLabel={`${label} drop zone`} showHint={state === 'inactive'} showLabel={depth > 1 || node.id === 'number' || state !== 'inactive'} label={depth > 1 ? label : ''}>
-  {#if node.id === 'number'}
-    <span class="taxonomy-drop-label">Drop a taxonomy node for number</span>
-    <TaxonomyCategoryBlock title="High Power" summary="number = 100..199" label="High Power" nodeId="high-power" predicate="number = 100..199" addChildLabel="+ Add child category" layout="tree" />
+<DropZone variant={filled ? 'filled' : 'slot'} mode={dropMode} className="taxonomy-drop-zone taxonomy-grammar-drop-zone dnd-insert-zone" ariaLabel={`${label} drop zone`} showHint={dropMode === 'inactive'} showLabel={depth > 1 || filled || dropMode !== 'inactive'} label={depth > 1 ? label : ''}>
+  {#if filled}
+    <span class="taxonomy-drop-label">{categoryLabel}</span>
+    {#if categoryBlock}
+      <TaxonomyCategoryBlock {...categoryBlock} />
+    {/if}
   {:else if depth <= 1}
     <span class="taxonomy-drop-label">{label}</span>
   {/if}

@@ -9,9 +9,6 @@
   import GrammarEditorPlayground from './GrammarEditorPlayground.svelte'
   import TaxonomyEditorPlayground from './TaxonomyEditorPlayground.svelte'
   import TaxonomyEditorComponentsPlayground from './TaxonomyEditorComponentsPlayground.svelte'
-  import MoveDropMarker from './MoveDropMarker.svelte'
-  import NewDropMarker from './NewDropMarker.svelte'
-  import InactiveDropMarker from './InactiveDropMarker.svelte'
 
   const links = [
     { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
@@ -43,17 +40,6 @@
     {:else if page === 'html-primitives'}
       <HtmlPrimitivesPlayground />
     {:else if page === 'dnd-ops'}
-      <p class="eyebrow">DnD operations</p>
-      <h2>DnD operations</h2>
-      <section class="playground-components" aria-labelledby="playground-components-heading">
-        <p class="mock-section-label" id="playground-components-heading">Components</p>
-        <div class="playground-component-list">
-          <div class="playground-component-item"><NewDropMarker /><span><strong>New item</strong><small>Creates a new component at the target</small></span></div>
-          <div class="playground-component-item"><MoveDropMarker /><span><strong>Moving item</strong><small>Moves an existing component to the target</small></span></div>
-          <div class="playground-component-item"><InactiveDropMarker /><span><strong>Inactive item</strong><small>Inactive drop zone.</small></span>
-      </div>
-        </div>
-      </section>
       <DndOpsPlayground />
     {:else if page === 'block-examples'}
       <BlockExamplesPlayground />

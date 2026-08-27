@@ -1,3 +1,4 @@
+
 <script lang="ts">
   import { type DragDropState } from '@thisux/sveltednd'
   import type { DropSlot } from './DndComponentList.svelte'
@@ -6,6 +7,10 @@
   import DropZone from './DropZone.svelte'
   import type { ComponentNode } from './DndDraggable.svelte'
   import StructureTree from './StructureTree.svelte'
+  import MoveDropMarker from './MoveDropMarker.svelte'
+  import NewDropMarker from './NewDropMarker.svelte'
+  import InactiveDropMarker from './InactiveDropMarker.svelte'
+
 
   type DragItem = DraggableComponent
   const rootListId = 'component-list:root'
@@ -84,6 +89,17 @@
     return nodeId !== null && (node.id === nodeId || node.children.some((child) => containsNode(child, nodeId)))
   }
 </script>
+<p class="eyebrow">DnD operations</p>
+<h2>DnD operations</h2>
+<section class="playground-components" aria-labelledby="playground-components-heading">
+  <p class="mock-section-label" id="playground-components-heading">Components</p>
+  <div class="playground-component-list">
+    <div class="playground-component-item"><NewDropMarker /><span><strong>New item</strong><small>Creates a new component at the target</small></span></div>
+    <div class="playground-component-item"><MoveDropMarker /><span><strong>Moving item</strong><small>Moves an existing component to the target</small></span></div>
+    <div class="playground-component-item"><InactiveDropMarker /><span><strong>Inactive item</strong><small>Inactive drop zone.</small></span>
+  </div>
+  </div>
+</section>
 
 <div class="dnd-ops-playground">
   <section class="dnd-structure-preview" aria-labelledby="structure-preview-heading">

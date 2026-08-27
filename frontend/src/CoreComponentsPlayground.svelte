@@ -14,6 +14,7 @@
   import NestedBlock from './NestedBlock.svelte'
   import NewDropMarker from './NewDropMarker.svelte'
   import MoveDropMarker from './MoveDropMarker.svelte'
+  import InactiveDropMarker from './InactiveDropMarker.svelte'
   import PartTable from './PartTable.svelte'
   import BomTable from './BomTable.svelte'
   import ArtifactTable from './ArtifactTable.svelte'
@@ -49,10 +50,11 @@
   </section>
 
   <section class="core-component-group" aria-labelledby="controls-heading">
-    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">3 components</span></div>
+    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">4 components</span></div>
     <div class="core-component-grid">
       <article class="core-component-card"><h4>NewDropMarker</h4><p class="muted">Marker for creating a new item.</p><div class="core-marker-demo"><NewDropMarker /></div></article>
       <article class="core-component-card"><h4>MoveDropMarker</h4><p class="muted">Marker for moving an existing item.</p><div class="core-marker-demo"><MoveDropMarker /></div></article>
+      <article class="core-component-card"><h4>InactiveDropMarker</h4><p class="muted">Neutral marker for an unavailable target.</p><div class="core-marker-demo"><InactiveDropMarker /></div></article>
       <article class="core-component-card"><h4>Empty and status states</h4><p class="muted">Existing shared patterns used by lists and tables.</p><div class="playground-empty core-mini-empty">No components to show.</div></article>
     </div>
   </section>

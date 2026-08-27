@@ -6,6 +6,7 @@
 
   export type DropZoneMode = 'inactive' | 'new' | 'move'
   export type DropZoneVariant = 'gap' | 'slot' | 'filled'
+  export type DropZoneModeResolver = (state: DragDropState<any>) => DropZoneMode
 
   export let container = ''
   export let variant: DropZoneVariant = 'gap'
@@ -19,28 +20,29 @@
   export let onDragOver: ((state: DragDropState<any>) => void) | undefined
   export let onDragLeave: (() => void) | undefined
   export let onDrop: ((state: DragDropState<any>) => void) | undefined
+  export let getMode: DropZoneModeResolver | undefined
 
   let over = false
-  let palette = false
+  let dragMode: DropZoneMode = 'inactive'
   $: interactive = Boolean(container && (onDragOver || onDragLeave || onDrop))
-  $: currentMode = interactive ? (over ? (palette ? 'new' : 'move') : 'inactive') : mode
+  $: currentMode = interactive ? (over ? dragMode : 'inactive') : mode
   $: dropLabel = ariaLabel || label
 
   function handleDragOver(state: DragDropState<any>) {
     over = true
-    palette = state.draggedItem?.kind === 'palette'
+    dragMode = getMode?.(state) ?? (state.draggedItem?.kind === 'palette' ? 'new' : 'move')
     onDragOver?.(state)
   }
 
   function handleDragLeave() {
     over = false
-    palette = false
+    dragMode = 'inactive'
     onDragLeave?.()
   }
 
   function handleDrop(state: DragDropState<any>) {
-    onDrop?.(state)
     handleDragLeave()
+    onDrop?.(state)
   }
 
   onMount(() => {
@@ -66,7 +68,7 @@
   class:drop-zone-filled={variant === 'filled'}
   class:dnd-insert-zone={variant === 'gap'}
   class:grammar-editor-drop-target-over={over}
-  class:grammar-editor-drop-target-palette={palette}
+  class:grammar-editor-drop-target-palette={currentMode === 'new'}
   class:grammar-editor-drop-target-labeled={showLabel}
   aria-label={dropLabel}
   {role}

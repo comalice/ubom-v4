@@ -100,16 +100,8 @@
   function removeRoot(index: number) { rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
   function handleGapDragOver(state: DragDropState<GrammarDragItem>) {
     if (!state.draggedItem) return
-    const target = (state.targetElement as HTMLElement | null)?.closest('.grammar-editor .dnd-insert-zone')
-    const markerClass = state.draggedItem.kind === 'palette' ? 'dnd-insert-zone-new' : 'dnd-insert-zone-move'
-    if (!target?.classList.contains(markerClass)) {
-      clearDropMarker()
-      target?.classList.add('dnd-insert-zone-active', markerClass)
-    }
   }
-  function handleGapDragLeave() {
-    requestAnimationFrame(clearDropMarker)
-  }
+  function handleGapDragLeave() {}
   function handleGapDrop(state: DragDropState<GrammarDragItem>, target: GrammarDropSlot) { handleGrammarDrop(state, target) }
   function handleGrammarDrop(state: DragDropState<DragPayload>, target: DropTarget) {
     if (readOnly) return
@@ -135,7 +127,6 @@
         rootSequence = insertPath(without, target.path, item.expr, index)
       }
     }
-    clearDropMarker()
   }
 
   function removePath(root: Expr[], path: string[], id: string): Expr[] {
@@ -193,10 +184,7 @@
     if (target.type === 'row' && target.path.length === 0) return false
     return target.path.includes(source.id)
   }
-  function clearDropMarker() {
-    document.querySelectorAll('.grammar-editor .dnd-insert-zone-active').forEach((element) => element.classList.remove('dnd-insert-zone-active', 'dnd-insert-zone-new', 'dnd-insert-zone-move'))
-  }
-  function handleDragEnd() { clearDropMarker() }
+  function handleDragEnd() {}
 </script>
 
 <p class="eyebrow">Grammar editor</p>

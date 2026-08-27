@@ -18,26 +18,14 @@
   const nestedComponent: DraggableComponent = { kind: 'component', label: 'Container', blockType: 'nested' }
   let placedComponents: ComponentNode[] = []
   let nextComponentId = 1
-  const markerState = { version: 0 }
 
   function handleDrop(state: DragDropState<DragItem>) {
     if (state.draggedItem?.kind === 'component') placedComponents = [...placedComponents, { ...state.draggedItem, id: nextComponentId++, children: [] }]
   }
   function handleGapDragOver(state: DragDropState<DragItem>) {
     if (state.draggedItem?.kind !== 'component') return
-    markerState.version += 1
-    const target = (state.targetElement as HTMLElement | null)?.closest('.dnd-insert-zone')
-    const markerClass = state.sourceContainer.startsWith('component-list:') ? 'dnd-insert-zone-move' : 'dnd-insert-zone-new'
-    if (!target?.classList.contains(markerClass)) {
-      clearDropMarker()
-      target?.classList.add('dnd-insert-zone-active', markerClass)
-    }
   }
   function handleGapDragLeave() {
-    const version = markerState.version
-    requestAnimationFrame(() => {
-      if (version === markerState.version) clearDropMarker()
-    })
   }
   function handleGapDrop(slot: DropSlot, state: DragDropState<DragItem>) {
     if (state.draggedItem?.kind === 'component') {
@@ -61,11 +49,7 @@
     }
     clearDropMarker()
   }
-  function clearDropMarker() {
-    document.querySelectorAll('.dnd-ops-playground .dnd-insert-zone-active').forEach((element) => element.classList.remove('dnd-insert-zone-active', 'dnd-insert-zone-new', 'dnd-insert-zone-move'))
-  }
   function handleDragEnd() {
-    clearDropMarker()
   }
   function findChildren(nodes: ComponentNode[], parentId: number | null): ComponentNode[] {
     if (parentId === null) return nodes

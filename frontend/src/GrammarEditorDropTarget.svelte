@@ -9,22 +9,8 @@
   export let showLabel = false
   export let onDrop: (state: DragDropState<GrammarDragPayload>, target: GrammarDropTarget) => void
 
-  let palette = false
-  let over = false
-
-  function handleDragOver(state: DragDropState<GrammarDragPayload>) {
-    over = true
-    palette = state.draggedItem?.kind === 'palette'
-  }
-  function handleDragLeave() {
-    over = false
-    palette = false
-  }
-  function handleDrop(state: DragDropState<GrammarDragPayload>) {
-    onDrop(state, target)
-    handleDragLeave()
-  }
+  function handleDrop(state: DragDropState<GrammarDragPayload>) { onDrop(state, target) }
 
 </script>
 
-<DropZone variant="slot" className="grammar-editor-drop-target" {container} {label} {showLabel} role="listitem" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} />
+<DropZone variant="slot" className="grammar-editor-drop-target" {container} {label} {showLabel} role="listitem" onDrop={handleDrop} />

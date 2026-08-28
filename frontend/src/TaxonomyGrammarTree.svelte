@@ -11,10 +11,11 @@
   export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
+  export let onAttributes: (label: string) => void = () => {}
 </script>
 
 <ul class="dnd-structure-tree taxonomy-grammar-structure-tree">
   {#each grammarNodes as node (node.id)}
-    <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} />
+    <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} />
   {/each}
 </ul>

@@ -1,10 +1,14 @@
 <script lang="ts">
   import TaxonomyPalette from './TaxonomyPalette.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
+  import PrimitiveButton from './PrimitiveButton.svelte'
+  import SlideOut from './SlideOut.svelte'
+  import TableFrame from './TableFrame.svelte'
   import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
+  let attributesLabel: string | undefined
   let taxonomyDraft: TaxonomyDraftNode = {
     id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
       id: 'high-power', label: 'High Power', targetId: 'number', placements: [{
@@ -76,6 +80,10 @@
   }
 
   function handleDragEnd() {}
+
+  function closeAttributes() {
+    attributesLabel = undefined
+  }
 </script>
 
 <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
@@ -88,7 +96,7 @@
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(label) => attributesLabel = label} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">
@@ -100,3 +108,21 @@
     </div>
   </section>
 </section>
+
+{#if attributesLabel}
+  <SlideOut open eyebrow={`Attributes for ${attributesLabel}`} title="Assigned part properties" onClose={closeAttributes}>
+    <p class="slide-out-copy">Inherited assignments remain visible with their source.</p>
+    <TableFrame className="taxonomy-attribute-table-frame">
+      <table class="taxonomy-attribute-table">
+        <caption class="sr-only">Attributes assigned to {attributesLabel}</caption>
+        <thead><tr><th scope="col">Attribute</th><th scope="col">Value type</th><th scope="col">Required</th><th scope="col">Source</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Footprint</th><td>enum</td><td>Required</td><td class="taxonomy-inherited">Components</td></tr>
+          <tr><th scope="row">Resistance value</th><td>decimal · ohm</td><td>Required</td><td>This node</td></tr>
+          <tr><th scope="row">Tolerance</th><td>decimal · percent</td><td>Optional</td><td>This node</td></tr>
+        </tbody>
+      </table>
+    </TableFrame>
+    <PrimitiveButton variant="secondary" size="small" type="button">+ Add attribute assignment</PrimitiveButton>
+  </SlideOut>
+{/if}

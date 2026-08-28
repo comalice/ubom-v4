@@ -29,6 +29,8 @@
   export let onRuleDragLeave: (() => void) | undefined
   export let onRuleDrop: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
   export let onAttributes: () => void = () => {}
+  export let onLabelChange: (label: string) => void = () => {}
+  export let onNodeIdChange: (nodeId: string) => void = () => {}
   export let layout: TaxonomyCategoryBlockLayout = 'catalogue'
   export let container = ''
   export let dragData: TaxonomyDragPayload | undefined = undefined
@@ -41,16 +43,16 @@
   <svelte:fragment slot="header-actions">{#if !readOnly}<PrimitiveButton variant="secondary" size="small" type="button" aria-label={`View attributes for ${label}`} on:click={onAttributes}>attributes</PrimitiveButton>{/if}</svelte:fragment>
   {#if layout === 'tree'}
     <div class="taxonomy-block-fields">
-      <label>Label<input value={label} readonly={readOnly} /></label>
-      <label>Node ID<input value={nodeId} readonly={readOnly} /></label>
+       <label>Label<input value={label} readonly={readOnly} on:input={(event) => onLabelChange(event.currentTarget.value)} /></label>
+       <label>Node ID<input value={nodeId} readonly={readOnly} on:input={(event) => onNodeIdChange(event.currentTarget.value)} /></label>
     </div>
     <div class="taxonomy-block-meta"><span>{predicateLabel}</span><strong>{predicate}</strong></div>
     {#if showRuleDropZone}<div class="taxonomy-category-rules"><span class="taxonomy-category-rules-label">Rules</span>{#if !readOnly}<DropZone variant="slot" mode={ruleDropMode} className="taxonomy-rule-drop-zone" container={ruleContainer} accepts={(state) => (state.draggedItem?.kind === 'palette' || state.draggedItem?.kind === 'taxonomy') && state.draggedItem.taxonomyType === 'rule'} onDragOver={onRuleDragOver} onDragLeave={onRuleDragLeave} onDrop={onRuleDrop} ariaLabel={ruleDropLabel} />{/if}<slot name="rules" /></div>{/if}
     {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span>{#if !readOnly}<DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} />{/if}<slot name="children" /></div>{/if}
   {:else}
     <div class="taxonomy-block-body">
-      <label>Label<input value={label} readonly={readOnly} aria-label="Category label" /></label>
-      <label>Node ID<input value={nodeId} readonly={readOnly} aria-label="Category node ID" /></label>
+       <label>Label<input value={label} readonly={readOnly} aria-label="Category label" on:input={(event) => onLabelChange(event.currentTarget.value)} /></label>
+       <label>Node ID<input value={nodeId} readonly={readOnly} aria-label="Category node ID" on:input={(event) => onNodeIdChange(event.currentTarget.value)} /></label>
       <div class="taxonomy-block-rule"><span>{predicateLabel}</span><strong>{predicate}</strong></div>
       {#if showRuleDropZone}<div class="taxonomy-category-rules"><span class="taxonomy-category-rules-label">Rules</span>{#if !readOnly}<DropZone variant="slot" mode={ruleDropMode} className="taxonomy-rule-drop-zone" container={ruleContainer} accepts={(state) => (state.draggedItem?.kind === 'palette' || state.draggedItem?.kind === 'taxonomy') && state.draggedItem.taxonomyType === 'rule'} onDragOver={onRuleDragOver} onDragLeave={onRuleDragLeave} onDrop={onRuleDrop} ariaLabel={ruleDropLabel} />{/if}<slot name="rules" /></div>{/if}
       {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span>{#if !readOnly}<DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} />{/if}<slot name="children" /></div>{/if}

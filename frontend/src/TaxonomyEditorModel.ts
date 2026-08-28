@@ -210,6 +210,43 @@ export type TaxonomyDraftNode = {
   children: TaxonomyDraftNode[]
 }
 
+function predicateLabel(predicate: TaxonomyRulePredicate): string {
+  return predicate.kind === 'numeric-range'
+    ? `${predicate.field} = ${predicate.min}..${predicate.max}`
+    : `${predicate.field} = ${predicate.value}`
+}
+
+/** Updates one draft node without changing placement IDs used by drag/drop. */
+export function updateTaxonomyDraftNode(node: TaxonomyDraftNode, nodeID: string, changes: { label?: string; id?: string }): TaxonomyDraftNode {
+  if (changes.id !== undefined && (!changes.id.trim() || changes.id !== nodeID && findTaxonomyDraftPath(node, changes.id).length)) return node
+  if (node.id === nodeID) {
+    const id = changes.id ?? node.id
+    return {
+      ...node,
+      id,
+      label: changes.label ?? node.label,
+      placements: node.placements.map((placement) => placement.type === 'category'
+        ? { ...placement, label: changes.label ?? placement.label, title: changes.label ?? placement.title, nodeId: id }
+        : placement),
+    }
+  }
+  const children = node.children.map((child) => updateTaxonomyDraftNode(child, nodeID, changes))
+  return children.some((child, index) => child !== node.children[index]) ? { ...node, children } : node
+}
+
+/** Updates a rule and keeps its serialized predicate and UI text in sync. */
+export function updateTaxonomyDraftRule(node: TaxonomyDraftNode, ruleID: string, predicate: TaxonomyRulePredicate): TaxonomyDraftNode {
+  const text = predicateLabel(predicate)
+  const update = (rule: TaxonomyPlacement) => rule.id === ruleID
+    ? { ...rule, title: text, summary: text, predicate: text, predicateData: { ...predicate } }
+    : rule
+  const rules = node.rules.map(update)
+  const children = node.children.map((child) => updateTaxonomyDraftRule(child, ruleID, predicate))
+  return rules.some((rule, index) => rule !== node.rules[index]) || children.some((child, index) => child !== node.children[index])
+    ? { ...node, rules, children }
+    : node
+}
+
 export type TaxonomyEffectiveAttribute = TaxonomyAttributeDefinition & {
   required: boolean
   source: string

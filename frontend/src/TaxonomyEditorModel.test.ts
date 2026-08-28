@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
+import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -97,5 +97,37 @@ describe('taxonomyDefinitionInputFromDraft', () => {
     expect(taxonomyDefinitionInputFromDraft('seq-v1', 'tax-v1', definitions, root)).toEqual({
       seqDef: 'seq-v1', parentId: 'tax-v1', attributeDefs: definitions, root: { id: 'root', label: 'Parts', attributes: [{ attributeDefId: 'finish', required: true }], predicates: [{ field: 'size', kind: 'numeric-range', min: 1, max: 9 }], children: [{ id: 'metal', label: 'Metal', predicates: [{ field: 'family', kind: 'exact', value: 'METAL' }] }] },
     })
+  })
+})
+
+describe('taxonomy draft editing', () => {
+  it('updates a node label and category placement without changing placement identity', () => {
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'grammar-root', placements: [], rules: [], children: [{ id: 'child', label: 'Old', targetId: 'field', placements: [{ id: 'placement', targetId: 'field', type: 'category', title: 'Old', summary: 'Category', label: 'Old', nodeId: 'child' }], rules: [], children: [] }] }
+    const result = updateTaxonomyDraftNode(draft, 'child', { label: 'New' })
+    expect(result.children[0].label).toBe('New')
+    expect(result.children[0].placements[0]).toMatchObject({ id: 'placement', label: 'New', title: 'New', nodeId: 'child' })
+    expect(result.children[0].placements[0]).not.toBe(draft.children[0].placements[0])
+  })
+
+  it('updates a valid node ID while preserving the placement ID', () => {
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'grammar-root', placements: [], rules: [], children: [{ id: 'child', label: 'Child', targetId: 'field', placements: [{ id: 'placement', targetId: 'field', type: 'category', title: 'Child', summary: 'Category', label: 'Child', nodeId: 'child' }], rules: [], children: [] }] }
+    const result = updateTaxonomyDraftNode(draft, 'child', { id: 'renamed' })
+    expect(result.children[0].id).toBe('renamed')
+    expect(result.children[0].placements[0]).toMatchObject({ id: 'placement', nodeId: 'renamed' })
+  })
+
+  it('rejects empty and duplicate node IDs', () => {
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'grammar-root', placements: [], rules: [], children: [{ id: 'child', label: 'Child', targetId: 'field', placements: [], rules: [], children: [] }] }
+    const duplicate = updateTaxonomyDraftNode(draft, 'child', { id: 'root' })
+    const empty = updateTaxonomyDraftNode(draft, 'child', { id: ' ' })
+    expect(duplicate).toBe(draft)
+    expect(empty).toBe(draft)
+  })
+
+  it('updates rule predicate data and display text immutably', () => {
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'grammar-root', placements: [], rules: [{ id: 'rule', targetId: 'root', type: 'rule', title: 'old', summary: 'old' }], children: [] }
+    const result = updateTaxonomyDraftRule(draft, 'rule', { kind: 'numeric-range', field: 'size', min: 2, max: 8 })
+    expect(result.rules[0]).toMatchObject({ title: 'size = 2..8', summary: 'size = 2..8', predicate: 'size = 2..8', predicateData: { kind: 'numeric-range', min: 2, max: 8 } })
+    expect(result.rules[0]).not.toBe(draft.rules[0])
   })
 })

@@ -13,12 +13,15 @@
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
   export let onAttributes: (nodeID: string) => void = () => {}
+  export let onNodeLabelChange: (nodeID: string, label: string) => void = () => {}
+  export let onNodeIdChange: (nodeID: string, newNodeID: string) => void = () => {}
+  export let onRulePredicateChange: (ruleID: string, predicate: import('./TaxonomyEditorModel').TaxonomyRulePredicate) => void = () => {}
   export let grammarNodes: StructureNode[] = defaultGrammarNodes
   export let readOnly = false
 </script>
 
 <ul class="dnd-structure-tree taxonomy-grammar-structure-tree">
   {#each grammarNodes as node (node.id)}
-     <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {readOnly} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} />
+     <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {readOnly} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
   {/each}
 </ul>

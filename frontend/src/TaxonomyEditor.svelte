@@ -5,7 +5,7 @@
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
-  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyValidationError } from './TaxonomyEditorModel'
+  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   export let grammar: TaxonomyGrammar
@@ -82,6 +82,18 @@
 
   function handleDragEnd() {}
 
+  function updateNodeLabel(nodeID: string, label: string) {
+    if (!readOnly) taxonomyDraft = updateTaxonomyDraftNode(taxonomyDraft, nodeID, { label })
+  }
+
+  function updateNodeID(nodeID: string, newNodeID: string) {
+    if (!readOnly) taxonomyDraft = updateTaxonomyDraftNode(taxonomyDraft, nodeID, { id: newNodeID })
+  }
+
+  function updateRulePredicate(ruleID: string, predicate: TaxonomyRulePredicate) {
+    if (!readOnly) taxonomyDraft = updateTaxonomyDraftRule(taxonomyDraft, ruleID, predicate)
+  }
+
   function closeAttributes() {
     attributesNodeID = undefined
   }
@@ -140,7 +152,7 @@
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} {readOnly} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} {readOnly} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">

@@ -5,7 +5,7 @@
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
-  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, updateTaxonomyAttribute, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyValidationError } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   export let grammar: TaxonomyGrammar
@@ -86,6 +86,16 @@
 
   $: selectedAttributesNode = attributesNodeID ? findTaxonomyDraftNode(taxonomyDraft, attributesNodeID) : undefined
   $: selectedAttributes = attributesNodeID ? effectiveTaxonomyAttributes(taxonomyDraft, attributesNodeID, attributeDefinitions) : []
+  $: validation = validateTaxonomyAttributes(attributeDefinitions, taxonomyDraft)
+  $: selectedAttributeRows = selectedAttributes.map((attribute: TaxonomyEffectiveAttribute) => ({ attribute, errors: attributeValidationErrors(attribute) }))
+
+  function attributeValidationErrors(attribute: TaxonomyEffectiveAttribute): TaxonomyValidationError[] {
+    const errors = [...(validation.definitionErrors[attribute.id] ?? [])]
+    if (attributesNodeID) for (const node of findTaxonomyDraftPath(taxonomyDraft, attributesNodeID)) {
+      for (const [index, assignment] of (node.attributes ?? []).entries()) if (assignment.attributeDefId === attribute.id) errors.push(...(validation.assignmentErrors[taxonomyAssignmentErrorKey(node.id, index)] ?? []))
+    }
+    return errors
+  }
 
   function updateAttribute(attributeDefID: string, required: boolean) {
     if (attributesNodeID) taxonomyDraft = updateTaxonomyAttribute(taxonomyDraft, attributesNodeID, attributeDefID, { attributeDefId: attributeDefID, required })
@@ -135,7 +145,7 @@
     <div class="taxonomy-status-grid">
       <span class="taxonomy-status-ok">✓</span><span>Grammar is immutable</span>
       <span class="taxonomy-status-ok">✓</span><span>Drop zones expose known grammar fields</span>
-      <span class="taxonomy-status-pending">•</span><span>Taxonomy validation will come later</span>
+       <span class={validation.valid ? 'taxonomy-status-ok' : 'taxonomy-status-pending'}>{validation.valid ? '✓' : '!'}</span><span>{validation.valid ? 'Taxonomy draft is valid' : 'Taxonomy draft has validation errors'}</span>
     </div>
   </section>
 </section>
@@ -147,7 +157,7 @@
       <table class="taxonomy-attribute-table">
         <caption class="sr-only">Attributes assigned to {selectedAttributesNode.label}</caption>
         <thead><tr><th scope="col">Attribute</th><th scope="col">Value type</th><th scope="col">Required</th><th scope="col">Source</th></tr></thead>
-        <tbody>{#each selectedAttributes as attribute}<TaxonomyAttributeTableRow {attribute} selectedNodeLabel={selectedAttributesNode.label} editable={attribute.source === selectedAttributesNode.label} onChange={(required) => updateAttribute(attribute.id, required)} onDefinitionChange={(label, valueType) => updateAttributeDefinition(attribute.id, label, valueType)} actionLabel="Override" onAction={() => overrideAttribute(attribute.id, attribute.required)} onRemove={() => removeAttribute(attribute.id)} />{/each}</tbody>
+        <tbody>{#each selectedAttributeRows as row}<TaxonomyAttributeTableRow attribute={row.attribute} errors={row.errors} selectedNodeLabel={selectedAttributesNode.label} editable={row.attribute.source === selectedAttributesNode.label} onChange={(required) => updateAttribute(row.attribute.id, required)} onDefinitionChange={(label, valueType) => updateAttributeDefinition(row.attribute.id, label, valueType)} actionLabel="Override" onAction={() => overrideAttribute(row.attribute.id, row.attribute.required)} onRemove={() => removeAttribute(row.attribute.id)} />{/each}</tbody>
       </table>
     </TableFrame>
     <PrimitiveButton variant="secondary" size="small" type="button" on:click={addAttribute}>+ Add attribute assignment</PrimitiveButton>

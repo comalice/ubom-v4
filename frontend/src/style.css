@@ -585,6 +585,8 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-attribute-table tbody tr:hover { background: var(--accent-light); }
 .taxonomy-attribute-table tbody tr.taxonomy-attribute-inherited { background: #f3f0f7; }
 .taxonomy-attribute-table tbody tr.taxonomy-attribute-override { background: #fdf2df; }
+.taxonomy-attribute-table tbody tr.taxonomy-attribute-invalid { box-shadow: inset 3px 0 var(--danger, #b34b4b); }
+.taxonomy-attribute-errors { display: grid; gap: .15rem; margin-top: .3rem; color: #a33d3d; font: .6rem ui-monospace, monospace; white-space: normal; }
 .taxonomy-attribute-table tbody tr.taxonomy-attribute-inherited:hover, .taxonomy-attribute-table tbody tr.taxonomy-attribute-override:hover { background: var(--accent-light); }
 .taxonomy-attribute-table .primitive-button { min-height: 0; padding: .25rem .35rem; font-size: .62rem; }
 .taxonomy-attribute-row-action { padding: .25rem .35rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: .62rem ui-monospace, monospace; }

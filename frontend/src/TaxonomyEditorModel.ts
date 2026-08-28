@@ -36,6 +36,18 @@ export type TaxonomyAttributeDefinition = {
 
 export type TaxonomyAttributeValueType = 'string' | 'decimal' | 'enum'
 
+export type TaxonomyValidationError = {
+  code: string
+  message: string
+}
+
+export type TaxonomyValidationResult = {
+  valid: boolean
+  definitionErrors: Record<string, TaxonomyValidationError[]>
+  assignmentErrors: Record<string, TaxonomyValidationError[]>
+  nodeErrors: Record<string, TaxonomyValidationError[]>
+}
+
 export type TaxonomyAttributeAssignment = {
   attributeDefId: string
   required: boolean
@@ -69,6 +81,63 @@ export type TaxonomyEffectiveAttribute = TaxonomyAttributeDefinition & {
   overridden: boolean
 }
 
+export function taxonomyAssignmentErrorKey(nodeID: string, assignmentIndex: number) {
+  return `${nodeID}:${assignmentIndex}`
+}
+
+export function validateTaxonomyAttributes(definitions: TaxonomyAttributeDefinition[], root: TaxonomyDraftNode): TaxonomyValidationResult {
+  const definitionErrors: Record<string, TaxonomyValidationError[]> = {}
+  const assignmentErrors: Record<string, TaxonomyValidationError[]> = {}
+  const nodeErrors: Record<string, TaxonomyValidationError[]> = {}
+  const add = (target: Record<string, TaxonomyValidationError[]>, key: string, code: string, message: string) => {
+    ;(target[key] ??= []).push({ code, message })
+  }
+  const definitionIDs = new Map<string, number>()
+  const labels = new Map<string, string>()
+  for (const definition of definitions) {
+    definitionIDs.set(definition.id, (definitionIDs.get(definition.id) ?? 0) + 1)
+    if (!definition.label.trim()) add(definitionErrors, definition.id, 'empty-label', 'Attribute label cannot be empty')
+    const labelKey = definition.label.trim()
+    if (labelKey) {
+      if (labels.has(labelKey)) {
+        add(definitionErrors, definition.id, 'duplicate-label', `Attribute label "${labelKey}" is already used`)
+        add(definitionErrors, labels.get(labelKey)!, 'duplicate-label', `Attribute label "${labelKey}" is already used`)
+      } else labels.set(labelKey, definition.id)
+    }
+    if (!['string', 'decimal', 'enum'].includes(definition.valueType)) add(definitionErrors, definition.id, 'invalid-value-type', 'Value type must be string, decimal, or enum')
+    if (definition.valueType === 'enum') {
+      if (!definition.enumValues?.some((value) => value.trim())) add(definitionErrors, definition.id, 'empty-enum', 'Enum attributes need one or more non-empty values')
+      const values = new Map<string, number>()
+      for (const value of definition.enumValues ?? []) {
+        const normalized = value.trim()
+        if (!normalized) add(definitionErrors, definition.id, 'empty-enum-value', 'Enum values cannot be empty')
+        else if (values.has(normalized)) add(definitionErrors, definition.id, 'duplicate-enum-value', `Enum value "${normalized}" is duplicated`)
+        else values.set(normalized, 1)
+      }
+    }
+  }
+  for (const [id, count] of definitionIDs) if (count > 1) add(definitionErrors, id, 'duplicate-id', `Attribute ID "${id}" is duplicated`)
+
+  const visit = (node: TaxonomyDraftNode) => {
+    const seen = new Map<string, number>()
+    for (const [index, assignment] of (node.attributes ?? []).entries()) {
+      const key = taxonomyAssignmentErrorKey(node.id, index)
+      if (!definitions.some((definition) => definition.id === assignment.attributeDefId)) add(assignmentErrors, key, 'missing-definition', `Assignment references missing attribute definition "${assignment.attributeDefId}"`)
+      const firstIndex = seen.get(assignment.attributeDefId)
+      if (firstIndex !== undefined) {
+        const message = `Attribute "${assignment.attributeDefId}" is assigned more than once on this node`
+        add(assignmentErrors, key, 'duplicate-assignment', message)
+        add(assignmentErrors, taxonomyAssignmentErrorKey(node.id, firstIndex), 'duplicate-assignment', message)
+        add(nodeErrors, node.id, 'duplicate-assignment', message)
+      } else seen.set(assignment.attributeDefId, index)
+    }
+    node.children.forEach(visit)
+  }
+  visit(root)
+  const hasErrors = [definitionErrors, assignmentErrors, nodeErrors].some((errorsByKey) => Object.values(errorsByKey).some((errors) => errors.length > 0))
+  return { valid: !hasErrors, definitionErrors, assignmentErrors, nodeErrors }
+}
+
 export const taxonomyEditorContainer = 'taxonomy-editor'
 
 export function taxonomyTargetContainer(targetId: string) {
@@ -96,14 +165,15 @@ export function effectiveTaxonomyAttributes(root: TaxonomyDraftNode, nodeID: str
   for (const node of path) {
     for (const assignment of node.attributes ?? []) {
       const definition = definitionByID.get(assignment.attributeDefId)
-      if (!definition) continue
-      effective.set(assignment.attributeDefId, { ...definition, required: assignment.required, source: node.label, overridden: node !== path[0] && effective.has(assignment.attributeDefId) })
+      if (!definition) {
+        effective.set(assignment.attributeDefId, { id: assignment.attributeDefId, label: `Missing attribute: ${assignment.attributeDefId}`, valueType: 'string', required: assignment.required, source: node.label, overridden: false })
+      } else effective.set(assignment.attributeDefId, { ...definition, required: assignment.required, source: node.label, overridden: node !== path[0] && effective.has(assignment.attributeDefId) })
     }
   }
   return [...effective.values()]
 }
 
-function findTaxonomyDraftPath(node: TaxonomyDraftNode, nodeID: string, path: TaxonomyDraftNode[] = []): TaxonomyDraftNode[] {
+export function findTaxonomyDraftPath(node: TaxonomyDraftNode, nodeID: string, path: TaxonomyDraftNode[] = []): TaxonomyDraftNode[] {
   const nextPath = [...path, node]
   if (node.id === nodeID) return nextPath
   for (const child of node.children) {

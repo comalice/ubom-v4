@@ -11,6 +11,7 @@
   export let grammar: TaxonomyGrammar
   export let initialAttributeDefinitions: TaxonomyAttributeDefinition[] = []
   export let initialDraft: TaxonomyDraftNode
+  export let onChange: (draft: TaxonomyDraftNode, definitions: TaxonomyAttributeDefinition[]) => void = () => {}
 
   let placementNumber = 1
   let attributeNumber = 1
@@ -87,6 +88,7 @@
   $: selectedAttributesNode = attributesNodeID ? findTaxonomyDraftNode(taxonomyDraft, attributesNodeID) : undefined
   $: selectedAttributes = attributesNodeID ? effectiveTaxonomyAttributes(taxonomyDraft, attributesNodeID, attributeDefinitions) : []
   $: validation = validateTaxonomyAttributes(attributeDefinitions, taxonomyDraft)
+  $: onChange(taxonomyDraft, attributeDefinitions)
   $: selectedAttributeRows = selectedAttributes.map((attribute: TaxonomyEffectiveAttribute) => ({ attribute, errors: attributeValidationErrors(attribute) }))
 
   function attributeValidationErrors(attribute: TaxonomyEffectiveAttribute): TaxonomyValidationError[] {

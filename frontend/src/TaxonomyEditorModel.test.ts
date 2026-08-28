@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
+import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -83,5 +83,19 @@ describe('validateTaxonomyAttributes', () => {
     expect(effectiveTaxonomyAttributes(draft([{ attributeDefId: 'missing', required: true }]), 'root', [])).toEqual([
       { id: 'missing', label: 'Missing attribute: missing', valueType: 'string', required: true, source: 'Parts', overridden: false },
     ])
+  })
+})
+
+describe('taxonomyDefinitionInputFromDraft', () => {
+  it('serializes IDs, order, assignments, category predicates, and rules without UI fields', () => {
+    const root: TaxonomyDraftNode = {
+      id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [{ id: 'rule', targetId: 'root', type: 'rule', title: 'ignored', summary: 'ignored', predicateData: { kind: 'numeric-range', field: 'size', min: 1, max: 9 } }],
+      attributes: [{ attributeDefId: 'finish', required: true }], children: [{
+        id: 'metal', label: 'Metal', targetId: 'family', placements: [{ id: 'category', targetId: 'family', type: 'category', title: 'ignored', summary: 'ignored', label: 'Metal', nodeId: 'metal', predicate: 'family = METAL' }], rules: [], attributes: [], children: [],
+      }],
+    }
+    expect(taxonomyDefinitionInputFromDraft('seq-v1', 'tax-v1', definitions, root)).toEqual({
+      seqDef: 'seq-v1', parentId: 'tax-v1', attributeDefs: definitions, root: { id: 'root', label: 'Parts', attributes: [{ attributeDefId: 'finish', required: true }], predicates: [{ field: 'size', kind: 'numeric-range', min: 1, max: 9 }], children: [{ id: 'metal', label: 'Metal', predicates: [{ field: 'family', kind: 'exact', value: 'METAL' }] }] },
+    })
   })
 })

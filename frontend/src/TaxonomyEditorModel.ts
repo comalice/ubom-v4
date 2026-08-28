@@ -1,5 +1,5 @@
 import type { StructureNode } from './StructureNode'
-import type { SeqDefDefinition, SeqDefNode, TaxonomyDefinition } from './api'
+import type { SeqDefDefinition, SeqDefNode, TaxonomyDefinition, TaxonomyDefinitionInput, TaxonomyNodeInput, TaxonomyPredicate } from './api'
 
 export type TaxonomyGrammar = {
   id: string
@@ -80,7 +80,7 @@ export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, gram
         : { kind: predicate.kind, field: predicate.field, value: predicate.value ?? '' },
     }))
     return {
-      id: isRoot ? 'taxonomy-root' : categoryID,
+      id: categoryID,
       label: node.label,
       targetId,
       placements: isRoot ? [] : [{ id: categoryID, targetId, type: 'category', title: node.label, summary: predicates[0] ? predicateText(predicates[0]) : 'Category', label: node.label, nodeId: categoryID, predicate: predicates[0] ? predicateText(predicates[0]) : '' }],
@@ -90,6 +90,56 @@ export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, gram
     }
   }
   return toNode(definition.root, true)
+}
+
+function predicateFromText(text: string | undefined): TaxonomyPredicate | undefined {
+  if (!text) return undefined
+  const match = text.match(/^\s*([^=]+?)\s*=\s*(.+?)\s*$/)
+  if (!match) return undefined
+  const field = match[1].trim()
+  const value = match[2].trim()
+  const range = value.match(/^(-?\d+(?:\.\d+)?)\.\.(-?\d+(?:\.\d+)?)$/)
+  return range
+    ? { field, kind: 'numeric-range', min: Number(range[1]), max: Number(range[2]) }
+    : { field, kind: 'exact', value }
+}
+
+function placementPredicate(placement: TaxonomyPlacement): TaxonomyPredicate | undefined {
+  if (placement.predicateData) {
+    return placement.predicateData.kind === 'numeric-range'
+      ? { field: placement.predicateData.field, kind: placement.predicateData.kind, min: placement.predicateData.min, max: placement.predicateData.max }
+      : { field: placement.predicateData.field, kind: placement.predicateData.kind, value: placement.predicateData.value }
+  }
+  return predicateFromText(placement.predicate)
+}
+
+/** Converts the editor-only placement tree into the immutable API document. */
+export function taxonomyDefinitionInputFromDraft(
+  seqDef: string,
+  parentId: string | undefined,
+  definitions: TaxonomyAttributeDefinition[],
+  draft: TaxonomyDraftNode,
+): TaxonomyDefinitionInput {
+  const toNode = (node: TaxonomyDraftNode): TaxonomyNodeInput => {
+    const category = node.placements.find((placement) => placement.type === 'category')
+    const predicates = [
+      category ? placementPredicate(category) : undefined,
+      ...node.rules.map(placementPredicate),
+    ].filter((predicate): predicate is TaxonomyPredicate => predicate !== undefined)
+    return {
+      id: node.id,
+      label: node.label,
+      ...(predicates.length ? { predicates } : {}),
+      ...(node.attributes?.length ? { attributes: node.attributes.map((assignment) => ({ ...assignment })) } : {}),
+      ...(node.children.length ? { children: node.children.map(toNode) } : {}),
+    }
+  }
+  return {
+    seqDef,
+    ...(parentId ? { parentId } : {}),
+    attributeDefs: definitions.map((definition) => ({ ...definition, ...(definition.enumValues ? { enumValues: [...definition.enumValues] } : {}) })),
+    root: toNode(draft),
+  }
 }
 
 export type TaxonomyRulePredicate =

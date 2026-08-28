@@ -679,6 +679,8 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-assignment-list small { margin-left: auto; color: var(--muted); font: .6rem ui-monospace, monospace; }
 .taxonomy-inspector-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.35rem; padding-top: 1rem; border-top: 1px solid var(--hairline-light); }
 .taxonomy-editor-status { padding: 1rem; border-top: 1px solid var(--hairline); }
+.taxonomy-page-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.25rem; }
+.taxonomy-page-toolbar p { margin: 0; }
 .taxonomy-status-grid { display: grid; grid-template-columns: auto 1fr; gap: .35rem .5rem; color: var(--muted); font: .68rem ui-monospace, monospace; }
 .taxonomy-status-ok { color: #39724a; }
 .taxonomy-status-pending { color: var(--accent); }

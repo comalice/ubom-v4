@@ -5,11 +5,13 @@
   import NavigationCardList, { type NavigationCardItem } from './NavigationCardList.svelte'
   import PrimitiveLink from './PrimitiveLink.svelte'
   import SectionHeading from './SectionHeading.svelte'
+  import { currentTaxonomySummaries } from './taxonomySelection'
 
   let taxonomies: TaxonomyDefSummary[] = []
   let definitions: SeqDefView[] = []
   let loading = true
   let error = ''
+  $: currentTaxonomies = currentTaxonomySummaries(taxonomies)
 
   onMount(async () => {
     try {
@@ -35,16 +37,16 @@
   <AsyncState state="loading" message="Loading taxonomies..." />
 {:else if error}
   <AsyncState state="error" message={error} />
-{:else if taxonomies.length === 0}
+{:else if currentTaxonomies.length === 0}
   <AsyncState state="empty" message="No taxonomies." />
 {:else}
-  {@const items: NavigationCardItem[] = taxonomies.map((taxonomy) => {
+  {@const items: NavigationCardItem[] = currentTaxonomies.map((taxonomy) => {
     const definition = definitionFor(taxonomy)
     return {
       label: taxonomy.id,
       description: definition
-        ? `${definition.definitionId} · v${definition.version}`
-        : `Sequence definition: ${taxonomy.seqDef}`,
+        ? `${definition.definitionId} · sequence v${definition.version} · taxonomy v${taxonomy.version}`
+        : `Sequence definition: ${taxonomy.seqDef} · taxonomy v${taxonomy.version}`,
       href: `/settings/taxonomies/${encodeURIComponent(taxonomy.id)}`,
       action: { label: 'Edit taxonomy', href: `/settings/taxonomies/${encodeURIComponent(taxonomy.id)}` },
     }

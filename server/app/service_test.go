@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"testing"
 
 	ubom "ubom-v4"
@@ -94,6 +95,54 @@ func TestCreateSeqDefVersionPreservesParent(t *testing.T) {
 	}
 	if _, err := service.CreateSeqDefVersion(parent.ID, ubom.Literal("C"), 1, ""); err == nil {
 		t.Fatal("accepted conflicting version")
+	}
+}
+
+func TestCreateTaxonomyRevisionsAreImmutableAndCurrent(t *testing.T) {
+	metadata := store.NewMemoryStore()
+	seq := ubom.NewSeqDef(ubom.Literal("PN")).WithID("part-v1")
+	if err := metadata.CreateSeqDef(seq); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(metadata)
+	root := ubom.TaxonomyNode{ID: "root", Label: "Root"}
+	first, err := service.CreateTaxonomyRevision(seq.ID, "", "part-taxonomy", nil, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ID != "part-taxonomy-v1" || first.Version != 1 || first.DefinitionID != "part-taxonomy" || first.Current == false {
+		t.Fatalf("first = %#v", first)
+	}
+	second, err := service.CreateTaxonomyRevision(seq.ID, first.ID, "", nil, ubom.TaxonomyNode{ID: "new-root"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.ID != "part-taxonomy-v2" || second.Version != 2 || second.ParentID != first.ID {
+		t.Fatalf("second = %#v", second)
+	}
+	old, err := service.GetTaxonomyDefDefinitionView(first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if old.Root.ID != "root" || old.Current {
+		t.Fatalf("old revision changed = %#v", old)
+	}
+	current, err := service.GetCurrentTaxonomyDefDefinitionView(seq.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.ID != second.ID || !current.Current {
+		t.Fatalf("current = %#v", current)
+	}
+	history, err := service.ListTaxonomyDefHistory("part-taxonomy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(history) != 2 || history[0].Version != 1 || !history[1].Current {
+		t.Fatalf("history = %#v", history)
+	}
+	if _, err := service.CreateTaxonomyRevision(seq.ID, first.ID, "", nil, root); !errors.Is(err, store.ErrAlreadyExists) {
+		t.Fatalf("stale save error = %v, want conflict", err)
 	}
 }
 

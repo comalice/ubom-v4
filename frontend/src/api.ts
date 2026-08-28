@@ -32,11 +32,21 @@ export type TaxonomyNodeInput = {
 }
 export type TaxonomyDefinition = {
   id: string
+  definitionId: string
+  version: number
+  parentId?: string
   seqDef: string
   attributeDefs?: { id: string; label: string; valueType: string; unit?: string; enumValues?: string[] }[]
   root: TaxonomyNodeInput
 }
 export type TaxonomyDefinitionView = TaxonomyDefinition
+export type TaxonomyDefinitionInput = {
+  definitionId?: string
+  parentId?: string
+  seqDef: string
+  attributeDefs?: TaxonomyDefinition['attributeDefs']
+  root: TaxonomyNodeInput
+}
 
 export type TaxonomyChild = { id: string; label: string }
 export type TaxonomyPathItem = { id: string; label: string }
@@ -98,7 +108,7 @@ export type SnapshotView = {
   mediaType: string
   size: number
 }
-export type TaxonomyDefSummary = { id: string; seqDef: string }
+export type TaxonomyDefSummary = { id: string; definitionId: string; version: number; parentId?: string; seqDef: string; current: boolean }
 export type PartNumberDraft = {
   id: string
   seqDef: string
@@ -172,7 +182,9 @@ export const previewSeqDefRoot = (root: SeqDefNode, bindings: Record<string, str
   post<SeqDefPreview>('/api/seq-defs/preview', { root, bindings })
 export const previewSeqDefCandidate = (root: SeqDefNode, value: string) =>
   post<SeqDefCandidatePreview>('/api/seq-defs/preview/candidate', { root, value })
-export const createTaxonomyDef = (definition: TaxonomyDefinition) => post<{ id: string }>('/api/taxonomy-defs', definition)
+export const getCurrentTaxonomyDef = (seqDef: string) => get<TaxonomyDefinitionView>(`/api/seq-defs/${encodeURIComponent(seqDef)}/taxonomy`)
+export const getTaxonomyDefHistory = (definitionId: string) => get<TaxonomyDefSummary[]>(`/api/taxonomy-defs/${encodeURIComponent(definitionId)}/history`)
+export const createTaxonomyDef = (definition: TaxonomyDefinitionInput) => post<TaxonomyDefinitionView>('/api/taxonomy-defs', definition)
 export const createPart = (value: string, seqDef: string, taxonomyDef: string) =>
   post<{ id: string; value: string }>('/api/parts', { value, seqDef, taxonomyDef })
 export type SeqDefField = { name: string; kind: string; options?: string[]; min?: number; max?: number; width?: number; pad?: string }

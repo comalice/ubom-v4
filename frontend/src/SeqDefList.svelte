@@ -5,6 +5,7 @@
   import NavigationCardList, { type NavigationCardItem } from './NavigationCardList.svelte'
   import PrimitiveLink from './PrimitiveLink.svelte'
   import SectionHeading from './SectionHeading.svelte'
+  import { currentTaxonomyForSeqDef } from './taxonomySelection'
 
   let definitions: SeqDefView[] = []
   let taxonomies: TaxonomyDefSummary[] = []
@@ -40,8 +41,8 @@
     label: definition.id,
       description: `${definition.definitionId} · v${definition.version}`,
       href: `/settings/sequence-definitions/${encodeURIComponent(definition.id)}`,
-      action: taxonomies.some(taxonomy => taxonomy.seqDef === definition.id)
-        ? { label: 'Edit taxonomy', href: `/settings/taxonomies/${encodeURIComponent(taxonomies.find(taxonomy => taxonomy.seqDef === definition.id)!.id)}` }
+      action: currentTaxonomyForSeqDef(taxonomies, definition.id)
+        ? { label: 'Edit taxonomy', href: `/settings/taxonomies/${encodeURIComponent(currentTaxonomyForSeqDef(taxonomies, definition.id)!.id)}` }
         : { label: 'New taxonomy', href: `/settings/taxonomies/new?seqDef=${encodeURIComponent(definition.id)}` },
   }))}
   <NavigationCardList {items} arrowAriaHidden />

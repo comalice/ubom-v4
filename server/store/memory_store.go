@@ -16,17 +16,18 @@ var (
 )
 
 type MemoryStore struct {
-	mu             sync.Mutex
-	sources        map[artifact.SourceID]artifact.Source
-	artifacts      map[artifact.ID]artifact.Artifact
-	snapshots      map[artifact.SnapshotID]artifact.Snapshot
-	seqDefs        map[ubom.SeqDefID]ubom.SeqDef
-	taxonomyDefs   map[ubom.TaxonomyDefID]ubom.TaxonomyDef
-	partNumbers    map[string]ubom.PartNumber
-	partRevisions  map[ubom.PartRevisionID]ubom.PartRevision
-	partDrafts     map[ubom.PartNumberDraftID]ubom.PartNumberDraft
-	nextPartID     int64
-	nextRevisionID int64
+	mu              sync.Mutex
+	sources         map[artifact.SourceID]artifact.Source
+	artifacts       map[artifact.ID]artifact.Artifact
+	snapshots       map[artifact.SnapshotID]artifact.Snapshot
+	seqDefs         map[ubom.SeqDefID]ubom.SeqDef
+	taxonomyDefs    map[ubom.TaxonomyDefID]ubom.TaxonomyDef
+	currentTaxonomy map[ubom.SeqDefID]ubom.TaxonomyDefID
+	partNumbers     map[string]ubom.PartNumber
+	partRevisions   map[ubom.PartRevisionID]ubom.PartRevision
+	partDrafts      map[ubom.PartNumberDraftID]ubom.PartNumberDraft
+	nextPartID      int64
+	nextRevisionID  int64
 }
 
 // compile time interface check
@@ -34,16 +35,17 @@ var _ Store = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		sources:        map[artifact.SourceID]artifact.Source{},
-		artifacts:      map[artifact.ID]artifact.Artifact{},
-		snapshots:      map[artifact.SnapshotID]artifact.Snapshot{},
-		seqDefs:        map[ubom.SeqDefID]ubom.SeqDef{},
-		taxonomyDefs:   map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
-		partNumbers:    map[string]ubom.PartNumber{},
-		partRevisions:  map[ubom.PartRevisionID]ubom.PartRevision{},
-		partDrafts:     map[ubom.PartNumberDraftID]ubom.PartNumberDraft{},
-		nextPartID:     1,
-		nextRevisionID: 1,
+		sources:         map[artifact.SourceID]artifact.Source{},
+		artifacts:       map[artifact.ID]artifact.Artifact{},
+		snapshots:       map[artifact.SnapshotID]artifact.Snapshot{},
+		seqDefs:         map[ubom.SeqDefID]ubom.SeqDef{},
+		taxonomyDefs:    map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
+		currentTaxonomy: map[ubom.SeqDefID]ubom.TaxonomyDefID{},
+		partNumbers:     map[string]ubom.PartNumber{},
+		partRevisions:   map[ubom.PartRevisionID]ubom.PartRevision{},
+		partDrafts:      map[ubom.PartNumberDraftID]ubom.PartNumberDraft{},
+		nextPartID:      1,
+		nextRevisionID:  1,
 	}
 }
 
@@ -212,7 +214,28 @@ func (s *MemoryStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 		return ErrAlreadyExists
 	}
 	s.taxonomyDefs[def.ID] = cloneTaxonomyDef(def)
+	if _, exists := s.currentTaxonomy[def.SeqDef]; !exists {
+		s.currentTaxonomy[def.SeqDef] = def.ID
+	}
 	return nil
+}
+
+func (s *MemoryStore) CreateTaxonomyRevision(seqDef ubom.SeqDefID, parent ubom.TaxonomyDefID, def ubom.TaxonomyDef) (ubom.TaxonomyDef, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, err := s.GetCurrentTaxonomyDef(seqDef)
+	if parent != "" {
+		if err != nil || current.ID != parent {
+			return ubom.TaxonomyDef{}, ErrAlreadyExists
+		}
+	} else if err == nil {
+		return ubom.TaxonomyDef{}, ErrAlreadyExists
+	}
+	if err := s.CreateTaxonomyDef(def); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	s.currentTaxonomy[seqDef] = def.ID
+	return cloneTaxonomyDef(def), nil
 }
 
 func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
@@ -221,6 +244,37 @@ func (s *MemoryStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 		return ubom.TaxonomyDef{}, ErrNotFound
 	}
 	return cloneTaxonomyDef(def), nil
+}
+
+func (s *MemoryStore) GetCurrentTaxonomyDef(seqDef ubom.SeqDefID) (ubom.TaxonomyDef, error) {
+	id, ok := s.currentTaxonomy[seqDef]
+	if !ok {
+		var latest ubom.TaxonomyDef
+		for _, candidate := range s.taxonomyDefs {
+			if candidate.SeqDef == seqDef && (latest.ID == "" || candidate.WithLegacyDefaults().Version > latest.WithLegacyDefaults().Version) {
+				latest = candidate
+			}
+		}
+		if latest.ID == "" {
+			return ubom.TaxonomyDef{}, ErrNotFound
+		}
+		id = latest.ID
+		s.currentTaxonomy[seqDef] = id
+	}
+	return s.GetTaxonomyDef(id)
+}
+
+func (s *MemoryStore) ListTaxonomyDefHistory(definitionID string) ([]ubom.TaxonomyDef, error) {
+	items := []ubom.TaxonomyDef{}
+	for _, def := range s.taxonomyDefs {
+		if def.WithLegacyDefaults().DefinitionID == definitionID {
+			items = append(items, cloneTaxonomyDef(def))
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].WithLegacyDefaults().Version < items[j].WithLegacyDefaults().Version
+	})
+	return items, nil
 }
 
 func (s *MemoryStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {

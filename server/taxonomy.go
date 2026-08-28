@@ -22,10 +22,25 @@ type TaxonomyDefID string
 type TaxonomyNodeID string
 
 type TaxonomyDef struct {
-	ID            TaxonomyDefID  `json:"id"`     // durable unique ID
+	ID            TaxonomyDefID  `json:"id"`           // durable unique ID
+	DefinitionID  string         `json:"definitionId"` // stable identity shared by revisions
+	Version       int            `json:"version"`      // positive immutable revision number
+	ParentID      TaxonomyDefID  `json:"parentId,omitempty"`
 	SeqDef        SeqDefID       `json:"seqDef"` // sequence this taxonomy is applied to
 	AttributeDefs []AttributeDef `json:"attributeDefs"`
 	Taxonomy      Taxonomy       `json:"taxonomy"`
+}
+
+// WithLegacyDefaults makes taxonomy rows written before revision metadata
+// readable as a one-revision lineage.
+func (d TaxonomyDef) WithLegacyDefaults() TaxonomyDef {
+	if d.DefinitionID == "" {
+		d.DefinitionID = string(d.ID)
+	}
+	if d.Version == 0 {
+		d.Version = 1
+	}
+	return d
 }
 
 // PredicateKind identifies the value comparison made by a taxonomy predicate.
@@ -100,6 +115,9 @@ func (d TaxonomyDef) Validate() error {
 	}
 	if err := validateTaxonomyID(string(d.SeqDef), "sequence definition"); err != nil {
 		return err
+	}
+	if d.DefinitionID != "" && d.Version < 1 {
+		return taxonomyValidation("taxonomy definition has invalid version metadata")
 	}
 	seen := map[TaxonomyNodeID]bool{}
 	attributeDefs := map[AttributeDefID]bool{}

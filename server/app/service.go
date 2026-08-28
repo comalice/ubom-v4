@@ -55,12 +55,20 @@ type SeqDefFieldView struct {
 	Pad     string   `json:"pad,omitempty"`
 }
 type TaxonomyDefSummary struct {
-	ID     ubom.TaxonomyDefID `json:"id"`
-	SeqDef ubom.SeqDefID      `json:"seqDef"`
+	ID           ubom.TaxonomyDefID `json:"id"`
+	DefinitionID string             `json:"definitionId"`
+	Version      int                `json:"version"`
+	ParentID     ubom.TaxonomyDefID `json:"parentId,omitempty"`
+	SeqDef       ubom.SeqDefID      `json:"seqDef"`
+	Current      bool               `json:"current"`
 }
 
 type TaxonomyDefDefinitionView struct {
 	ID            ubom.TaxonomyDefID  `json:"id"`
+	DefinitionID  string              `json:"definitionId"`
+	Version       int                 `json:"version"`
+	ParentID      ubom.TaxonomyDefID  `json:"parentId,omitempty"`
+	Current       bool                `json:"current"`
 	SeqDef        ubom.SeqDefID       `json:"seqDef"`
 	AttributeDefs []ubom.AttributeDef `json:"attributeDefs"`
 	Root          ubom.TaxonomyNode   `json:"root"`
@@ -99,6 +107,41 @@ func (s *Service) CreateSeqDefVersion(parent ubom.SeqDefID, root ubom.SeqDefNode
 }
 func (s *Service) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	return s.store.CreateTaxonomyDef(def)
+}
+func (s *Service) CreateTaxonomyRevision(seqDef ubom.SeqDefID, parent ubom.TaxonomyDefID, definitionID string, attributeDefs []ubom.AttributeDef, root ubom.TaxonomyNode) (TaxonomyDefDefinitionView, error) {
+	seq, err := s.store.GetSeqDef(seqDef)
+	if err != nil {
+		return TaxonomyDefDefinitionView{}, err
+	}
+	version := 1
+	if parent != "" {
+		old, err := s.store.GetTaxonomyDef(parent)
+		if err != nil {
+			return TaxonomyDefDefinitionView{}, err
+		}
+		old = old.WithLegacyDefaults()
+		if old.SeqDef != seqDef {
+			return TaxonomyDefDefinitionView{}, ubom.NewDomainError(ubom.ErrorCategoryConflict, "taxonomy parent references a different sequence definition")
+		}
+		if definitionID == "" {
+			definitionID = old.DefinitionID
+		}
+		if definitionID != old.DefinitionID {
+			return TaxonomyDefDefinitionView{}, ubom.NewDomainError(ubom.ErrorCategoryConflict, "taxonomy parent is from a different lineage")
+		}
+		version = old.Version + 1
+	} else if definitionID == "" {
+		definitionID = string(seqDef) + "-taxonomy"
+	}
+	def := ubom.TaxonomyDef{ID: ubom.TaxonomyDefID(fmt.Sprintf("%s-v%d", definitionID, version)), DefinitionID: definitionID, Version: version, ParentID: parent, SeqDef: seqDef, AttributeDefs: attributeDefs, Taxonomy: ubom.Taxonomy{Root: root}}
+	if err := def.ValidateAgainst(seq); err != nil {
+		return TaxonomyDefDefinitionView{}, err
+	}
+	created, err := s.store.CreateTaxonomyRevision(seqDef, parent, def)
+	if err != nil {
+		return TaxonomyDefDefinitionView{}, err
+	}
+	return s.taxonomyDefinitionView(created, true), nil
 }
 func (s *Service) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	return s.store.CreatePartNumber(part)
@@ -247,7 +290,32 @@ func (s *Service) GetTaxonomyDefDefinitionView(id ubom.TaxonomyDefID) (TaxonomyD
 	if err != nil {
 		return TaxonomyDefDefinitionView{}, err
 	}
-	return TaxonomyDefDefinitionView{ID: definition.ID, SeqDef: definition.SeqDef, AttributeDefs: definition.AttributeDefs, Root: definition.Taxonomy.Root}, nil
+	current, _ := s.store.GetCurrentTaxonomyDef(definition.SeqDef)
+	return s.taxonomyDefinitionView(definition, current.ID == definition.ID), nil
+}
+func (s *Service) taxonomyDefinitionView(definition ubom.TaxonomyDef, current bool) TaxonomyDefDefinitionView {
+	definition = definition.WithLegacyDefaults()
+	return TaxonomyDefDefinitionView{ID: definition.ID, DefinitionID: definition.DefinitionID, Version: definition.Version, ParentID: definition.ParentID, Current: current, SeqDef: definition.SeqDef, AttributeDefs: definition.AttributeDefs, Root: definition.Taxonomy.Root}
+}
+func (s *Service) GetCurrentTaxonomyDefDefinitionView(seqDef ubom.SeqDefID) (TaxonomyDefDefinitionView, error) {
+	def, err := s.store.GetCurrentTaxonomyDef(seqDef)
+	if err != nil {
+		return TaxonomyDefDefinitionView{}, err
+	}
+	return s.taxonomyDefinitionView(def, true), nil
+}
+func (s *Service) ListTaxonomyDefHistory(definitionID string) ([]TaxonomyDefSummary, error) {
+	defs, err := s.store.ListTaxonomyDefHistory(definitionID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]TaxonomyDefSummary, 0, len(defs))
+	for _, def := range defs {
+		def = def.WithLegacyDefaults()
+		current, _ := s.store.GetCurrentTaxonomyDef(def.SeqDef)
+		result = append(result, TaxonomyDefSummary{ID: def.ID, DefinitionID: def.DefinitionID, Version: def.Version, ParentID: def.ParentID, SeqDef: def.SeqDef, Current: current.ID == def.ID})
+	}
+	return result, nil
 }
 func (s *Service) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
 	return s.store.CreatePartNumberDraft(draft)
@@ -336,7 +404,9 @@ func (s *Service) ListTaxonomyDefSummaries() ([]TaxonomyDefSummary, error) {
 	}
 	views := make([]TaxonomyDefSummary, 0, len(defs))
 	for _, def := range defs {
-		views = append(views, TaxonomyDefSummary{ID: def.ID, SeqDef: def.SeqDef})
+		def = def.WithLegacyDefaults()
+		current, _ := s.store.GetCurrentTaxonomyDef(def.SeqDef)
+		views = append(views, TaxonomyDefSummary{ID: def.ID, DefinitionID: def.DefinitionID, Version: def.Version, ParentID: def.ParentID, SeqDef: def.SeqDef, Current: current.ID == def.ID})
 	}
 	return views, nil
 }

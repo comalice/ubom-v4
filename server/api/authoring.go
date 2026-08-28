@@ -107,7 +107,7 @@ func (n taxonomyNodeRequest) node() ubom.TaxonomyNode {
 }
 
 type taxonomyDefinitionRequest struct {
-	ID            ubom.TaxonomyDefID  `json:"id"`
+	ParentID      ubom.TaxonomyDefID  `json:"parentId,omitempty"`
 	SeqDef        ubom.SeqDefID       `json:"seqDef"`
 	AttributeDefs []ubom.AttributeDef `json:"attributeDefs,omitempty"`
 	Root          taxonomyNodeRequest `json:"root"`
@@ -256,6 +256,19 @@ func (s *Server) handleSeqDefFields(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSeqDefPath(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/seq-defs/")
 	parts := strings.Split(path, "/")
+	if len(parts) == 2 && parts[1] == "taxonomy" && r.Method == http.MethodGet {
+		view, err := s.service.GetCurrentTaxonomyDefDefinitionView(ubom.SeqDefID(parts[0]))
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "current taxonomy not found")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not load current taxonomy")
+			return
+		}
+		writeJSON(w, view)
+		return
+	}
 	if len(parts) == 1 && parts[0] != "" && r.Method == http.MethodGet {
 		definition, err := s.service.GetSeqDefDefinitionView(ubom.SeqDefID(parts[0]))
 		if errors.Is(err, store.ErrNotFound) {
@@ -339,17 +352,26 @@ func (s *Server) handleTaxonomyDefs(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &request) {
 		return
 	}
-	definition := ubom.TaxonomyDef{ID: request.ID, SeqDef: request.SeqDef, AttributeDefs: request.AttributeDefs, Taxonomy: ubom.Taxonomy{Root: request.Root.node()}}
-	if err := s.service.CreateTaxonomyDef(definition); err != nil {
+	view, err := s.service.CreateTaxonomyRevision(request.SeqDef, request.ParentID, "", request.AttributeDefs, request.Root.node())
+	if err != nil {
 		writeCreateError(w, err)
 		return
 	}
-	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": request.ID})
+	writeJSONStatus(w, http.StatusCreated, view)
 }
 
 func (s *Server) handleTaxonomyDefPath(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/api/taxonomy-defs/")
-	if id == "" || strings.Contains(id, "/") {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/taxonomy-defs/"), "/")
+	if len(parts) == 2 && parts[1] == "history" && r.Method == http.MethodGet {
+		history, err := s.service.ListTaxonomyDefHistory(parts[0])
+		if err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		writeJSON(w, history)
+		return
+	}
+	if len(parts) != 1 || parts[0] == "" {
 		writeError(w, http.StatusBadRequest, "invalid taxonomy definition ID")
 		return
 	}
@@ -357,7 +379,7 @@ func (s *Server) handleTaxonomyDefPath(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	definition, err := s.service.GetTaxonomyDefDefinitionView(ubom.TaxonomyDefID(id))
+	definition, err := s.service.GetTaxonomyDefDefinitionView(ubom.TaxonomyDefID(parts[0]))
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "taxonomy definition not found")
 		return

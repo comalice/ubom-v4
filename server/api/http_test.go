@@ -205,10 +205,46 @@ func TestAuthoringFlow(t *testing.T) {
 
 	post("/api/seq-defs", `{"id":"author-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"places","alphabets":["AB"]}]}}`, http.StatusCreated)
 	post("/api/seq-defs", `{"id":"author-rev-v1","root":{"kind":"range","min":1,"max":9,"width":1}}`, http.StatusCreated)
-	post("/api/taxonomy-defs", `{"id":"author-taxonomy-v1","seqDef":"author-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
-	part := post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-taxonomy-v1"}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"seqDef":"author-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
+	part := post("/api/parts", `{"value":"PN-A","seqDef":"author-pn-v1","taxonomyDef":"author-pn-v1-taxonomy-v1"}`, http.StatusCreated)
 	if !strings.Contains(part, `"id":"1"`) || !strings.Contains(part, `"value":"PN-A"`) {
 		t.Fatalf("part response = %s", part)
+	}
+}
+
+func TestTaxonomyRevisionAuthoringUsesServerIdentity(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	sequence := httptest.NewRecorder()
+	server.Handler().ServeHTTP(sequence, httptest.NewRequest(http.MethodPost, "/api/seq-defs", strings.NewReader(`{"id":"revision-seq","root":{"kind":"literal","text":"A"}}`)))
+	if sequence.Code != http.StatusCreated {
+		t.Fatalf("sequence create status = %d; body = %s", sequence.Code, sequence.Body)
+	}
+	post := func(body string, wantStatus int) app.TaxonomyDefDefinitionView {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, "/api/taxonomy-defs", strings.NewReader(body)))
+		if recording.Code != wantStatus {
+			t.Fatalf("taxonomy create status = %d, want %d; body = %s", recording.Code, wantStatus, recording.Body)
+		}
+		if wantStatus != http.StatusCreated {
+			return app.TaxonomyDefDefinitionView{}
+		}
+		var view app.TaxonomyDefDefinitionView
+		if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
+			t.Fatalf("decode taxonomy response: %v", err)
+		}
+		return view
+	}
+
+	first := post(`{"seqDef":"revision-seq","root":{"id":"root","label":"Parts"}}`, http.StatusCreated)
+	if first.ID != "revision-seq-taxonomy-v1" || first.DefinitionID != "revision-seq-taxonomy" || first.Version != 1 || first.ParentID != "" || !first.Current {
+		t.Fatalf("first taxonomy revision = %#v", first)
+	}
+	second := post(`{"seqDef":"revision-seq","parentId":"revision-seq-taxonomy-v1","root":{"id":"root","label":"Updated Parts"}}`, http.StatusCreated)
+	if second.ID != "revision-seq-taxonomy-v2" || second.DefinitionID != first.DefinitionID || second.Version != 2 || second.ParentID != first.ID || !second.Current {
+		t.Fatalf("second taxonomy revision = %#v", second)
+	}
+	if legacy := post(`{"id":"client-chosen","seqDef":"revision-seq","root":{"id":"root","label":"Legacy"}}`, http.StatusBadRequest); legacy.ID != "" {
+		t.Fatalf("legacy response = %#v, want no created revision", legacy)
 	}
 }
 
@@ -222,9 +258,9 @@ func TestTaxonomyDefinitionDetail(t *testing.T) {
 		}
 	}
 	post("/api/seq-defs", `{"id":"detail-seq","root":{"kind":"concat","children":[{"kind":"bind","name":"family","child":{"kind":"literal","text":"A"}}]}}`)
-	post("/api/taxonomy-defs", `{"id":"detail-taxonomy","seqDef":"detail-seq","attributeDefs":[{"id":"finish","label":"Finish","valueType":"string"}],"root":{"id":"root","label":"Parts","attributes":[{"attributeDefId":"finish","required":true}]}}`)
+	post("/api/taxonomy-defs", `{"seqDef":"detail-seq","attributeDefs":[{"id":"finish","label":"Finish","valueType":"string"}],"root":{"id":"root","label":"Parts","attributes":[{"attributeDefId":"finish","required":true}]}}`)
 	recording := httptest.NewRecorder()
-	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/taxonomy-defs/detail-taxonomy", nil))
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/taxonomy-defs/detail-seq-taxonomy-v1", nil))
 	if recording.Code != http.StatusOK {
 		t.Fatalf("GET detail status = %d; body = %s", recording.Code, recording.Body)
 	}
@@ -232,7 +268,7 @@ func TestTaxonomyDefinitionDetail(t *testing.T) {
 	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
 		t.Fatal(err)
 	}
-	if view.ID != "detail-taxonomy" || view.SeqDef != "detail-seq" || view.Root.ID != "root" || len(view.AttributeDefs) != 1 {
+	if view.ID != "detail-seq-taxonomy-v1" || view.DefinitionID != "detail-seq-taxonomy" || view.Version != 1 || !view.Current || view.SeqDef != "detail-seq" || view.Root.ID != "root" || len(view.AttributeDefs) != 1 {
 		t.Fatalf("detail view = %#v", view)
 	}
 	notFound := httptest.NewRecorder()
@@ -253,9 +289,9 @@ func TestTaxonomyPredicateContract(t *testing.T) {
 		return recording.Body.String()
 	}
 	post("/api/seq-defs", `{"id":"predicate-pn","root":{"kind":"concat","children":[{"kind":"bind","name":"category","child":{"kind":"choice","children":[{"kind":"literal","text":"RES"}]}},{"kind":"bind","name":"number","child":{"kind":"range","min":0,"max":999,"width":3}}]}}`, http.StatusCreated)
-	body := `{"id":"predicate-taxonomy","seqDef":"predicate-pn","root":{"id":"root","label":"Components","children":[{"id":"resistors","label":"Resistors","predicates":[{"field":"category","kind":"exact","value":"RES"},{"field":"number","kind":"numeric-range","min":100,"max":199}]}]}}`
+	body := `{"seqDef":"predicate-pn","root":{"id":"root","label":"Components","children":[{"id":"resistors","label":"Resistors","predicates":[{"field":"category","kind":"exact","value":"RES"},{"field":"number","kind":"numeric-range","min":100,"max":199}]}]}}`
 	post("/api/taxonomy-defs", body, http.StatusCreated)
-	part := post("/api/parts", `{"value":"RES100","seqDef":"predicate-pn","taxonomyDef":"predicate-taxonomy"}`, http.StatusCreated)
+	part := post("/api/parts", `{"value":"RES100","seqDef":"predicate-pn","taxonomyDef":"predicate-pn-taxonomy-v1"}`, http.StatusCreated)
 	if !strings.Contains(part, `"value":"RES100"`) {
 		t.Fatalf("part response = %s", part)
 	}
@@ -273,8 +309,8 @@ func TestSchemaAcceptanceHTTPFlow(t *testing.T) {
 	}
 
 	post("/api/seq-defs", `{"id":"acceptance-http-seq","root":{"kind":"concat","children":[{"kind":"bind","name":"category","child":{"kind":"choice","children":[{"kind":"literal","text":"RES"},{"kind":"literal","text":"CAP"}]}},{"kind":"literal","text":"-"},{"kind":"bind","name":"group","child":{"kind":"range","min":0,"max":999,"width":3}},{"kind":"literal","text":"-"},{"kind":"bind","name":"number","child":{"kind":"range","min":0,"max":999,"width":3}}]}}`, http.StatusCreated)
-	post("/api/taxonomy-defs", `{"id":"acceptance-http-taxonomy","seqDef":"acceptance-http-seq","attributeDefs":[{"id":"family","label":"Family","valueType":"string"},{"id":"resistance","label":"Resistance","valueType":"decimal","unit":"ohm"}],"root":{"id":"component","label":"Component","attributes":[{"attributeDefId":"family","required":true}],"children":[{"id":"resistor","label":"Resistor","predicates":[{"field":"category","kind":"exact","value":"RES"}],"children":[{"id":"high-power","label":"High Power","predicates":[{"field":"group","kind":"numeric-range","min":100,"max":199}],"attributes":[{"attributeDefId":"resistance","required":false}]}]},{"id":"capacitor","label":"Capacitor","predicates":[{"field":"category","kind":"exact","value":"CAP"}]}]}}`, http.StatusCreated)
-	part := post("/api/parts", `{"value":"RES-150-042","seqDef":"acceptance-http-seq","taxonomyDef":"acceptance-http-taxonomy","attributes":[{"attributeDefId":"family","value":"electronics"}]}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"seqDef":"acceptance-http-seq","attributeDefs":[{"id":"family","label":"Family","valueType":"string"},{"id":"resistance","label":"Resistance","valueType":"decimal","unit":"ohm"}],"root":{"id":"component","label":"Component","attributes":[{"attributeDefId":"family","required":true}],"children":[{"id":"resistor","label":"Resistor","predicates":[{"field":"category","kind":"exact","value":"RES"}],"children":[{"id":"high-power","label":"High Power","predicates":[{"field":"group","kind":"numeric-range","min":100,"max":199}],"attributes":[{"attributeDefId":"resistance","required":false}]}]},{"id":"capacitor","label":"Capacitor","predicates":[{"field":"category","kind":"exact","value":"CAP"}]}]}}`, http.StatusCreated)
+	part := post("/api/parts", `{"value":"RES-150-042","seqDef":"acceptance-http-seq","taxonomyDef":"acceptance-http-seq-taxonomy-v1","attributes":[{"attributeDefId":"family","value":"electronics"}]}`, http.StatusCreated)
 	if !strings.Contains(part, `"value":"RES-150-042"`) {
 		t.Fatalf("created part = %s", part)
 	}
@@ -292,7 +328,7 @@ func TestSchemaAcceptanceHTTPFlow(t *testing.T) {
 		t.Fatalf("part view = %#v, want interpreted path and inherited attribute", view)
 	}
 
-	draftBody := post("/api/part-drafts", `{"seqDef":"acceptance-http-seq","taxonomyDef":"acceptance-http-taxonomy","contextNodeId":"high-power"}`, http.StatusCreated)
+	draftBody := post("/api/part-drafts", `{"seqDef":"acceptance-http-seq","taxonomyDef":"acceptance-http-seq-taxonomy-v1","contextNodeId":"high-power"}`, http.StatusCreated)
 	var draft struct {
 		ID string `json:"id"`
 	}
@@ -516,8 +552,8 @@ func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
 		return recording.Body.String()
 	}
 	post("/api/seq-defs", `{"id":"draft-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"bind","name":"category","child":{"kind":"places","alphabets":["AB"]}},{"kind":"range","min":1,"max":9,"width":1}]}}`, http.StatusCreated)
-	post("/api/taxonomy-defs", `{"id":"draft-taxonomy-v1","seqDef":"draft-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
-	body := post("/api/part-drafts", `{"seqDef":"draft-pn-v1","taxonomyDef":"draft-taxonomy-v1","contextNodeId":"components"}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"seqDef":"draft-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
+	body := post("/api/part-drafts", `{"seqDef":"draft-pn-v1","taxonomyDef":"draft-pn-v1-taxonomy-v1","contextNodeId":"components"}`, http.StatusCreated)
 	var draft ubomDraftResponse
 	if err := json.Unmarshal([]byte(body), &draft); err != nil || draft.ID == "" {
 		t.Fatalf("draft response = %s", body)

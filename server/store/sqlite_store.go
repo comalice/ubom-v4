@@ -78,9 +78,19 @@ func (s *SQLiteStore) init() error {
 		);
 		CREATE TABLE IF NOT EXISTS taxonomy_defs (
 			id TEXT PRIMARY KEY,
+			definition_id TEXT,
+			version INTEGER,
+			parent_id TEXT,
 			seq_def_id TEXT NOT NULL,
 			attribute_defs TEXT NOT NULL DEFAULT '[]',
 			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id)
+		);
+		CREATE TABLE IF NOT EXISTS current_taxonomies (
+			seq_def_id TEXT PRIMARY KEY,
+			taxonomy_def_id TEXT NOT NULL,
+			state TEXT NOT NULL DEFAULT 'current',
+			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id),
+			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id)
 		);
 		CREATE TABLE IF NOT EXISTS taxonomy_nodes (
 			taxonomy_def_id TEXT NOT NULL,
@@ -166,8 +176,37 @@ func (s *SQLiteStore) init() error {
 		return err
 	}
 	if !hasPredicates {
-		_, err = s.db.Exec("ALTER TABLE taxonomy_nodes ADD COLUMN predicates TEXT NOT NULL DEFAULT '[]'")
-		return err
+		if _, err = s.db.Exec("ALTER TABLE taxonomy_nodes ADD COLUMN predicates TEXT NOT NULL DEFAULT '[]'"); err != nil {
+			return err
+		}
+	}
+	for _, column := range []string{"definition_id TEXT", "version INTEGER", "parent_id TEXT"} {
+		name := strings.Split(column, " ")[0]
+		var exists bool
+		rows, err := s.db.Query("PRAGMA table_info(taxonomy_defs)")
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var cid, notNull, pk int
+			var n, typ string
+			var defaultValue any
+			if err := rows.Scan(&cid, &n, &typ, &notNull, &defaultValue, &pk); err != nil {
+				rows.Close()
+				return err
+			}
+			if n == name {
+				exists = true
+			}
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if !exists {
+			if _, err := s.db.Exec("ALTER TABLE taxonomy_defs ADD COLUMN " + column); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -399,7 +438,7 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 		tx.Rollback()
 		return err
 	}
-	if _, err := tx.Exec("INSERT INTO taxonomy_defs (id, seq_def_id, attribute_defs) VALUES (?, ?, ?)", def.ID, def.SeqDef, attributeDefs); err != nil {
+	if _, err := tx.Exec("INSERT INTO taxonomy_defs (id, definition_id, version, parent_id, seq_def_id, attribute_defs) VALUES (?, ?, ?, ?, ?, ?)", def.ID, nullable(def.DefinitionID), nullableInt(def.Version), nullable(string(def.ParentID)), def.SeqDef, attributeDefs); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -410,10 +449,82 @@ func (s *SQLiteStore) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	return tx.Commit()
 }
 
+func nullable(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
+}
+func nullableInt(value int) any {
+	if value == 0 {
+		return nil
+	}
+	return value
+}
+
+func (s *SQLiteStore) CreateTaxonomyRevision(seqDef ubom.SeqDefID, parent ubom.TaxonomyDefID, def ubom.TaxonomyDef) (ubom.TaxonomyDef, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	defer tx.Rollback()
+	var current string
+	err = tx.QueryRow("SELECT taxonomy_def_id FROM current_taxonomies WHERE seq_def_id = ? AND state = 'current'", seqDef).Scan(&current)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = tx.QueryRow("SELECT id FROM taxonomy_defs WHERE seq_def_id = ? ORDER BY COALESCE(version, 1) DESC, id DESC LIMIT 1", seqDef).Scan(&current)
+		if err == nil {
+			_, err = tx.Exec("INSERT INTO current_taxonomies(seq_def_id, taxonomy_def_id) VALUES (?, ?)", seqDef, current)
+		}
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return ubom.TaxonomyDef{}, err
+	}
+	if (parent == "" && current != "") || (parent != "" && current != string(parent)) {
+		return ubom.TaxonomyDef{}, ErrAlreadyExists
+	}
+	if parent != "" {
+		var linked string
+		if err := tx.QueryRow("SELECT seq_def_id FROM taxonomy_defs WHERE id = ?", parent).Scan(&linked); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ubom.TaxonomyDef{}, ErrNotFound
+			}
+			return ubom.TaxonomyDef{}, err
+		}
+		if linked != string(seqDef) {
+			return ubom.TaxonomyDef{}, ErrAlreadyExists
+		}
+	}
+	if err := def.Validate(); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	attributeDefs, err := json.Marshal(def.AttributeDefs)
+	if err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	if _, err = tx.Exec("INSERT INTO taxonomy_defs (id, definition_id, version, parent_id, seq_def_id, attribute_defs) VALUES (?, ?, ?, ?, ?, ?)", def.ID, def.DefinitionID, def.Version, nullable(string(def.ParentID)), seqDef, attributeDefs); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	if err = insertTaxonomyNode(tx, def.ID, nil, def.Taxonomy.Root, 0); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	if _, err = tx.Exec("INSERT INTO current_taxonomies(seq_def_id, taxonomy_def_id, state) VALUES (?, ?, 'current') ON CONFLICT(seq_def_id) DO UPDATE SET taxonomy_def_id=excluded.taxonomy_def_id, state='current'", seqDef, def.ID); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	if err = tx.Commit(); err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	return def, nil
+}
+
 func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	var seqDefID ubom.SeqDefID
+	var definitionID sql.NullString
+	var version sql.NullInt64
+	var parentID sql.NullString
 	var attributeData []byte
-	if err := s.db.QueryRow("SELECT seq_def_id, attribute_defs FROM taxonomy_defs WHERE id = ?", id).Scan(&seqDefID, &attributeData); err != nil {
+	if err := s.db.QueryRow("SELECT seq_def_id, definition_id, version, parent_id, attribute_defs FROM taxonomy_defs WHERE id = ?", id).Scan(&seqDefID, &definitionID, &version, &parentID, &attributeData); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.TaxonomyDef{}, ErrNotFound
 		}
@@ -433,7 +544,17 @@ func (s *SQLiteStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, e
 	if err != nil {
 		return ubom.TaxonomyDef{}, err
 	}
-	return ubom.TaxonomyDef{ID: id, SeqDef: seqDefID, AttributeDefs: attributeDefs, Taxonomy: taxonomy}, nil
+	result := ubom.TaxonomyDef{ID: id, SeqDef: seqDefID, AttributeDefs: attributeDefs, Taxonomy: taxonomy}
+	if definitionID.Valid {
+		result.DefinitionID = definitionID.String
+	}
+	if version.Valid {
+		result.Version = int(version.Int64)
+	}
+	if parentID.Valid {
+		result.ParentID = ubom.TaxonomyDefID(parentID.String)
+	}
+	return result, nil
 }
 
 func (s *SQLiteStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
@@ -465,6 +586,47 @@ func (s *SQLiteStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
 		items = append(items, def)
 	}
 	return items, nil
+}
+
+func (s *SQLiteStore) GetCurrentTaxonomyDef(seqDef ubom.SeqDefID) (ubom.TaxonomyDef, error) {
+	var id ubom.TaxonomyDefID
+	err := s.db.QueryRow("SELECT taxonomy_def_id FROM current_taxonomies WHERE seq_def_id = ? AND state = 'current'", seqDef).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = s.db.QueryRow("SELECT id FROM taxonomy_defs WHERE seq_def_id = ? ORDER BY COALESCE(version, 1) DESC, id DESC LIMIT 1", seqDef).Scan(&id)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ubom.TaxonomyDef{}, ErrNotFound
+		}
+		if err != nil {
+			return ubom.TaxonomyDef{}, err
+		}
+		if _, err := s.db.Exec("INSERT OR IGNORE INTO current_taxonomies(seq_def_id, taxonomy_def_id) VALUES (?, ?)", seqDef, id); err != nil {
+			return ubom.TaxonomyDef{}, err
+		}
+	} else if err != nil {
+		return ubom.TaxonomyDef{}, err
+	}
+	return s.GetTaxonomyDef(id)
+}
+
+func (s *SQLiteStore) ListTaxonomyDefHistory(definitionID string) ([]ubom.TaxonomyDef, error) {
+	rows, err := s.db.Query("SELECT id FROM taxonomy_defs WHERE COALESCE(definition_id, id) = ? ORDER BY COALESCE(version, 1), id", definitionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []ubom.TaxonomyDef{}
+	for rows.Next() {
+		var id ubom.TaxonomyDefID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		def, err := s.GetTaxonomyDef(id)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, def)
+	}
+	return result, rows.Err()
 }
 
 func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *string, node ubom.TaxonomyNode, position int) error {

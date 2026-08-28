@@ -16,6 +16,29 @@ one active taxonomy easy to resolve. A new sequence-definition version starts a
 separate taxonomy revision lineage. Existing taxonomy revisions remain
 available for audit and historical records.
 
+## Decisions
+
+The persistence model follows the existing immutable sequence-definition
+revision model:
+
+- The current taxonomy is tracked by a dedicated current pointer, not by
+  mutating the sequence definition and not by inferring current state solely
+  from the highest revision number.
+- Taxonomy revision IDs are server-generated using the same lineage/version
+  convention as sequence-definition revisions, such as
+  `part-taxonomy-v2`.
+- Editing is local until the user explicitly saves. Opening an editor, changing
+  fields, or abandoning a draft must not create a taxonomy revision.
+- A save creates exactly one new immutable taxonomy revision and advances the
+  dedicated current pointer atomically.
+- A save must identify the current taxonomy revision from which the editor was
+  opened. If that parent is no longer current, the server rejects the save as a
+  conflict rather than overwriting the newer current pointer.
+
+Deferring revision creation until save avoids creating revisions for abandoned
+or intermediate edits. It does not by itself eliminate concurrent-save races;
+the parent/current check and atomic pointer update are still required.
+
 ## Navigation
 
 The Settings area should expose both sequence definitions and taxonomies:
@@ -262,10 +285,9 @@ The sequence-definition document itself remains immutable. The current taxonomy
 pointer must live in taxonomy persistence or be resolved by a server-owned
 latest-revision query; it must not be written back into the sequence definition.
 
-The current association should be explicit if the system later needs drafts,
-publication, rollback, or staged revisions. A server-owned latest-revision
-query is sufficient for the first implementation if the persistence layer can
-guarantee ordering and uniqueness.
+The current association must be explicit. This leaves room for drafts,
+publication, rollback, staged revisions, and other lifecycle changes without
+changing the meaning of a taxonomy definition or sequence definition.
 
 Historical behavior:
 
@@ -297,11 +319,14 @@ validation must enforce the revision and current-association invariants.
 10. Add taxonomy revision metadata: `definitionId`, `version`, and optional
     `parentId`.
 11. Change taxonomy creation into server-owned next-revision creation without
-    allowing in-place updates.
-12. Add current-revision resolution and taxonomy revision history APIs.
+    allowing in-place updates. Generate IDs using the same convention as
+    sequence-definition revisions.
+12. Add the dedicated current-taxonomy pointer and current-revision/history
+    APIs.
 13. Add a save action that creates a new immutable taxonomy revision and
-    advances the current taxonomy association atomically.
-14. Verify that old taxonomy revisions remain usable for existing parts and
+    advances the current taxonomy pointer atomically.
+14. Reject saves whose parent revision is no longer current.
+15. Verify that old taxonomy revisions remain usable for existing parts and
     drafts, and add server-side invariant tests.
 
 The playground remains fixture-backed throughout. The real Settings route is

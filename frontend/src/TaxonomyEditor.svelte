@@ -11,6 +11,7 @@
   export let grammar: TaxonomyGrammar
   export let initialAttributeDefinitions: TaxonomyAttributeDefinition[] = []
   export let initialDraft: TaxonomyDraftNode
+  export let readOnly = false
   export let onChange: (draft: TaxonomyDraftNode, definitions: TaxonomyAttributeDefinition[]) => void = () => {}
 
   let placementNumber = 1
@@ -130,7 +131,7 @@
 </script>
 
 <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
-  <TaxonomyPalette onDragEnd={handleDragEnd} />
+  {#if !readOnly}<TaxonomyPalette onDragEnd={handleDragEnd} />{/if}
 
   <section class="taxonomy-editor-canvas" aria-labelledby="taxonomy-canvas-heading">
     <div class="taxonomy-editor-heading">
@@ -139,13 +140,13 @@
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} {readOnly} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">
-    <div class="taxonomy-editor-heading"><span class="mock-section-label" id="taxonomy-status-heading">Definition status</span><span class="taxonomy-editor-count">local draft</span></div>
+    <div class="taxonomy-editor-heading"><span class="mock-section-label" id="taxonomy-status-heading">Definition status</span><span class="taxonomy-editor-count">{readOnly ? 'historical revision' : 'local draft'}</span></div>
     <div class="taxonomy-status-grid">
-      <span class="taxonomy-status-ok">✓</span><span>Grammar is immutable</span>
+      <span class="taxonomy-status-ok">✓</span><span>{readOnly ? 'Historical revision is immutable' : 'Grammar is immutable'}</span>
       <span class="taxonomy-status-ok">✓</span><span>Drop zones expose known grammar fields</span>
        <span class={validation.valid ? 'taxonomy-status-ok' : 'taxonomy-status-pending'}>{validation.valid ? '✓' : '!'}</span><span>{validation.valid ? 'Taxonomy draft is valid' : 'Taxonomy draft has validation errors'}</span>
     </div>
@@ -159,9 +160,9 @@
       <table class="taxonomy-attribute-table">
         <caption class="sr-only">Attributes assigned to {selectedAttributesNode.label}</caption>
         <thead><tr><th scope="col">Attribute</th><th scope="col">Value type</th><th scope="col">Required</th><th scope="col">Source</th></tr></thead>
-        <tbody>{#each selectedAttributeRows as row}<TaxonomyAttributeTableRow attribute={row.attribute} errors={row.errors} selectedNodeLabel={selectedAttributesNode.label} editable={row.attribute.source === selectedAttributesNode.label} onChange={(required) => updateAttribute(row.attribute.id, required)} onDefinitionChange={(label, valueType) => updateAttributeDefinition(row.attribute.id, label, valueType)} actionLabel="Override" onAction={() => overrideAttribute(row.attribute.id, row.attribute.required)} onRemove={() => removeAttribute(row.attribute.id)} />{/each}</tbody>
+       <tbody>{#each selectedAttributeRows as row}<TaxonomyAttributeTableRow attribute={row.attribute} errors={row.errors} selectedNodeLabel={selectedAttributesNode.label} editable={!readOnly && row.attribute.source === selectedAttributesNode.label} onChange={(required) => updateAttribute(row.attribute.id, required)} onDefinitionChange={(label, valueType) => updateAttributeDefinition(row.attribute.id, label, valueType)} actionLabel={readOnly ? '' : 'Override'} onAction={() => overrideAttribute(row.attribute.id, row.attribute.required)} onRemove={() => removeAttribute(row.attribute.id)} />{/each}</tbody>
       </table>
     </TableFrame>
-    <PrimitiveButton variant="secondary" size="small" type="button" on:click={addAttribute}>+ Add attribute assignment</PrimitiveButton>
+     {#if !readOnly}<PrimitiveButton variant="secondary" size="small" type="button" on:click={addAttribute}>+ Add attribute assignment</PrimitiveButton>{/if}
   </SlideOut>
 {/if}

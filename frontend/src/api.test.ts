@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getSeqDef, getSeqDefs, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
+import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDefHistory, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -50,6 +50,16 @@ describe('sequence definition authoring API', () => {
     await expect(getSeqDefs()).resolves.toEqual([{ id: definition.id, definitionId: definition.definitionId, version: definition.version }])
     await expect(getSeqDef(definition.id)).resolves.toEqual(definition)
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(['/api/seq-defs', '/api/seq-defs/full-view'])
+  })
+})
+
+describe('taxonomy revision history API', () => {
+  it('loads the immutable revision summaries for a taxonomy lineage', async () => {
+    const history = [{ id: 'taxonomy-v1', definitionId: 'taxonomy', version: 1, seqDef: 'seq-v1', current: false }]
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(history), { status: 200 }))
+
+    await expect(getTaxonomyDefHistory('taxonomy')).resolves.toEqual(history)
+    expect(fetchMock).toHaveBeenCalledWith('/api/taxonomy-defs/taxonomy/history')
   })
 })
 

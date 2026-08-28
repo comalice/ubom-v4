@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createTaxonomyDef, getSeqDef, getTaxonomyDef, type SeqDefDefinition, type TaxonomyDefinition } from './api'
+  import { createTaxonomyDef, getSeqDef, getTaxonomyDef, getTaxonomyDefHistory, type SeqDefDefinition, type TaxonomyDefinitionView, type TaxonomyDefSummary } from './api'
   import AsyncState from './AsyncState.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import SectionHeading from './SectionHeading.svelte'
@@ -21,6 +21,10 @@
   let editorDraft: TaxonomyDraftNode | undefined
   let editorDefinitions: TaxonomyAttributeDefinition[] = []
   let baseline = ''
+  let history: TaxonomyDefSummary[] = []
+  let historyLoading = false
+  let historyError = ''
+  let currentRevision = true
 
   $: requestKey = id ? `taxonomy:${id}` : `new:${seqDef ?? ''}`
   $: if (requestKey !== loadedKey) void load(requestKey)
@@ -32,12 +36,25 @@
     error = ''
     grammar = undefined
     draft = undefined
+    history = []
+    historyError = ''
+    historyLoading = false
+    currentRevision = true
     try {
       let sequence: SeqDefDefinition
-      let taxonomy: TaxonomyDefinition | undefined
+      let taxonomy: TaxonomyDefinitionView | undefined
       if (id) {
         taxonomy = await getTaxonomyDef(id)
         sequence = await getSeqDef(taxonomy.seqDef)
+        currentRevision = taxonomy.current
+        historyLoading = true
+        try {
+          history = await getTaxonomyDefHistory(taxonomy.definitionId)
+        } catch (reason) {
+          if (current === requestID) historyError = reason instanceof Error ? reason.message : 'Unable to load revision history'
+        } finally {
+          if (current === requestID) historyLoading = false
+        }
       } else if (seqDef) {
         sequence = await getSeqDef(seqDef)
       } else {
@@ -60,7 +77,7 @@
 
   $: validation = editorDraft ? validateTaxonomyAttributes(editorDefinitions, editorDraft) : { valid: false }
   $: dirty = editorDraft ? JSON.stringify({ definitions: editorDefinitions, draft: editorDraft }) !== baseline : false
-  $: saveDisabled = saving || !editorDraft || !validation.valid || (id ? !dirty : !seqDef)
+  $: saveDisabled = saving || !editorDraft || !validation.valid || (id ? !dirty || !currentRevision : !seqDef)
 
   function updateEditor(draftValue: TaxonomyDraftNode, definitionsValue: TaxonomyAttributeDefinition[]) {
     editorDraft = draftValue
@@ -93,10 +110,19 @@
   <AsyncState state="error" message={error} />
 {:else if grammar && draft}
   <div class="taxonomy-page-toolbar">
-    <div><p class="muted">{id ? `Revision opened from ${id}` : 'New taxonomy draft'}</p>{#if saveError}<p class="error" role="alert">{saveError}</p>{:else if saving}<p class="muted" role="status">Saving taxonomy revision...</p>{:else if !dirty}<p class="muted">No unsaved changes.</p>{/if}</div>
-    <PrimitiveButton type="button" disabled={saveDisabled} on:click={save}>{saving ? 'Saving...' : 'Save taxonomy'}</PrimitiveButton>
+    <div><p class="muted">{id ? `Revision opened from ${id}` : 'New taxonomy draft'}</p>{#if !currentRevision}<p class="muted" role="status">Historical revision; immutable.</p>{:else if saveError}<p class="error" role="alert">{saveError}</p>{:else if saving}<p class="muted" role="status">Saving taxonomy revision...</p>{:else if !dirty}<p class="muted">No unsaved changes.</p>{/if}</div>
+    {#if currentRevision}<PrimitiveButton type="button" disabled={saveDisabled} on:click={save}>{saving ? 'Saving...' : 'Save taxonomy'}</PrimitiveButton>{/if}
   </div>
+   {#if id}
+     <section class="taxonomy-revision-history" aria-labelledby="taxonomy-revision-history-heading">
+       <h3 id="taxonomy-revision-history-heading">Revision history</h3>
+       {#if historyLoading}<p class="muted" role="status">Loading revision history...</p>
+       {:else if historyError}<p class="muted" role="status">Revision history is unavailable. {historyError}</p>
+       {:else if history.length}<ul>{#each history as revision (revision.id)}<li><a href={`/settings/taxonomies/${encodeURIComponent(revision.id)}`}>Revision {revision.version}</a> <span class="muted">{revision.id}</span>{#if revision.current}<span aria-label="current revision">Current</span>{/if}</li>{/each}</ul>
+       {:else}<p class="muted">No revision history available.</p>{/if}
+     </section>
+  {/if}
   {#key requestKey}
-    <TaxonomyEditor grammar={grammar} initialAttributeDefinitions={definitions} initialDraft={draft} onChange={updateEditor} />
+    <TaxonomyEditor grammar={grammar} initialAttributeDefinitions={definitions} initialDraft={draft} readOnly={!currentRevision} onChange={updateEditor} />
   {/key}
 {/if}

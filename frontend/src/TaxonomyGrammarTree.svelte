@@ -14,10 +14,11 @@
   export let onDragEnd: () => void = () => {}
   export let onAttributes: (nodeID: string) => void = () => {}
   export let grammarNodes: StructureNode[] = defaultGrammarNodes
+  export let readOnly = false
 </script>
 
 <ul class="dnd-structure-tree taxonomy-grammar-structure-tree">
   {#each grammarNodes as node (node.id)}
-    <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} />
+     <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {readOnly} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} />
   {/each}
 </ul>

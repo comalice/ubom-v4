@@ -15,6 +15,7 @@
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
   export let onAttributes: (nodeID: string) => void = () => {}
+  export let readOnly = false
 
   function dropLabel(node: StructureNode) {
     if (node.id === 'grammar-root') return 'Drop taxonomy at the root'
@@ -38,18 +39,18 @@
 
 {#if filled}
   {#each placements as placement, index (placement.id)}
-      <DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy ${index + 1} for ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), index)} />
+      {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy ${index + 1} for ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), index)} />{/if}
     {#if placement.type === 'category'}
       {@const draftNode = categoryNode(placement)}
-      <TaxonomyCategoryBlock title={placement.title} summary={placement.summary} label={placement.label ?? placement.title} nodeId={placement.nodeId ?? placement.id} layout="tree" container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} showRuleDropZone ruleContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onRuleDrop={draftNode ? (state) => onRuleDrop(state, draftNode.id) : undefined} showChildren childContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onChildDrop={draftNode ? (state) => onChildDrop(state, draftNode.id) : undefined} {onDragEnd} onRemove={() => onRemove(placement.id)} onAttributes={() => { if (draftNode) onAttributes(draftNode.id) }}>
-        <svelte:fragment slot="rules">{#if draftNode}{#each draftNode.rules as rule (rule.id)}<TaxonomyRuleBlock title={rule.title} field={draftNode.targetId} predicate={rule.predicateData ?? { kind: 'exact', field: draftNode.targetId, value: 'A' }} container={taxonomyTargetContainer(draftNode.id)} dragData={{ kind: 'taxonomy', taxonomyType: 'rule', placementId: rule.id }} {onDragEnd} onRemove={() => onRemove(rule.id)} />{/each}{/if}</svelte:fragment>
-            <svelte:fragment slot="children">{#if draftNode}{#each draftNode.children as child}{#if child.placements[0]}<TaxonomyCategoryBlock title={child.placements[0].title} summary={child.placements[0].summary} label={child.placements[0].label ?? child.label} nodeId={child.placements[0].nodeId ?? child.id} predicate={child.placements[0].predicate ?? ''} layout="tree" showChildren addChildLabel="Drop a category here" onAttributes={() => onAttributes(child.id)} />{/if}{/each}{/if}</svelte:fragment>
+      <TaxonomyCategoryBlock title={placement.title} summary={placement.summary} label={placement.label ?? placement.title} nodeId={placement.nodeId ?? placement.id} layout="tree" {readOnly} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} showRuleDropZone ruleContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onRuleDrop={draftNode ? (state) => onRuleDrop(state, draftNode.id) : undefined} showChildren childContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onChildDrop={draftNode ? (state) => onChildDrop(state, draftNode.id) : undefined} {onDragEnd} onRemove={() => onRemove(placement.id)} onAttributes={() => { if (draftNode) onAttributes(draftNode.id) }}>
+         <svelte:fragment slot="rules">{#if draftNode}{#each draftNode.rules as rule (rule.id)}<TaxonomyRuleBlock title={rule.title} field={draftNode.targetId} predicate={rule.predicateData ?? { kind: 'exact', field: draftNode.targetId, value: 'A' }} readOnly={readOnly} container={taxonomyTargetContainer(draftNode.id)} dragData={{ kind: 'taxonomy', taxonomyType: 'rule', placementId: rule.id }} {onDragEnd} onRemove={() => onRemove(rule.id)} />{/each}{/if}</svelte:fragment>
+             <svelte:fragment slot="children">{#if draftNode}{#each draftNode.children as child}{#if child.placements[0]}<TaxonomyCategoryBlock title={child.placements[0].title} summary={child.placements[0].summary} label={child.placements[0].label ?? child.label} nodeId={child.placements[0].nodeId ?? child.id} predicate={child.placements[0].predicate ?? ''} readOnly={readOnly} layout="tree" showChildren addChildLabel="Drop a category here" onAttributes={() => onAttributes(child.id)} />{/if}{/each}{/if}</svelte:fragment>
       </TaxonomyCategoryBlock>
     {:else if placement.type === 'rule'}
-      <TaxonomyRuleBlock title={placement.title} field={node.label} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
+      <TaxonomyRuleBlock title={placement.title} field={node.label} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} readOnly={readOnly} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
     {/if}
   {/each}
-  <DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), placements.length)} />
+   {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), placements.length)} />{/if}
 {:else}
-  <DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone" ariaLabel={`${label} drop zone`} onDrop={(state) => onDrop(state, String(node.id), 0)} />
+  {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone" ariaLabel={`${label} drop zone`} onDrop={(state) => onDrop(state, String(node.id), 0)} />{/if}
 {/if}

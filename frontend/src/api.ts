@@ -39,7 +39,7 @@ export type TaxonomyDefinition = {
   attributeDefs?: { id: string; label: string; valueType: string; unit?: string; enumValues?: string[] }[]
   root: TaxonomyNodeInput
 }
-export type TaxonomyDefinitionView = TaxonomyDefinition
+export type TaxonomyDefinitionView = TaxonomyDefinition & { current: boolean }
 export type TaxonomyDefinitionInput = {
   definitionId?: string
   parentId?: string

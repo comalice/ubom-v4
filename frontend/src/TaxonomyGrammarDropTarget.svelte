@@ -11,6 +11,7 @@
   export let taxonomyDraft: TaxonomyDraftNode | undefined
   export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onChildDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
+  export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
 
@@ -26,7 +27,7 @@
   function accepts(state: DragDropState<TaxonomyDragPayload>) {
     const item = state.draggedItem
     const taxonomySource = state.sourceContainer === taxonomyEditorContainer || state.sourceContainer.startsWith(`${taxonomyEditorContainer}:target:`)
-    return node.blockType === 'binding' && taxonomySource && Boolean(item && (item.taxonomyType === 'category' || item.taxonomyType === 'rule'))
+    return node.blockType === 'binding' && taxonomySource && Boolean(item && item.taxonomyType === 'category')
   }
   function getMode(state: DragDropState<TaxonomyDragPayload>) {
     if (state.draggedItem?.kind === 'palette') return 'new' as const
@@ -39,7 +40,8 @@
       <DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy ${index + 1} for ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), index)} />
     {#if placement.type === 'category'}
       {@const draftNode = categoryNode(placement)}
-      <TaxonomyCategoryBlock title={placement.title} summary={placement.summary} label={placement.label ?? placement.title} nodeId={placement.nodeId ?? placement.id} predicate={placement.predicate ?? ''} layout="tree" container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} showChildren childContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onChildDrop={draftNode ? (state) => onChildDrop(state, draftNode.id) : undefined} {onDragEnd} onRemove={() => onRemove(placement.id)}>
+      <TaxonomyCategoryBlock title={placement.title} summary={placement.summary} label={placement.label ?? placement.title} nodeId={placement.nodeId ?? placement.id} predicate={placement.predicate ?? ''} layout="tree" container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} showRuleDropZone ruleContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onRuleDrop={draftNode ? (state) => onRuleDrop(state, draftNode.id) : undefined} showChildren childContainer={draftNode ? taxonomyTargetContainer(draftNode.id) : ''} onChildDrop={draftNode ? (state) => onChildDrop(state, draftNode.id) : undefined} {onDragEnd} onRemove={() => onRemove(placement.id)}>
+        <svelte:fragment slot="rules">{#if draftNode}{#each draftNode.rules as rule (rule.id)}<TaxonomyRuleBlock title={rule.title} field={draftNode.targetId} predicate={rule.predicateData ?? { kind: 'exact', field: draftNode.targetId, value: 'A' }} container={taxonomyTargetContainer(draftNode.id)} dragData={{ kind: 'taxonomy', taxonomyType: 'rule', placementId: rule.id }} {onDragEnd} onRemove={() => onRemove(rule.id)} />{/each}{/if}</svelte:fragment>
         <svelte:fragment slot="children">{#if draftNode}{#each draftNode.children as child}{#if child.placements[0]}<TaxonomyCategoryBlock title={child.placements[0].title} summary={child.placements[0].summary} label={child.placements[0].label ?? child.label} nodeId={child.placements[0].nodeId ?? child.id} predicate={child.placements[0].predicate ?? ''} layout="tree" showChildren addChildLabel="Drop a category here" />{/if}{/each}{/if}</svelte:fragment>
       </TaxonomyCategoryBlock>
     {:else if placement.type === 'rule'}

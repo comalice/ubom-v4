@@ -36,6 +36,7 @@ export type TaxonomyDraftNode = {
   label: string
   targetId: string
   placements: TaxonomyPlacement[]
+  rules: TaxonomyPlacement[]
   children: TaxonomyDraftNode[]
 }
 
@@ -62,6 +63,19 @@ export function findTaxonomyDraftNode(node: TaxonomyDraftNode, placementID: stri
 export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string, child: TaxonomyDraftNode): TaxonomyDraftNode {
   if (node.id === parentID) return { ...node, children: [...node.children, child] }
   return { ...node, children: node.children.map((current) => addTaxonomyDraftChild(current, parentID, child)) }
+}
+
+export function addTaxonomyDraftRule(node: TaxonomyDraftNode, parentID: string, rule: TaxonomyPlacement): TaxonomyDraftNode {
+  if (node.id === parentID) return { ...node, rules: [...node.rules, rule] }
+  return { ...node, children: node.children.map((current) => addTaxonomyDraftRule(current, parentID, rule)) }
+}
+
+export function removeTaxonomyDraftRule(node: TaxonomyDraftNode, ruleID: string): TaxonomyDraftNode {
+  return {
+    ...node,
+    rules: node.rules.filter((rule) => rule.id !== ruleID),
+    children: node.children.map((child) => removeTaxonomyDraftRule(child, ruleID)),
+  }
 }
 
 function replace(node: TaxonomyDraftNode, placements: TaxonomyPlacement[], existingIDs: Set<string>): TaxonomyDraftNode {

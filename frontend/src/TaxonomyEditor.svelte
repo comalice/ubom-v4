@@ -1,16 +1,16 @@
 <script lang="ts">
   import TaxonomyPalette from './TaxonomyPalette.svelte'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
-  import { addTaxonomyDraftChild, flattenTaxonomyDraft, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
   let taxonomyDraft: TaxonomyDraftNode = {
-    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], children: [{
+    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
       id: 'high-power', label: 'High Power', targetId: 'number', placements: [{
         id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
         label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
-      }], children: [],
+      }], rules: [], children: [],
     }],
   }
   $: placements = flattenTaxonomyDraft(taxonomyDraft)
@@ -58,11 +58,21 @@
     const item = state.draggedItem
     if (!item || item.kind !== 'palette' || item.taxonomyType !== 'category') return
     const placement = newPlacement(item, parentID)
-    taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], children: [] })
+    taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], rules: [], children: [] })
+  }
+
+  function handleRuleDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string) {
+    const item = state.draggedItem
+    if (!item || item.kind !== 'palette' || item.taxonomyType !== 'rule') return
+    const parent = findTaxonomyDraftNode(taxonomyDraft, parentID)
+    if (!parent) return
+    const placement = newPlacement(item, parent.targetId)
+    taxonomyDraft = addTaxonomyDraftRule(taxonomyDraft, parentID, placement)
   }
 
   function removePlacement(placementId: string) {
     updatePlacements(placements.filter((placement) => placement.id !== placementId))
+    taxonomyDraft = removeTaxonomyDraftRule(taxonomyDraft, placementId)
   }
 
   function handleDragEnd() {}
@@ -78,7 +88,7 @@
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">

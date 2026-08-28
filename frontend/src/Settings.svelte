@@ -4,7 +4,7 @@
 
   const items = [
     { label: 'Sequence definitions', description: 'Create and inspect immutable sequence languages.', href: '/settings/sequence-definitions' },
-    { label: 'Taxonomies', description: 'Organize parts and assign their attributes.', status: 'Soon' },
+    { label: 'Taxonomies', description: 'Organize parts and assign their attributes.', href: '/settings/taxonomies' },
     { label: 'Part-number schemas', description: 'Connect sequence definitions to taxonomy rules.', status: 'Soon' },
     { label: 'Artifact sources', description: 'Configure external sources and captured files.', href: '/artifacts' },
   ]

@@ -13,6 +13,8 @@
   import SeqDefList from './SeqDefList.svelte'
   import GrammarEditor from './GrammarEditor.svelte'
   import SeqDefEditorPage from './SeqDefEditorPage.svelte'
+  import TaxonomyList from './TaxonomyList.svelte'
+  import TaxonomyEditorPage from './TaxonomyEditorPage.svelte'
   import AsyncState from './AsyncState.svelte'
   import Playground from './Playground.svelte'
   import TaxonomyCardGrid from './TaxonomyCardGrid.svelte'
@@ -48,8 +50,10 @@
           ]
       : route.kind === 'grammar-editor'
         ? [{ label: 'Settings', href: '/settings' }, { label: 'Grammar editor' }]
-      : (route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def')
-        ? [{ label: 'Settings', href: '/settings' }, { label: 'Sequence definitions' }]
+       : (route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def')
+         ? [{ label: 'Settings', href: '/settings' }, { label: 'Sequence definitions' }]
+       : (route.kind === 'taxonomy-list' || route.kind === 'taxonomy-new' || route.kind === 'taxonomy-detail')
+         ? [{ label: 'Settings', href: '/settings' }, { label: 'Taxonomies' }]
       : route.kind === 'playground'
         ? [{ label: 'Playground' }]
         : route.kind === 'settings'
@@ -82,7 +86,7 @@
       else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
-        else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def' || route.kind === 'playground') return
+        else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def' || route.kind === 'taxonomy-list' || route.kind === 'taxonomy-new' || route.kind === 'taxonomy-detail' || route.kind === 'playground') return
       else error = 'Page not found'
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Unable to load page'
@@ -161,6 +165,12 @@
     <SeqDefEditorPage />
   {:else if route.kind === 'seq-def'}
     <SeqDefEditorPage id={route.id} />
+  {:else if route.kind === 'taxonomy-list'}
+    <TaxonomyList />
+  {:else if route.kind === 'taxonomy-new'}
+    <TaxonomyEditorPage />
+  {:else if route.kind === 'taxonomy-detail'}
+    <TaxonomyEditorPage id={route.id} />
   {:else if route.kind === 'playground'}
     <Playground navigate={navigate} page={route.page} />
   {:else if route.kind === 'settings'}

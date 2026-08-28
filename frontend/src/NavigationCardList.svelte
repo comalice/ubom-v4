@@ -6,6 +6,7 @@
     description: string
     href?: string
     status?: string
+    action?: { label: string; href: string }
   }
 
   export let items: NavigationCardItem[]
@@ -14,7 +15,14 @@
 
 <div class="settings-list">
   {#each items as item}
-    {#if item.href}
+    {#if item.href && item.action}
+      <div class="settings-item">
+        <PrimitiveLink className="settings-item-main" href={item.href}>
+          <span><strong>{item.label}</strong><small>{item.description}</small></span>
+        </PrimitiveLink>
+        <PrimitiveLink href={item.action.href}>{item.action.label}</PrimitiveLink>
+      </div>
+    {:else if item.href}
       <PrimitiveLink className="settings-item" href={item.href}>
         <span><strong>{item.label}</strong><small>{item.description}</small></span><span class="card-arrow" aria-hidden={arrowAriaHidden}>→</span>
       </PrimitiveLink>

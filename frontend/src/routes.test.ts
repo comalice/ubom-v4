@@ -12,6 +12,14 @@ describe('sequence definition routes', () => {
   })
 })
 
+describe('taxonomy routes', () => {
+  it('parses the list and new pages', () => {
+    expect(parseRoute('/settings/taxonomies')).toEqual({ kind: 'taxonomy-list' })
+    expect(parseRoute('/settings/taxonomies/new')).toEqual({ kind: 'taxonomy-new' })
+    expect(parseRoute('/settings/taxonomies/example-taxonomy')).toEqual({ kind: 'taxonomy-detail', id: 'example-taxonomy' })
+  })
+})
+
 describe('playground routes', () => {
   it('parses the core components page', () => {
     expect(parseRoute('/playground/core-components')).toEqual({ kind: 'playground', page: 'core-components' })

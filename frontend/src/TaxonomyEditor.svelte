@@ -4,20 +4,30 @@
   import PrimitiveButton from './PrimitiveButton.svelte'
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
-  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
+  import { grammarFixtures } from './TaxonomyEditorFixtures'
+  import { addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
-  let attributesLabel: string | undefined
+  let selectedGrammarID = grammarFixtures[0].id
+  let attributesNodeID: string | undefined
+  const attributeDefinitions: TaxonomyAttributeDefinition[] = [
+    { id: 'footprint', label: 'Footprint', valueType: 'enum', enumValues: ['Axial', 'Radial', 'SMD'] },
+    { id: 'material', label: 'Material', valueType: 'string' },
+    { id: 'resistance', label: 'Resistance value', valueType: 'decimal', unit: 'ohm' },
+    { id: 'tolerance', label: 'Tolerance', valueType: 'decimal', unit: 'percent' },
+  ]
   let taxonomyDraft: TaxonomyDraftNode = {
-    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
+    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], attributes: [{ attributeDefId: 'footprint', required: true }, { attributeDefId: 'material', required: false }], children: [{
       id: 'high-power', label: 'High Power', targetId: 'number', placements: [{
         id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
         label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
-      }], rules: [], children: [],
+      }], rules: [], attributes: [{ attributeDefId: 'footprint', required: false }, { attributeDefId: 'resistance', required: true }, { attributeDefId: 'tolerance', required: false }], children: [],
     }],
   }
   $: placements = flattenTaxonomyDraft(taxonomyDraft)
+  $: selectedGrammar = grammarFixtures.find((grammar) => grammar.id === selectedGrammarID) ?? grammarFixtures[0]
 
   function updatePlacements(next: TaxonomyPlacement[]) {
     taxonomyDraft = replaceTaxonomyDraftPlacements(taxonomyDraft, next)
@@ -82,8 +92,11 @@
   function handleDragEnd() {}
 
   function closeAttributes() {
-    attributesLabel = undefined
+    attributesNodeID = undefined
   }
+
+  $: selectedAttributesNode = attributesNodeID ? findTaxonomyDraftNode(taxonomyDraft, attributesNodeID) : undefined
+  $: selectedAttributes = attributesNodeID ? effectiveTaxonomyAttributes(taxonomyDraft, attributesNodeID, attributeDefinitions) : []
 </script>
 
 <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
@@ -91,12 +104,12 @@
 
   <section class="taxonomy-editor-canvas" aria-labelledby="taxonomy-canvas-heading">
     <div class="taxonomy-editor-heading">
-      <div><span class="mock-section-label" id="taxonomy-canvas-heading">Grammar and taxonomy overlay</span><h3>Part number grammar</h3></div>
-       <span class="taxonomy-editor-count">3 fields · {placements.length} taxonomy items</span>
+        <div><span class="mock-section-label" id="taxonomy-canvas-heading">Grammar and taxonomy overlay</span><h3>Part number grammar</h3></div>
+        <div class="taxonomy-editor-heading-controls"><label for="taxonomy-grammar-select">Grammar<select id="taxonomy-grammar-select" bind:value={selectedGrammarID}>{#each grammarFixtures as grammar}<option value={grammar.id}>{grammar.label}</option>{/each}</select></label><span class="taxonomy-editor-count">{selectedGrammar.fields} fields · {placements.length} taxonomy items</span></div>
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(label) => attributesLabel = label} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={selectedGrammar.nodes} {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">
@@ -109,20 +122,16 @@
   </section>
 </section>
 
-{#if attributesLabel}
-  <SlideOut open eyebrow={`Attributes for ${attributesLabel}`} title="Assigned part properties" onClose={closeAttributes}>
+{#if attributesNodeID && selectedAttributesNode}
+  <SlideOut open eyebrow={`Attributes for ${selectedAttributesNode.label}`} title="Assigned part properties" onClose={closeAttributes}>
     <p class="slide-out-copy">Inherited assignments remain visible with their source.</p>
     <TableFrame className="taxonomy-attribute-table-frame">
       <table class="taxonomy-attribute-table">
-        <caption class="sr-only">Attributes assigned to {attributesLabel}</caption>
+        <caption class="sr-only">Attributes assigned to {selectedAttributesNode.label}</caption>
         <thead><tr><th scope="col">Attribute</th><th scope="col">Value type</th><th scope="col">Required</th><th scope="col">Source</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Footprint</th><td>enum</td><td>Required</td><td class="taxonomy-inherited">Components</td></tr>
-          <tr><th scope="row">Resistance value</th><td>decimal · ohm</td><td>Required</td><td>This node</td></tr>
-          <tr><th scope="row">Tolerance</th><td>decimal · percent</td><td>Optional</td><td>This node</td></tr>
-        </tbody>
+        <tbody>{#each selectedAttributes as attribute}<TaxonomyAttributeTableRow {attribute} selectedNodeLabel={selectedAttributesNode.label} />{/each}</tbody>
       </table>
     </TableFrame>
-    <PrimitiveButton variant="secondary" size="small" type="button">+ Add attribute assignment</PrimitiveButton>
+    <PrimitiveButton variant="secondary" size="small" type="button" disabled>+ Add attribute assignment</PrimitiveButton>
   </SlideOut>
 {/if}

@@ -13,7 +13,7 @@
   export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
-  export let onAttributes: (label: string) => void = () => {}
+  export let onAttributes: (nodeID: string) => void = () => {}
 </script>
 
 <li>

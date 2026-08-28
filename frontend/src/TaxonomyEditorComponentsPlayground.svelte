@@ -7,11 +7,19 @@
   import { taxonomyCategoryExample, taxonomyRuleExample } from './TaxonomyEditorFixtures'
   import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
   import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
+  import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
+  import type { TaxonomyEffectiveAttribute } from './TaxonomyEditorModel'
 
   const catalogueTiles = [
     { ...taxonomyTileModels.category, description: 'Classify a grammar branch' },
     taxonomyTileModels.rule,
     taxonomyTileModels.attribute,
+  ]
+  const attributeRows: TaxonomyEffectiveAttribute[] = [
+    { id: 'material', label: 'Material', valueType: 'string', required: false, source: 'Components', overridden: false },
+    { id: 'footprint', label: 'Footprint', valueType: 'enum', required: false, source: 'Resistors', overridden: true },
+    { id: 'resistance', label: 'Resistance value', valueType: 'decimal', unit: 'ohm', required: true, source: 'Resistors', overridden: false },
+    { id: 'tolerance', label: 'Tolerance', valueType: 'decimal', unit: 'percent', required: false, source: 'Resistors', overridden: false },
   ]
 </script>
 
@@ -60,9 +68,10 @@
       <caption class="sr-only">Attributes assigned to Resistors</caption>
       <thead><tr><th scope="col">Attribute</th><th scope="col">Value type</th><th scope="col">Required</th><th scope="col">Source</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>
-        <tr><th scope="row">Footprint</th><td>enum</td><td>Required</td><td><span class="taxonomy-inherited">Components</span></td><td><PrimitiveButton variant="quiet" type="button">Override</PrimitiveButton></td></tr>
-        <tr><th scope="row">Resistance value</th><td>decimal · ohm</td><td>Required</td><td>This node</td><td><PrimitiveButton variant="quiet" type="button">Remove</PrimitiveButton></td></tr>
-        <tr><th scope="row">Tolerance</th><td>decimal · percent</td><td>Optional</td><td>This node</td><td><PrimitiveButton variant="quiet" type="button">Remove</PrimitiveButton></td></tr>
+        <TaxonomyAttributeTableRow attribute={attributeRows[0]} selectedNodeLabel="Resistors" actionLabel="Override" />
+        <TaxonomyAttributeTableRow attribute={attributeRows[1]} selectedNodeLabel="Resistors" actionLabel="Remove" />
+        <TaxonomyAttributeTableRow attribute={attributeRows[2]} selectedNodeLabel="Resistors" actionLabel="Remove" />
+        <TaxonomyAttributeTableRow attribute={attributeRows[3]} selectedNodeLabel="Resistors" actionLabel="Remove" />
       </tbody>
     </table>
   </TableFrame>

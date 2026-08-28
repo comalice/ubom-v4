@@ -17,6 +17,19 @@ export type TaxonomyPlacedDragPayload = {
 
 export type TaxonomyDragPayload = TaxonomyPaletteDragPayload | TaxonomyPlacedDragPayload
 
+export type TaxonomyAttributeDefinition = {
+  id: string
+  label: string
+  valueType: string
+  unit?: string
+  enumValues?: string[]
+}
+
+export type TaxonomyAttributeAssignment = {
+  attributeDefId: string
+  required: boolean
+}
+
 export type TaxonomyPlacement = {
   id: string
   targetId: string
@@ -37,7 +50,14 @@ export type TaxonomyDraftNode = {
   targetId: string
   placements: TaxonomyPlacement[]
   rules: TaxonomyPlacement[]
+  attributes?: TaxonomyAttributeAssignment[]
   children: TaxonomyDraftNode[]
+}
+
+export type TaxonomyEffectiveAttribute = TaxonomyAttributeDefinition & {
+  required: boolean
+  source: string
+  overridden: boolean
 }
 
 export const taxonomyEditorContainer = 'taxonomy-editor'
@@ -58,6 +78,30 @@ export function replaceTaxonomyDraftPlacements(node: TaxonomyDraftNode, placemen
 export function findTaxonomyDraftNode(node: TaxonomyDraftNode, placementID: string): TaxonomyDraftNode | undefined {
   if (node.placements.some((placement) => placement.id === placementID)) return node
   return node.children.map((child) => findTaxonomyDraftNode(child, placementID)).find(Boolean)
+}
+
+export function effectiveTaxonomyAttributes(root: TaxonomyDraftNode, nodeID: string, definitions: TaxonomyAttributeDefinition[]): TaxonomyEffectiveAttribute[] {
+  const path = findTaxonomyDraftPath(root, nodeID)
+  const definitionByID = new Map(definitions.map((definition) => [definition.id, definition]))
+  const effective = new Map<string, TaxonomyEffectiveAttribute>()
+  for (const node of path) {
+    for (const assignment of node.attributes ?? []) {
+      const definition = definitionByID.get(assignment.attributeDefId)
+      if (!definition) continue
+      effective.set(assignment.attributeDefId, { ...definition, required: assignment.required, source: node.label, overridden: node !== path[0] && effective.has(assignment.attributeDefId) })
+    }
+  }
+  return [...effective.values()]
+}
+
+function findTaxonomyDraftPath(node: TaxonomyDraftNode, nodeID: string, path: TaxonomyDraftNode[] = []): TaxonomyDraftNode[] {
+  const nextPath = [...path, node]
+  if (node.id === nodeID) return nextPath
+  for (const child of node.children) {
+    const childPath = findTaxonomyDraftPath(child, nodeID, nextPath)
+    if (childPath.length) return childPath
+  }
+  return []
 }
 
 export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string, child: TaxonomyDraftNode): TaxonomyDraftNode {

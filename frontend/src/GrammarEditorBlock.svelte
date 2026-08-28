@@ -44,7 +44,7 @@
   }
 </script>
 
-<BlockShell title={blockTitle} summary={blockSummary} kind={expr.kind} errors={errors.map((error) => error.message)} collapsible initiallyOpen={false} onRemove={onRemove} {container} {dragData} dragHandle=".block-shell-header" interactive={['input', 'button']} {onDragEnd}>
+<BlockShell title={blockTitle} summary={blockSummary} kind={expr.kind} errors={errors.map((error) => error.message)} collapsible initiallyOpen={false} onRemove={onRemove} {container} {dragData} dragHandle=".block-shell-drag" interactive={['input', 'button']} {onDragEnd}>
   {#if expr.kind === 'literal'}
     <div class="grammar-expr-body"><label>Text<input value={expr.text} aria-label="Literal text" on:input={(event) => update({ text: (event.currentTarget as HTMLInputElement).value })} /></label></div>
   {:else if expr.kind === 'range'}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import BlockShell from './BlockShell.svelte'
+  import ControlButton from './ControlButton.svelte'
   import DropZone, { type DropZoneMode } from './DropZone.svelte'
   import type { DragDropState } from '@thisux/sveltednd'
   import type { TaxonomyDragPayload } from './TaxonomyEditorModel'
@@ -26,6 +27,7 @@
   export let onRuleDragOver: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
   export let onRuleDragLeave: (() => void) | undefined
   export let onRuleDrop: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
+  export let onAttributes: () => void = () => {}
   export let layout: TaxonomyCategoryBlockLayout = 'catalogue'
   export let container = ''
   export let dragData: TaxonomyDragPayload | undefined = undefined
@@ -33,7 +35,8 @@
   export let onRemove: (() => void) | undefined = undefined
 </script>
 
-  <BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} dragHandle=".block-shell-header" interactive={['input', 'select', 'button']} {onDragEnd} {onRemove}>
+  <BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} {onRemove}>
+  <svelte:fragment slot="header-actions"><ControlButton kind="attributes" label={`View attributes for ${label}`} onClick={onAttributes} /></svelte:fragment>
   {#if layout === 'tree'}
     <div class="taxonomy-block-fields">
       <label>Label<input value={label} /></label>

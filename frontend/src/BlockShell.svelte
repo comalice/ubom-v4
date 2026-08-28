@@ -23,9 +23,12 @@
 
 <article data-dnd-kind={dragData && typeof dragData === 'object' && 'kind' in dragData && (dragData as { kind?: string }).kind === 'palette' ? 'new' : 'move'} data-dnd-container={container} on:pointerdown={stopNestedDragEvent} on:dragstart={stopNestedDragEvent} class:component-size-small={size === 'small'} class:block-shell-draggable={container !== ''} class:block-shell-collapsible={collapsible} class:block-shell-removable={onRemove !== undefined} class:block-shell-open={open} class="block-shell grammar-kind-{kind}" use:draggable={{ container: container || 'block-shell', dragData, handle: dragHandle || undefined, interactive, disabled: container === '', callbacks: { onDragEnd } }}>
   <header class="block-shell-header">
-    <span class="block-shell-drag" aria-hidden="true">::</span>
-    <strong>{title}</strong>
-    {#if summary}<span class="block-shell-summary">{summary}</span>{/if}
+    <div class="block-shell-drag">
+      <span aria-hidden="true">::</span>
+      <strong>{title}</strong>
+      {#if summary}<span class="block-shell-summary">{summary}</span>{/if}
+    </div>
+    <div class="block-shell-header-actions"><slot name="header-actions" /></div>
     {#if collapsible}<ControlButton kind="chevron" className="block-shell-toggle" label={open ? `Collapse ${title}` : `Expand ${title}`} expanded={open} onClick={() => open = !open} />{/if}
     {#if errors.length}<span class="block-shell-error-count">{errors.length} error{errors.length === 1 ? '' : 's'}</span>{/if}
     {#if onRemove}<ControlButton kind="close" className="block-shell-remove" label="Remove {title}" onClick={onRemove} />{/if}

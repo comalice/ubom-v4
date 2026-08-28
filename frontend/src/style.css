@@ -272,9 +272,10 @@ ul { line-height: 1.8; }
 .grammar-output strong { color: var(--ink); font: 1.1rem ui-monospace, monospace; overflow-wrap: anywhere; }
 .block-shell { position: relative; min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }
 .block-shell-open { border-color: var(--accent); }
-.block-shell-header { display: flex; align-items: center; gap: .4rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); cursor: grab; }
+.block-shell-header { display: flex; align-items: center; gap: .4rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); }
 .block-shell-removable .block-shell-header { padding-right: 3.5rem; }
-.block-shell-header strong { font: .68rem ui-monospace, monospace; }
+.block-shell-drag { display: flex; align-items: center; gap: .4rem; min-width: 0; flex: 1; cursor: grab; }
+.block-shell-drag strong { font: .68rem ui-monospace, monospace; }
 .block-shell-summary { min-width: 0; overflow: hidden; color: var(--muted); font: .62rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .block-shell-body { padding: .6rem; background: var(--surface); border-top: 1px solid var(--hairline); }
 .block-shell-body:empty { display: none; }
@@ -283,6 +284,9 @@ ul { line-height: 1.8; }
 .block-shell.component-size-small .block-shell-toggle, .block-shell.component-size-small .block-shell-remove { top: .15rem; }
 .block-shell-toggle { right: .55rem; width: 1.5rem; height: 1.5rem; }
 .block-shell-removable .block-shell-toggle { right: 2rem; }
+.block-shell-header-actions { position: absolute; top: .65rem; right: .55rem; display: flex; gap: .2rem; }
+.block-shell-collapsible .block-shell-header-actions { right: 2.3rem; }
+.block-shell-removable .block-shell-header-actions { right: 3.8rem; }
 .block-shell-remove { right: .3rem; padding: 0 .15rem; color: var(--muted); border: 0; font: .7rem ui-monospace, monospace; }
 .block-shell-toggle:hover, .block-shell-remove:hover { border-color: var(--accent); background: var(--surface); }
 .control-close span { position: relative; display: block; width: .65rem; height: .65rem; }

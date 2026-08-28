@@ -20,7 +20,7 @@
   $: ruleSummary = matchType === 'exact' ? `${field} = ${exactValue}` : `${field} in ${rangeMin}..${rangeMax}`
 </script>
 
-  <BlockShell title={title} summary={ruleSummary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} dragHandle=".block-shell-header" interactive={['input', 'select', 'button']} {onDragEnd} {onRemove}>
+  <BlockShell title={title} summary={ruleSummary} kind="taxonomy" collapsible initiallyOpen={true} {container} {dragData} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} {onRemove}>
   <div class="taxonomy-block-body">
     <label>Match type<select bind:value={matchType} aria-label="Rule match type"><option value="exact">Exact value</option><option value="numeric-range">Numeric range</option></select></label>
     {#if matchType === 'exact'}

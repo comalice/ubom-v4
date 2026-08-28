@@ -1,6 +1,8 @@
 <script lang="ts">
   import Breadcrumbs from './Breadcrumbs.svelte'
   import BlockShell from './BlockShell.svelte'
+  import ControlButton from './ControlButton.svelte'
+  import PrimitiveButton from './PrimitiveButton.svelte'
   import ExpandableBlock from './ExpandableBlock.svelte'
   import SequenceExampleTile, { type SequenceTile } from './SequenceExampleTile.svelte'
   import IdentityLink from './IdentityLink.svelte'
@@ -51,11 +53,12 @@
   </section>
 
   <section class="core-component-group" aria-labelledby="controls-heading">
-    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">4 components</span></div>
+    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">5 components</span></div>
     <div class="core-component-grid">
       <article class="core-component-card"><h4>NewDropMarker</h4><p class="muted">Marker for creating a new item.</p><div class="core-marker-demo"><NewDropMarker /></div></article>
       <article class="core-component-card"><h4>MoveDropMarker</h4><p class="muted">Marker for moving an existing item.</p><div class="core-marker-demo"><MoveDropMarker /></div></article>
       <article class="core-component-card"><h4>InactiveDropMarker</h4><p class="muted">Neutral marker for an unavailable target.</p><div class="core-marker-demo"><InactiveDropMarker /></div></article>
+      <article class="core-component-card"><h4>ControlButton</h4><p class="muted">Small icon actions and text actions for block headers.</p><div class="core-control-button-row"><PrimitiveButton variant="secondary" size="small">attributes</PrimitiveButton><ControlButton kind="chevron" label="Collapse block" expanded={true} /><ControlButton kind="close" label="Remove block" /></div></article>
       <article class="core-component-card"><h4>Empty and status states</h4><p class="muted">Existing shared patterns used by lists and tables.</p><div class="playground-empty core-mini-empty">No components to show.</div></article>
     </div>
   </section>

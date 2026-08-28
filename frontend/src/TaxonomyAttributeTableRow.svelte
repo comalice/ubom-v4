@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TaxonomyEffectiveAttribute } from './TaxonomyEditorModel'
+  import type { TaxonomyAttributeValueType, TaxonomyEffectiveAttribute } from './TaxonomyEditorModel'
 
   export let attribute: TaxonomyEffectiveAttribute
   export let selectedNodeLabel: string
@@ -7,7 +7,7 @@
   export let onAction: () => void = () => {}
   export let editable = false
   export let onChange: (required: boolean) => void = () => {}
-  export let onDefinitionChange: (label: string, valueType: string) => void = () => {}
+  export let onDefinitionChange: (label: string, valueType: TaxonomyAttributeValueType) => void = () => {}
   export let onRemove: () => void = () => {}
 
   function handleDefinitionChange(event: Event) {
@@ -19,7 +19,7 @@
   }
 
   function handleRequiredChange(event: Event) {
-    onChange(attribute.id, (event.currentTarget as HTMLInputElement).checked)
+    onChange((event.currentTarget as HTMLInputElement).checked)
   }
 </script>
 

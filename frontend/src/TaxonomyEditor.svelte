@@ -5,31 +5,19 @@
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
-  import { grammarFixtures } from './TaxonomyEditorFixtures'
-  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, updateTaxonomyAttribute, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, updateTaxonomyAttribute, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
+
+  export let grammar: TaxonomyGrammar
+  export let initialAttributeDefinitions: TaxonomyAttributeDefinition[] = []
+  export let initialDraft: TaxonomyDraftNode
 
   let placementNumber = 1
   let attributeNumber = 1
-  let selectedGrammarID = grammarFixtures[0].id
   let attributesNodeID: string | undefined
-  let attributeDefinitions: TaxonomyAttributeDefinition[] = [
-    { id: 'footprint', label: 'Footprint', valueType: 'enum', enumValues: ['Axial', 'Radial', 'SMD'] },
-    { id: 'material', label: 'Material', valueType: 'string' },
-    { id: 'resistance', label: 'Resistance value', valueType: 'decimal', unit: 'ohm' },
-    { id: 'tolerance', label: 'Tolerance', valueType: 'decimal', unit: 'percent' },
-    { id: 'power-rating', label: 'Power rating', valueType: 'decimal', unit: 'watt' },
-  ]
-  let taxonomyDraft: TaxonomyDraftNode = {
-    id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], attributes: [{ attributeDefId: 'footprint', required: true }, { attributeDefId: 'material', required: false }], children: [{
-      id: 'high-power', label: 'High Power', targetId: 'number', placements: [{
-        id: 'high-power', targetId: 'number', type: 'category', title: 'High Power', summary: 'number = 100..199',
-        label: 'High Power', nodeId: 'high-power', predicate: 'number = 100..199',
-      }], rules: [], attributes: [{ attributeDefId: 'footprint', required: false }, { attributeDefId: 'resistance', required: true }, { attributeDefId: 'tolerance', required: false }], children: [],
-    }],
-  }
+  let attributeDefinitions: TaxonomyAttributeDefinition[] = initialAttributeDefinitions
+  let taxonomyDraft: TaxonomyDraftNode = initialDraft
   $: placements = flattenTaxonomyDraft(taxonomyDraft)
-  $: selectedGrammar = grammarFixtures.find((grammar) => grammar.id === selectedGrammarID) ?? grammarFixtures[0]
 
   function updatePlacements(next: TaxonomyPlacement[]) {
     taxonomyDraft = replaceTaxonomyDraftPlacements(taxonomyDraft, next)
@@ -103,7 +91,7 @@
     if (attributesNodeID) taxonomyDraft = updateTaxonomyAttribute(taxonomyDraft, attributesNodeID, attributeDefID, { attributeDefId: attributeDefID, required })
   }
 
-  function updateAttributeDefinition(attributeDefID: string, label: string, valueType: string) {
+  function updateAttributeDefinition(attributeDefID: string, label: string, valueType: TaxonomyAttributeValueType) {
     attributeDefinitions = attributeDefinitions.map((definition) => definition.id === attributeDefID ? { ...definition, label, valueType } : definition)
   }
 
@@ -134,12 +122,12 @@
 
   <section class="taxonomy-editor-canvas" aria-labelledby="taxonomy-canvas-heading">
     <div class="taxonomy-editor-heading">
-        <div><span class="mock-section-label" id="taxonomy-canvas-heading">Grammar and taxonomy overlay</span><h3>Part number grammar</h3></div>
-        <div class="taxonomy-editor-heading-controls"><label for="taxonomy-grammar-select">Grammar<select id="taxonomy-grammar-select" bind:value={selectedGrammarID}>{#each grammarFixtures as grammar}<option value={grammar.id}>{grammar.label}</option>{/each}</select></label><span class="taxonomy-editor-count">{selectedGrammar.fields} fields · {placements.length} taxonomy items</span></div>
+        <div><span class="mock-section-label" id="taxonomy-canvas-heading">Grammar and taxonomy overlay</span><h3>{grammar.label}</h3></div>
+        <div class="taxonomy-editor-heading-controls"><span class="taxonomy-editor-count">{grammar.fields} fields · {placements.length} taxonomy items</span></div>
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={selectedGrammar.nodes} {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">

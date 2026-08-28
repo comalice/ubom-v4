@@ -1,3 +1,12 @@
+import type { StructureNode } from './StructureNode'
+
+export type TaxonomyGrammar = {
+  id: string
+  label: string
+  fields: number
+  nodes: StructureNode[]
+}
+
 export type TaxonomyRulePredicate =
   | { kind: 'exact'; field: string; value: string }
   | { kind: 'numeric-range'; field: string; min: number; max: number }
@@ -20,10 +29,12 @@ export type TaxonomyDragPayload = TaxonomyPaletteDragPayload | TaxonomyPlacedDra
 export type TaxonomyAttributeDefinition = {
   id: string
   label: string
-  valueType: string
+  valueType: TaxonomyAttributeValueType
   unit?: string
   enumValues?: string[]
 }
+
+export type TaxonomyAttributeValueType = 'string' | 'decimal' | 'enum'
 
 export type TaxonomyAttributeAssignment = {
   attributeDefId: string

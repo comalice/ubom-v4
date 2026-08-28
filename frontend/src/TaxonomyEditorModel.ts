@@ -1,10 +1,95 @@
 import type { StructureNode } from './StructureNode'
+import type { SeqDefDefinition, SeqDefNode, TaxonomyDefinition } from './api'
 
 export type TaxonomyGrammar = {
   id: string
   label: string
   fields: number
   nodes: StructureNode[]
+}
+
+function sequenceSummary(node: SeqDefNode): string {
+  if (node.kind === 'literal') return JSON.stringify(node.text ?? '')
+  if (node.kind === 'range') return `${node.min ?? 0}..${node.max ?? 0} / width ${node.width ?? 1}`
+  if (node.kind === 'places') return (node.alphabets ?? []).map((alphabet) => `[${alphabet}]`).join('')
+  if (node.kind === 'bind') return `${node.name ?? 'unnamed'} = ${node.child ? sequenceSummary(node.child) : 'empty'}`
+  if (node.kind === 'choice') return (node.children ?? []).map(sequenceSummary).join(' | ')
+  return (node.children ?? []).map(sequenceSummary).join(' + ') || 'empty'
+}
+
+function sequenceStructureNode(node: SeqDefNode, path: string): StructureNode {
+  const children = node.kind === 'bind'
+    ? (node.child ? [sequenceStructureNode(node.child, `${path}-child`)] : [])
+    : node.kind === 'choice'
+      ? (node.children ?? []).map((child, index) => ({ id: `${path}-alternative-${index}`, label: `alternative ${String.fromCharCode(65 + index)}`, blockType: 'row', summary: sequenceSummary(child), children: [sequenceStructureNode(child, `${path}-alternative-${index}`)] }))
+      : (node.children ?? []).map((child, index) => sequenceStructureNode(child, `${path}-${index}`))
+  return {
+    id: path,
+    label: node.kind === 'bind' ? (node.name ?? 'unnamed') : node.kind,
+    blockType: node.kind === 'bind' ? 'binding' : node.kind,
+    summary: sequenceSummary(node),
+    children,
+  }
+}
+
+function sequenceFieldCount(node: SeqDefNode, names = new Set<string>()): number {
+  if (node.kind === 'bind') {
+    if (node.name) names.add(node.name)
+    return node.child ? sequenceFieldCount(node.child, names) : names.size
+  }
+  if (node.kind === 'choice') return (node.children ?? []).reduce((count, child) => sequenceFieldCount(child, names), names.size)
+  return (node.children ?? []).reduce((count, child) => sequenceFieldCount(child, names), names.size)
+}
+
+export function taxonomyGrammarFromSeqDef(definition: SeqDefDefinition): TaxonomyGrammar {
+  const root = definition.root.kind === 'concat'
+    ? (definition.root.children ?? []).map((child, index) => sequenceStructureNode(child, `grammar-${index}`))
+    : [sequenceStructureNode(definition.root, 'grammar-root')]
+  return { id: definition.id, label: definition.id, fields: sequenceFieldCount(definition.root), nodes: [{ id: 'grammar-root', label: 'Part number', blockType: 'sequence', summary: definition.id, children: root }] }
+}
+
+function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predicates']>[number]): string {
+  return predicate.kind === 'numeric-range' ? `${predicate.field} = ${predicate.min}..${predicate.max}` : `${predicate.field} = ${predicate.value ?? ''}`
+}
+
+export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, grammar: TaxonomyGrammar): TaxonomyDraftNode {
+  const targetFor = (predicates: TaxonomyDefinition['root']['predicates']) => {
+    const field = predicates?.[0]?.field
+    if (!field) return 'grammar-root'
+    let target = 'grammar-root'
+    const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+      if (node.label === field && node.blockType === 'binding') target = String(node.id)
+      visit(node.children)
+    })
+    visit(grammar.nodes)
+    return target
+  }
+  const toNode = (node: TaxonomyDefinition['root'], isRoot = false): TaxonomyDraftNode => {
+    const predicates = node.predicates ?? []
+    const targetId = targetFor(predicates)
+    const categoryID = String(node.id)
+    const rules = predicates.slice(isRoot ? 0 : 1).map((predicate, index) => ({
+      id: `${categoryID}-rule-${index}`,
+      targetId: categoryID,
+      type: 'rule' as const,
+      title: predicateText(predicate),
+      summary: predicateText(predicate),
+      predicate: predicateText(predicate),
+      predicateData: predicate.kind === 'numeric-range'
+        ? { kind: predicate.kind, field: predicate.field, min: predicate.min ?? 0, max: predicate.max ?? 0 }
+        : { kind: predicate.kind, field: predicate.field, value: predicate.value ?? '' },
+    }))
+    return {
+      id: isRoot ? 'taxonomy-root' : categoryID,
+      label: node.label,
+      targetId,
+      placements: isRoot ? [] : [{ id: categoryID, targetId, type: 'category', title: node.label, summary: predicates[0] ? predicateText(predicates[0]) : 'Category', label: node.label, nodeId: categoryID, predicate: predicates[0] ? predicateText(predicates[0]) : '' }],
+      rules,
+      attributes: (node.attributes ?? []).map((assignment) => ({ attributeDefId: assignment.attributeDefId, required: assignment.required })),
+      children: (node.children ?? []).map((child) => toNode(child)),
+    }
+  }
+  return toNode(definition.root, true)
 }
 
 export type TaxonomyRulePredicate =

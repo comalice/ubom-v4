@@ -347,6 +347,28 @@ func (s *Server) handleTaxonomyDefs(w http.ResponseWriter, r *http.Request) {
 	writeJSONStatus(w, http.StatusCreated, map[string]any{"id": request.ID})
 }
 
+func (s *Server) handleTaxonomyDefPath(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/api/taxonomy-defs/")
+	if id == "" || strings.Contains(id, "/") {
+		writeError(w, http.StatusBadRequest, "invalid taxonomy definition ID")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	definition, err := s.service.GetTaxonomyDefDefinitionView(ubom.TaxonomyDefID(id))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "taxonomy definition not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load taxonomy definition")
+		return
+	}
+	writeJSON(w, definition)
+}
+
 func (s *Server) handleCreatePartNumber(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)

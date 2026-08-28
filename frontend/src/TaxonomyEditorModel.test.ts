@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
+import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -21,6 +21,32 @@ describe('effectiveTaxonomyAttributes', () => {
       { ...definitions[0], required: false, source: 'Resistors', overridden: true },
       { ...definitions[1], required: true, source: 'Resistors', overridden: false },
     ])
+  })
+})
+
+describe('taxonomy persisted-definition adapters', () => {
+  it('renders every persisted sequence node kind into the taxonomy grammar', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-1', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
+      { kind: 'literal', text: 'PN-' },
+      { kind: 'bind', name: 'family', child: { kind: 'choice', children: [{ kind: 'literal', text: 'A' }, { kind: 'places', alphabets: ['BC'] }] } },
+      { kind: 'range_radix', children: [{ kind: 'range', min: 0, max: 9, width: 1 }, { kind: 'literal', text: '-' }] },
+    ] } })
+    expect(grammar.fields).toBe(1)
+    expect(grammar.nodes[0].children.map((node) => node.blockType)).toEqual(['literal', 'binding', 'range_radix'])
+    expect(grammar.nodes[0].children[1].children[0].blockType).toBe('choice')
+    expect(grammar.nodes[0].children[1].children[0].children[0].blockType).toBe('row')
+    expect(grammar.nodes[0].children[1].children[0].children[0].children[0].blockType).toBe('literal')
+    expect(grammar.nodes[0].children[1].children[0].children[1].children[0].blockType).toBe('places')
+  })
+
+  it('maps taxonomy predicates, assignments, and descendants to editor nodes', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-1', definitionId: 'seq', version: 1, root: { kind: 'bind', name: 'family', child: { kind: 'literal', text: 'A' } } })
+    const draft = taxonomyDraftFromDefinition({ id: 'tax-1', seqDef: 'seq-1', attributeDefs: [], root: {
+      id: 'root', label: 'Parts', attributes: [{ attributeDefId: 'finish', required: true }], children: [{ id: 'metal', label: 'Metal', predicates: [{ field: 'family', kind: 'exact', value: 'A' }], children: [] }],
+    } }, grammar)
+    expect(draft.attributes).toEqual([{ attributeDefId: 'finish', required: true }])
+    expect(draft.children[0].targetId).toBe('grammar-root')
+    expect(draft.children[0].placements[0].predicate).toBe('family = A')
   })
 })
 

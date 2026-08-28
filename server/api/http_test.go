@@ -212,6 +212,36 @@ func TestAuthoringFlow(t *testing.T) {
 	}
 }
 
+func TestTaxonomyDefinitionDetail(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	post := func(path, body string) {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+		if recording.Code != http.StatusCreated {
+			t.Fatalf("POST %s status = %d; body = %s", path, recording.Code, recording.Body)
+		}
+	}
+	post("/api/seq-defs", `{"id":"detail-seq","root":{"kind":"concat","children":[{"kind":"bind","name":"family","child":{"kind":"literal","text":"A"}}]}}`)
+	post("/api/taxonomy-defs", `{"id":"detail-taxonomy","seqDef":"detail-seq","attributeDefs":[{"id":"finish","label":"Finish","valueType":"string"}],"root":{"id":"root","label":"Parts","attributes":[{"attributeDefId":"finish","required":true}]}}`)
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/taxonomy-defs/detail-taxonomy", nil))
+	if recording.Code != http.StatusOK {
+		t.Fatalf("GET detail status = %d; body = %s", recording.Code, recording.Body)
+	}
+	var view app.TaxonomyDefDefinitionView
+	if err := json.NewDecoder(recording.Body).Decode(&view); err != nil {
+		t.Fatal(err)
+	}
+	if view.ID != "detail-taxonomy" || view.SeqDef != "detail-seq" || view.Root.ID != "root" || len(view.AttributeDefs) != 1 {
+		t.Fatalf("detail view = %#v", view)
+	}
+	notFound := httptest.NewRecorder()
+	server.Handler().ServeHTTP(notFound, httptest.NewRequest(http.MethodGet, "/api/taxonomy-defs/missing", nil))
+	if notFound.Code != http.StatusNotFound {
+		t.Fatalf("missing detail status = %d, want %d", notFound.Code, http.StatusNotFound)
+	}
+}
+
 func TestTaxonomyPredicateContract(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	post := func(path, body string, wantStatus int) string {

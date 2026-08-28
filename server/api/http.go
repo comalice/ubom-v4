@@ -34,6 +34,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/seq-defs/preview/candidate", s.handleSeqDefCandidatePreview)
 	mux.HandleFunc("/api/seq-defs/", s.handleSeqDefPath)
 	mux.HandleFunc("/api/taxonomy-defs", s.handleTaxonomyDefs)
+	mux.HandleFunc("/api/taxonomy-defs/", s.handleTaxonomyDefPath)
 	mux.HandleFunc("/api/revisions", s.handleCreateRevision)
 	mux.HandleFunc("/api/part-drafts", s.handlePartDrafts)
 	mux.HandleFunc("/api/part-drafts/", func(w http.ResponseWriter, r *http.Request) {

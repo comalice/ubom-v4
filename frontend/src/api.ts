@@ -36,6 +36,7 @@ export type TaxonomyDefinition = {
   attributeDefs?: { id: string; label: string; valueType: string; unit?: string; enumValues?: string[] }[]
   root: TaxonomyNodeInput
 }
+export type TaxonomyDefinitionView = TaxonomyDefinition
 
 export type TaxonomyChild = { id: string; label: string }
 export type TaxonomyPathItem = { id: string; label: string }
@@ -158,6 +159,7 @@ export const getArtifacts = () => get<ArtifactView[]>('/api/artifacts')
 export const getArtifact = (id: string) => get<ArtifactView>(`/api/artifacts/${encodeURIComponent(id)}`)
 export const getSnapshots = (id: string) => get<SnapshotView[]>(`/api/artifacts/${encodeURIComponent(id)}/snapshots`)
 export const getTaxonomyDefs = () => get<TaxonomyDefSummary[]>('/api/taxonomy-defs')
+export const getTaxonomyDef = (id: string) => get<TaxonomyDefinitionView>(`/api/taxonomy-defs/${encodeURIComponent(id)}`)
 export const getSeqDefs = () => get<SeqDefView[]>('/api/seq-defs')
 export type SeqDefView = { id: string; definitionId: string; version: number; parentId?: string }
 export const getSeqDef = (id: string) => get<SeqDefDefinition>(`/api/seq-defs/${encodeURIComponent(id)}`)

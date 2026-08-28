@@ -59,6 +59,13 @@ type TaxonomyDefSummary struct {
 	SeqDef ubom.SeqDefID      `json:"seqDef"`
 }
 
+type TaxonomyDefDefinitionView struct {
+	ID            ubom.TaxonomyDefID  `json:"id"`
+	SeqDef        ubom.SeqDefID       `json:"seqDef"`
+	AttributeDefs []ubom.AttributeDef `json:"attributeDefs"`
+	Root          ubom.TaxonomyNode   `json:"root"`
+}
+
 func (s *Service) CreateSeqDef(def ubom.SeqDef) error { return s.store.CreateSeqDef(def) }
 func (s *Service) CreateSeqDefVersion(parent ubom.SeqDefID, root ubom.SeqDefNode, requestedVersion int, requestedID ubom.SeqDefID) (SeqDefDefinitionView, error) {
 	original, err := s.store.GetSeqDef(parent)
@@ -233,6 +240,14 @@ func previewSeqDef(def ubom.SeqDef, id ubom.SeqDefID, bindings map[string]string
 }
 func (s *Service) GetTaxonomyDefForAuthoring(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	return s.store.GetTaxonomyDef(id)
+}
+
+func (s *Service) GetTaxonomyDefDefinitionView(id ubom.TaxonomyDefID) (TaxonomyDefDefinitionView, error) {
+	definition, err := s.GetTaxonomyDefForAuthoring(id)
+	if err != nil {
+		return TaxonomyDefDefinitionView{}, err
+	}
+	return TaxonomyDefDefinitionView{ID: definition.ID, SeqDef: definition.SeqDef, AttributeDefs: definition.AttributeDefs, Root: definition.Taxonomy.Root}, nil
 }
 func (s *Service) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {
 	return s.store.CreatePartNumberDraft(draft)

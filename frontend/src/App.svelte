@@ -168,7 +168,7 @@
   {:else if route.kind === 'taxonomy-list'}
     <TaxonomyList />
   {:else if route.kind === 'taxonomy-new'}
-    <TaxonomyEditorPage />
+    <TaxonomyEditorPage seqDef={route.seqDef} />
   {:else if route.kind === 'taxonomy-detail'}
     <TaxonomyEditorPage id={route.id} />
   {:else if route.kind === 'playground'}

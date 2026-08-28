@@ -11,7 +11,7 @@ export type Route =
   | { kind: 'seq-def-new' }
   | { kind: 'seq-def'; id: string }
   | { kind: 'taxonomy-list' }
-  | { kind: 'taxonomy-new' }
+  | { kind: 'taxonomy-new'; seqDef?: string }
   | { kind: 'taxonomy-detail'; id: string }
   | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' }
   | { kind: 'not-found' }
@@ -26,7 +26,10 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2] === 'new') return { kind: 'seq-def-new' }
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2]) return { kind: 'seq-def', id: parts[2] }
   if (parts.length === 2 && parts[0] === 'settings' && parts[1] === 'taxonomies') return { kind: 'taxonomy-list' }
-  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'taxonomies' && parts[2] === 'new') return { kind: 'taxonomy-new' }
+  if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'taxonomies' && parts[2] === 'new') {
+    const selectedSeqDef = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('seqDef') : null
+    return { kind: 'taxonomy-new', ...(selectedSeqDef ? { seqDef: selectedSeqDef } : {}) }
+  }
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'taxonomies' && parts[2]) return { kind: 'taxonomy-detail', id: parts[2] }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'dnd-ops') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'block-examples') return { kind: 'playground', page: 'block-examples' }

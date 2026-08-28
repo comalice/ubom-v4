@@ -589,6 +589,9 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-attribute-table .primitive-button { min-height: 0; padding: .25rem .35rem; font-size: .62rem; }
 .taxonomy-attribute-row-action { padding: .25rem .35rem; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: .62rem ui-monospace, monospace; }
 .taxonomy-attribute-row-action:hover { color: var(--accent); }
+.taxonomy-attribute-table input, .taxonomy-attribute-table select { min-width: 0; padding: .25rem .35rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .62rem ui-monospace, monospace; }
+.taxonomy-attribute-table input[type='checkbox'] { accent-color: var(--accent); }
+.taxonomy-attribute-required { display: inline-flex; align-items: center; gap: .3rem; color: var(--ink); font: .62rem ui-monospace, monospace; }
 .taxonomy-inherited { color: #7655a8; }
 .taxonomy-attribute-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin-top: .8rem; padding-top: .8rem; border-top: 1px solid var(--hairline-light); }
 .taxonomy-attribute-actions .primitive-button { min-height: 0; }
@@ -599,7 +602,7 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-editor-palette-grid { display: flex; flex: 1; gap: .45rem; }
 .taxonomy-palette-item { display: flex; flex: 1; align-items: flex-start; gap: .5rem; max-width: 13rem; padding: .6rem; color: var(--ink); text-align: left; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; cursor: pointer; }
 .taxonomy-palette-item:hover { border-color: var(--taxonomy-color); background: var(--accent-light); }
-.taxonomy-palette-item i, .taxonomy-tree-mark { flex: none; width: .45rem; height: .45rem; margin-top: .25rem; background: var(--taxonomy-color, var(--accent)); border-radius: .1rem; }
+.taxonomy-palette-item i { flex: none; width: .45rem; height: .45rem; margin-top: .25rem; background: var(--taxonomy-color, var(--accent)); border-radius: .1rem; }
 .taxonomy-palette-item strong, .taxonomy-palette-item small { display: block; }
 .taxonomy-palette-item strong { color: var(--taxonomy-color); font: .7rem ui-monospace, monospace; }
 .taxonomy-palette-item small { margin-top: .15rem; color: var(--muted); font-size: .62rem; }
@@ -657,12 +660,6 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-grammar-kind { margin-right: .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .taxonomy-kind-field { color: #7655a8; }
 .taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; text-align: center; font: .62rem ui-monospace, monospace; }
-.taxonomy-placed-attribute { display: flex; align-items: center; gap: .5rem; padding: .55rem; color: var(--ink); background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; text-align: left; cursor: grab; }
-.taxonomy-placed-attribute > span:nth-child(2) { flex: 1; min-width: 0; }
-.taxonomy-placed-attribute strong, .taxonomy-placed-attribute small { display: block; }
-.taxonomy-placed-attribute strong { font: .7rem ui-monospace, monospace; }
-.taxonomy-placed-attribute small { margin-top: .15rem; color: var(--muted); font-size: .62rem; }
-.taxonomy-placed-attribute button { color: var(--muted); background: none; border: 0; cursor: pointer; }
 .taxonomy-overlay-card { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .55rem; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: .2rem; }
 .taxonomy-overlay-card strong { color: var(--accent); font-size: .75rem; font-weight: 500; }
 .taxonomy-inspector-rule { display: grid; gap: .3rem; margin-top: 1rem; padding: .7rem; background: var(--accent-light); border: 1px solid var(--hairline); border-radius: .25rem; }

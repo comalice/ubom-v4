@@ -6,17 +6,19 @@
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
   import { grammarFixtures } from './TaxonomyEditorFixtures'
-  import { addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
+  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, updateTaxonomyAttribute, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   let placementNumber = 1
+  let attributeNumber = 1
   let selectedGrammarID = grammarFixtures[0].id
   let attributesNodeID: string | undefined
-  const attributeDefinitions: TaxonomyAttributeDefinition[] = [
+  let attributeDefinitions: TaxonomyAttributeDefinition[] = [
     { id: 'footprint', label: 'Footprint', valueType: 'enum', enumValues: ['Axial', 'Radial', 'SMD'] },
     { id: 'material', label: 'Material', valueType: 'string' },
     { id: 'resistance', label: 'Resistance value', valueType: 'decimal', unit: 'ohm' },
     { id: 'tolerance', label: 'Tolerance', valueType: 'decimal', unit: 'percent' },
+    { id: 'power-rating', label: 'Power rating', valueType: 'decimal', unit: 'watt' },
   ]
   let taxonomyDraft: TaxonomyDraftNode = {
     id: 'taxonomy-root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], attributes: [{ attributeDefId: 'footprint', required: true }, { attributeDefId: 'material', required: false }], children: [{
@@ -36,8 +38,7 @@
   function newPlacement(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, targetId: string): TaxonomyPlacement {
     const id = `taxonomy-${payload.taxonomyType}-${placementNumber++}`
     if (payload.taxonomyType === 'category') return { id, targetId, type: 'category', title: 'New category', summary: `Attached to ${targetId}`, label: 'New category', nodeId: id, predicate: `${targetId} = A` }
-    if (payload.taxonomyType === 'rule') return { id, targetId, type: 'rule', title: 'New rule', summary: `${targetId} = A`, predicateData: { kind: 'exact', field: targetId, value: 'A' } }
-    return { id, targetId, type: 'attribute', title: 'Attribute', summary: 'Part property', attribute: 'Resistance value', value: '10' }
+    return { id, targetId, type: 'rule', title: 'New rule', summary: `${targetId} = A`, predicateData: { kind: 'exact', field: targetId, value: 'A' } }
   }
 
   function handleDrop(state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) {
@@ -50,7 +51,7 @@
         const targetChildren = taxonomyDraft.children.filter((child) => child.targetId === targetId)
         const nextChildren = [...taxonomyDraft.children]
         const childIndex = nextChildren.findIndex((child) => child === targetChildren[targetIndex])
-        nextChildren.splice(childIndex < 0 ? nextChildren.length : childIndex, 0, { id: placement.id, label: placement.label ?? placement.title, targetId, placements: [placement], children: [] })
+        nextChildren.splice(childIndex < 0 ? nextChildren.length : childIndex, 0, { id: placement.id, label: placement.label ?? placement.title, targetId, placements: [placement], rules: [], children: [] })
         taxonomyDraft = { ...taxonomyDraft, children: nextChildren }
         return
       }
@@ -85,8 +86,8 @@
   }
 
   function removePlacement(placementId: string) {
-    updatePlacements(placements.filter((placement) => placement.id !== placementId))
     taxonomyDraft = removeTaxonomyDraftRule(taxonomyDraft, placementId)
+    updatePlacements(placements.filter((placement) => placement.id !== placementId))
   }
 
   function handleDragEnd() {}
@@ -97,6 +98,35 @@
 
   $: selectedAttributesNode = attributesNodeID ? findTaxonomyDraftNode(taxonomyDraft, attributesNodeID) : undefined
   $: selectedAttributes = attributesNodeID ? effectiveTaxonomyAttributes(taxonomyDraft, attributesNodeID, attributeDefinitions) : []
+
+  function updateAttribute(attributeDefID: string, required: boolean) {
+    if (attributesNodeID) taxonomyDraft = updateTaxonomyAttribute(taxonomyDraft, attributesNodeID, attributeDefID, { attributeDefId: attributeDefID, required })
+  }
+
+  function updateAttributeDefinition(attributeDefID: string, label: string, valueType: string) {
+    attributeDefinitions = attributeDefinitions.map((definition) => definition.id === attributeDefID ? { ...definition, label, valueType } : definition)
+  }
+
+  function overrideAttribute(attributeDefID: string, required: boolean) {
+    if (!attributesNodeID) return
+    taxonomyDraft = addTaxonomyAttribute(taxonomyDraft, attributesNodeID, { attributeDefId: attributeDefID, required })
+  }
+
+  function addAttribute() {
+    if (!attributesNodeID) return
+    const available = attributeDefinitions.find((definition) => !selectedAttributes.some((attribute) => attribute.id === definition.id))
+    if (available) {
+      taxonomyDraft = addTaxonomyAttribute(taxonomyDraft, attributesNodeID, { attributeDefId: available.id, required: false })
+      return
+    }
+    const id = `attribute-${attributeNumber++}`
+    attributeDefinitions = [...attributeDefinitions, { id, label: 'New attribute', valueType: 'string' }]
+    taxonomyDraft = addTaxonomyAttribute(taxonomyDraft, attributesNodeID, { attributeDefId: id, required: false })
+  }
+
+  function removeAttribute(attributeDefID: string) {
+    if (attributesNodeID) taxonomyDraft = removeTaxonomyAttribute(taxonomyDraft, attributesNodeID, attributeDefID)
+  }
 </script>
 
 <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
@@ -129,9 +159,9 @@
       <table class="taxonomy-attribute-table">
         <caption class="sr-only">Attributes assigned to {selectedAttributesNode.label}</caption>
         <thead><tr><th scope="col">Attribute</th><th scope="col">Value type</th><th scope="col">Required</th><th scope="col">Source</th></tr></thead>
-        <tbody>{#each selectedAttributes as attribute}<TaxonomyAttributeTableRow {attribute} selectedNodeLabel={selectedAttributesNode.label} />{/each}</tbody>
+        <tbody>{#each selectedAttributes as attribute}<TaxonomyAttributeTableRow {attribute} selectedNodeLabel={selectedAttributesNode.label} editable={attribute.source === selectedAttributesNode.label} onChange={(required) => updateAttribute(attribute.id, required)} onDefinitionChange={(label, valueType) => updateAttributeDefinition(attribute.id, label, valueType)} actionLabel="Override" onAction={() => overrideAttribute(attribute.id, attribute.required)} onRemove={() => removeAttribute(attribute.id)} />{/each}</tbody>
       </table>
     </TableFrame>
-    <PrimitiveButton variant="secondary" size="small" type="button" disabled>+ Add attribute assignment</PrimitiveButton>
+    <PrimitiveButton variant="secondary" size="small" type="button" on:click={addAttribute}>+ Add attribute assignment</PrimitiveButton>
   </SlideOut>
 {/if}

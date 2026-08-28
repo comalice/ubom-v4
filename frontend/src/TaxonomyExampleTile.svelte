@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-  export type TaxonomyTileType = 'category' | 'rule' | 'attribute'
+  export type TaxonomyTileType = 'category' | 'rule'
   export type TaxonomyTile = {
     kind: 'taxonomy-tile'
     type: TaxonomyTileType
@@ -11,7 +11,6 @@
   export const taxonomyTileModels = {
     category: { kind: 'taxonomy-tile', type: 'category', title: 'Category', description: 'Classify this branch', color: 'var(--accent)' },
     rule: { kind: 'taxonomy-tile', type: 'rule', title: 'Rule', description: 'Match a grammar field', color: '#7655a8' },
-    attribute: { kind: 'taxonomy-tile', type: 'attribute', title: 'Attribute', description: 'Assign a part property', color: '#337d91' },
   } satisfies Record<TaxonomyTileType, TaxonomyTile>
 
 </script>

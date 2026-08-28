@@ -1,5 +1,4 @@
 <script lang="ts">
-  import BlockShell from './BlockShell.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
@@ -13,7 +12,6 @@
   const catalogueTiles = [
     { ...taxonomyTileModels.category, description: 'Classify a grammar branch' },
     taxonomyTileModels.rule,
-    taxonomyTileModels.attribute,
   ]
   const attributeRows: TaxonomyEffectiveAttribute[] = [
     { id: 'material', label: 'Material', valueType: 'string', required: false, source: 'Components', overridden: false },
@@ -49,13 +47,6 @@
         <TaxonomyExampleTile tile={catalogueTiles[1]} variant="catalogue" />
         <TaxonomyRuleBlock title={taxonomyRuleExample.title} field="category" predicate={taxonomyRuleExample.predicate} />
         <div class="grammar-block-meta"><p class="grammar-block-description">{taxonomyRuleExample.description}</p><div class="grammar-block-example"><span>Example</span><code>{taxonomyRuleExample.example}</code></div></div>
-      </article>
-      <article class="grammar-basic-example">
-        <TaxonomyExampleTile tile={catalogueTiles[2]} variant="catalogue" />
-        <BlockShell title="attribute" summary="Resistance value" kind="taxonomy" collapsible initiallyOpen={true} onRemove={() => {}}>
-          <div class="taxonomy-block-body"><label>Attribute<select aria-label="Assigned attribute"><option>Resistance value</option><option>Tolerance</option><option>Footprint</option></select></label><label>Value<input value="10" aria-label="Attribute value" /></label><label class="taxonomy-checkbox"><input type="checkbox" checked aria-label="Attribute required" /> Required</label><div class="taxonomy-block-rule"><span>Type</span><strong>decimal · ohm</strong></div></div>
-        </BlockShell>
-        <div class="grammar-block-meta"><p class="grammar-block-description">A domain property assigned to every part classified by this taxonomy node.</p><div class="grammar-block-example"><span>Example</span><code>10 ohm</code></div></div>
       </article>
     </div>
   </section>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { draggable, type DragDropState } from '@thisux/sveltednd'
+  import { type DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
   import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
@@ -47,8 +47,6 @@
       </TaxonomyCategoryBlock>
     {:else if placement.type === 'rule'}
       <TaxonomyRuleBlock title={placement.title} field={node.label} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} />
-    {:else}
-      <div data-dnd-kind="move" data-dnd-container={container} class="taxonomy-placed-attribute" use:draggable={{ container, dragData: { kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }, callbacks: { onDragEnd } }}><span class="taxonomy-tree-mark" aria-hidden="true"></span><span><strong>{placement.title}</strong><small>{placement.attribute ?? 'Part property'}: {placement.value ?? '10'}</small></span><button type="button" aria-label="Remove {placement.title}" on:click={() => onRemove(placement.id)}>x</button></div>
     {/if}
   {/each}
   <DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), placements.length)} />

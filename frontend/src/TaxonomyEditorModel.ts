@@ -2,7 +2,7 @@ export type TaxonomyRulePredicate =
   | { kind: 'exact'; field: string; value: string }
   | { kind: 'numeric-range'; field: string; min: number; max: number }
 
-export type TaxonomyItemType = 'category' | 'rule' | 'attribute'
+export type TaxonomyItemType = 'category' | 'rule'
 
 export type TaxonomyPaletteDragPayload = {
   kind: 'palette'
@@ -40,8 +40,6 @@ export type TaxonomyPlacement = {
   nodeId?: string
   predicate?: string
   predicateData?: TaxonomyRulePredicate
-  attribute?: string
-  value?: string
 }
 
 export type TaxonomyDraftNode = {
@@ -112,6 +110,21 @@ export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string,
 export function addTaxonomyDraftRule(node: TaxonomyDraftNode, parentID: string, rule: TaxonomyPlacement): TaxonomyDraftNode {
   if (node.id === parentID) return { ...node, rules: [...node.rules, rule] }
   return { ...node, children: node.children.map((current) => addTaxonomyDraftRule(current, parentID, rule)) }
+}
+
+export function addTaxonomyAttribute(node: TaxonomyDraftNode, nodeID: string, assignment: TaxonomyAttributeAssignment): TaxonomyDraftNode {
+  if (node.id === nodeID) return { ...node, attributes: [...(node.attributes ?? []), assignment] }
+  return { ...node, children: node.children.map((child) => addTaxonomyAttribute(child, nodeID, assignment)) }
+}
+
+export function updateTaxonomyAttribute(node: TaxonomyDraftNode, nodeID: string, attributeDefID: string, assignment: TaxonomyAttributeAssignment): TaxonomyDraftNode {
+  if (node.id === nodeID) return { ...node, attributes: (node.attributes ?? []).map((current) => current.attributeDefId === attributeDefID ? assignment : current) }
+  return { ...node, children: node.children.map((child) => updateTaxonomyAttribute(child, nodeID, attributeDefID, assignment)) }
+}
+
+export function removeTaxonomyAttribute(node: TaxonomyDraftNode, nodeID: string, attributeDefID: string): TaxonomyDraftNode {
+  if (node.id === nodeID) return { ...node, attributes: (node.attributes ?? []).filter((assignment) => assignment.attributeDefId !== attributeDefID) }
+  return { ...node, children: node.children.map((child) => removeTaxonomyAttribute(child, nodeID, attributeDefID)) }
 }
 
 export function removeTaxonomyDraftRule(node: TaxonomyDraftNode, ruleID: string): TaxonomyDraftNode {

@@ -21,6 +21,7 @@
   import PartTable from './PartTable.svelte'
   import BomTable from './BomTable.svelte'
   import ArtifactTable from './ArtifactTable.svelte'
+  import SlideOut from './SlideOut.svelte'
   import type { ArtifactView, BomNode, PartListItem } from './api'
 
   const tile: SequenceTile = { kind: 'sequence-tile', type: 'select', title: 'Plant code', description: 'Choose from a fixed set of plant identifiers' }
@@ -35,6 +36,7 @@
   const handleDrop = (_state: DragDropState<any>) => {}
   const handleGapDrop = (_slot: DropSlot, _state: DragDropState<any>) => {}
   const handleRemove = (_id: number) => {}
+  let slideOutOpen = false
 </script>
 
 <section class="core-components" aria-labelledby="core-components-heading">
@@ -53,12 +55,13 @@
   </section>
 
   <section class="core-component-group" aria-labelledby="controls-heading">
-    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">5 components</span></div>
+    <div class="core-component-heading"><div><p class="mock-section-label">Feedback</p><h3 id="controls-heading">Feedback</h3></div><span class="core-component-count">6 components</span></div>
     <div class="core-component-grid">
       <article class="core-component-card"><h4>NewDropMarker</h4><p class="muted">Marker for creating a new item.</p><div class="core-marker-demo"><NewDropMarker /></div></article>
       <article class="core-component-card"><h4>MoveDropMarker</h4><p class="muted">Marker for moving an existing item.</p><div class="core-marker-demo"><MoveDropMarker /></div></article>
       <article class="core-component-card"><h4>InactiveDropMarker</h4><p class="muted">Neutral marker for an unavailable target.</p><div class="core-marker-demo"><InactiveDropMarker /></div></article>
       <article class="core-component-card"><h4>ControlButton</h4><p class="muted">Small icon actions and text actions for block headers.</p><div class="core-control-button-row"><PrimitiveButton variant="secondary" size="small">attributes</PrimitiveButton><ControlButton kind="chevron" label="Collapse block" expanded={true} /><ControlButton kind="close" label="Remove block" /></div></article>
+      <article class="core-component-card"><h4>SlideOut</h4><p class="muted">Right-side detail panel for focused editing and inspection.</p><PrimitiveButton variant="secondary" size="small" on:click={() => slideOutOpen = true}>View attributes</PrimitiveButton></article>
       <article class="core-component-card"><h4>Empty and status states</h4><p class="muted">Existing shared patterns used by lists and tables.</p><div class="playground-empty core-mini-empty">No components to show.</div></article>
     </div>
   </section>
@@ -93,3 +96,13 @@
   </section>
 
 </section>
+
+<SlideOut open={slideOutOpen} eyebrow="Attributes for Resistors" title="Assigned part properties" onClose={() => slideOutOpen = false}>
+  <p class="slide-out-copy">Inherited assignments remain visible with their source.</p>
+  <dl class="slide-out-attribute-list">
+    <div><dt>Footprint</dt><dd>enum <span>Components</span></dd></div>
+    <div><dt>Resistance value</dt><dd>decimal · ohm <span>This node</span></dd></div>
+    <div><dt>Tolerance</dt><dd>decimal · percent <span>This node</span></dd></div>
+  </dl>
+  <PrimitiveButton variant="secondary" size="small">+ Add attribute assignment</PrimitiveButton>
+</SlideOut>

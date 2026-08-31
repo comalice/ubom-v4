@@ -10,7 +10,7 @@
   export let taxonomyDraft: TaxonomyDraftNode | undefined
   export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onChildDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
-  export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
+  export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
   export let onAttributes: (nodeID: string) => void = () => {}

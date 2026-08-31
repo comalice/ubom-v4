@@ -27,7 +27,7 @@
   }
 </script>
 
-  <BlockShell title={title} summary={ruleSummary} kind="taxonomy" collapsible initiallyOpen={true} container={readOnly || dragData?.kind === 'taxonomy' ? '' : container} dragData={readOnly || dragData?.kind === 'taxonomy' ? undefined : dragData} showDragHandle={dragData?.kind !== 'taxonomy'} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} onRemove={readOnly ? undefined : onRemove}>
+  <BlockShell title={title} summary={ruleSummary} kind="taxonomy" collapsible initiallyOpen={true} container={readOnly ? '' : container} dragData={readOnly ? undefined : dragData} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} onRemove={readOnly ? undefined : onRemove}>
   <div class="taxonomy-block-body">
    <label>Match type<select bind:value={matchType} disabled={readOnly} on:change={emitPredicate} aria-label="Rule match type"><option value="exact">Exact value</option><option value="numeric-range">Numeric range</option></select></label>
     {#if matchType === 'exact'}

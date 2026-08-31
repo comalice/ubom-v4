@@ -96,8 +96,8 @@
     }
   }
 
-  function updateRoot(index: number, value: Expr) { rootSequence = rootSequence.map((expr, exprIndex) => exprIndex === index ? value : expr) }
-  function removeRoot(index: number) { rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
+  function updateRoot(index: number, value: Expr) { if (!readOnly) rootSequence = rootSequence.map((expr, exprIndex) => exprIndex === index ? value : expr) }
+  function removeRoot(index: number) { if (!readOnly) rootSequence = rootSequence.filter((_, exprIndex) => exprIndex !== index) }
   function handleGapDragOver(state: DragDropState<GrammarDragItem>) {
     if (!state.draggedItem) return
   }
@@ -187,7 +187,7 @@
 
 <p class="eyebrow">Grammar editor</p>
 <h2>Grammar editor</h2>
-<p class="grammar-editor-intro">Build a sequence by dragging blocks from the palette into the editor. Use the structure map to move through nested blocks.</p>
+<p class="grammar-editor-intro">{readOnly ? 'Review the sequence and use the structure map to move through nested blocks.' : 'Build a sequence by dragging blocks from the palette into the editor. Use the structure map to move through nested blocks.'}</p>
 {#if readOnly}<p class="muted" role="status">This immutable definition is read-only.</p>{/if}
 <section class="grammar-editor" aria-label="Grammar editor layout sketch">
   {#if !readOnly}<div class="grammar-editor-palette">
@@ -199,13 +199,13 @@
     </div>
   </div>{/if}
   <div class="grammar-editor-layout">
-    <fieldset class="grammar-editor-canvas" disabled={readOnly}>
+    <div class="grammar-editor-canvas">
       <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-canvas-heading">Grammar sequence</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
       {#if validationErrors.length}<section class="grammar-validation" aria-labelledby="grammar-validation-heading" role="alert"><strong id="grammar-validation-heading">Fix editor structure</strong><ul>{#each validationErrors as validationError}<li><code>{validationError.path}</code> {validationError.message}</li>{/each}</ul></section>{/if}
       <div class="grammar-editor-sequence-row">
-        <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" validationErrors={validationErrors} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
+        <GrammarEditorRow exprs={rootSequence} path={[]} container="grammar-editor:root" validationErrors={validationErrors} readOnly={readOnly} onDragOver={handleGapDragOver} onDragLeave={handleGapDragLeave} onDrop={handleGapDrop} onDragEnd={handleDragEnd} onChange={updateRoot} onRemove={removeRoot} />
       </div>
-    </fieldset>
+    </div>
     <aside class="grammar-editor-map" aria-labelledby="grammar-editor-map-heading">
       <div class="grammar-editor-heading"><span class="mock-section-label" id="grammar-editor-map-heading">Structure map</span><span class="grammar-editor-count">{rootSequence.length} blocks</span></div>
       <div class="grammar-editor-map-tree"><StructureTree nodes={structureNodes} showIds={false} /></div>

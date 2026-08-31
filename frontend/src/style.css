@@ -277,6 +277,7 @@ ul { line-height: 1.8; }
 .block-shell-header { position: relative; display: flex; align-items: center; gap: .4rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); }
 .block-shell-removable .block-shell-header { padding-right: 3.5rem; }
 .block-shell-drag { display: flex; align-items: center; gap: .4rem; min-width: 0; flex: 1; cursor: grab; }
+.block-shell-static { cursor: default; }
 .block-shell-drag strong { font: .68rem ui-monospace, monospace; }
 .block-shell-summary { min-width: 0; overflow: hidden; color: var(--muted); font: .62rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .block-shell-body { padding: .6rem; background: var(--surface); border-top: 1px solid var(--hairline); }

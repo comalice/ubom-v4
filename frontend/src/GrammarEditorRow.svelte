@@ -18,14 +18,15 @@
   export let onRemove: (index: number) => void
   export let validationErrors: GrammarValidationError[] = []
   export let showGaps = true
+  export let readOnly = false
 
   function blockData(expr: Expr): GrammarDragItem { return { kind: 'expression', expr, sourcePath: [...path] } }
 </script>
 
 <div class="grammar-editor-row">
   {#each exprs as expr, index (expr.id)}
-    {#if showGaps}<DropZone variant="gap" className={index === 0 ? 'dnd-insert-zone-edge' : ''} {container} accepts={(session) => session.sourceContainer.startsWith('grammar-editor:')} getMode={(state) => state.draggedItem?.kind === 'palette' ? 'new' : 'move'} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop(state, { type: 'row', path, index })} />{/if}
-    <GrammarEditorBlock {expr} {path} container={container} dragData={blockData(expr)} errors={validationErrors.filter((error) => error.nodeId === expr.id)} onChange={(value) => onChange(index, value)} onRemove={() => onRemove(index)} onDrop={onDrop} onRowDragOver={onDragOver} onRowDragLeave={onDragLeave} {onDragEnd} />
+    {#if showGaps && !readOnly}<DropZone variant="gap" className={index === 0 ? 'dnd-insert-zone-edge' : ''} {container} accepts={(session) => session.sourceContainer.startsWith('grammar-editor:')} getMode={(state) => state.draggedItem?.kind === 'palette' ? 'new' : 'move'} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop(state, { type: 'row', path, index })} />{/if}
+    <GrammarEditorBlock {expr} {path} {readOnly} container={container} dragData={blockData(expr)} errors={validationErrors.filter((error) => error.nodeId === expr.id)} onChange={(value) => onChange(index, value)} onRemove={() => onRemove(index)} onDrop={onDrop} onRowDragOver={onDragOver} onRowDragLeave={onDragLeave} {onDragEnd} />
   {/each}
-  {#if showGaps}<DropZone variant="gap" className="dnd-insert-zone-edge" {container} accepts={(session) => session.sourceContainer.startsWith('grammar-editor:')} getMode={(state) => state.draggedItem?.kind === 'palette' ? 'new' : 'move'} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop(state, { type: 'row', path, index: exprs.length })} />{/if}
+  {#if showGaps && !readOnly}<DropZone variant="gap" className="dnd-insert-zone-edge" {container} accepts={(session) => session.sourceContainer.startsWith('grammar-editor:')} getMode={(state) => state.draggedItem?.kind === 'palette' ? 'new' : 'move'} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={(state) => onDrop(state, { type: 'row', path, index: exprs.length })} />{/if}
 </div>

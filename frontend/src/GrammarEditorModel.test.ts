@@ -177,6 +177,37 @@ describe('GrammarEditorModel structural validation', () => {
     }])
   })
 
+  it('allows shared binding names across choice alternatives', () => {
+    const expressions: GrammarExpr[] = [{
+      id: 'choice',
+      kind: 'choice',
+      children: [
+        [{ id: 'first', kind: 'bind', name: 'family', child: literal('first-value', 'A') }],
+        [{ id: 'second', kind: 'bind', name: 'family', child: literal('second-value', 'B') }],
+      ],
+    }]
+
+    expect(validateGrammarSequence(expressions)).toEqual([])
+  })
+
+  it('rejects duplicate binding names on one possible path', () => {
+    const expressions: GrammarExpr[] = [{
+      id: 'choice',
+      kind: 'choice',
+      children: [
+        [
+          { id: 'first', kind: 'bind', name: 'family', child: literal('first-value', 'A') },
+          { id: 'second', kind: 'bind', name: 'family', child: literal('second-value', 'B') },
+        ],
+        [literal('other', 'C')],
+      ],
+    }]
+
+    expect(validateGrammarSequence(expressions).map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: 'duplicate-binding-name', path: 'root[0].choice[0][1].bind' },
+    ])
+  })
+
   it('rejects unsupported and incomplete runtime nodes', () => {
     expect(validateGrammarSequence([{ id: 'unknown', kind: 'future' }])).toEqual([
       { code: 'unsupported-node', message: 'Unsupported grammar node kind "future"', path: 'root[0].future', nodeId: 'unknown' },

@@ -20,16 +20,17 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 
 export function validateGrammarSequence(exprs: unknown): GrammarValidationError[] {
   const errors: GrammarValidationError[] = []
-  const bindingNames = new Map<string, string>()
 
   function add(code: string, message: string, path: string, nodeId?: string) {
     errors.push({ code, message, path, ...(nodeId ? { nodeId } : {}) })
   }
 
-  function visit(value: unknown, path: string, nodeId?: string) {
+  // Return the binding names present on each possible successful path. Choice
+  // alternatives start from the same names but do not share captures.
+  function visit(value: unknown, path: string, nodeId?: string, paths: Set<string>[] = [new Set()]): Set<string>[] {
     if (!isObject(value) || typeof value.kind !== 'string') {
       add('unsupported-node', 'Unsupported or incomplete grammar node', path, nodeId)
-      return
+      return paths
     }
     const kind = value.kind
     const id = typeof value.id === 'string' ? value.id : nodeId
@@ -58,27 +59,46 @@ export function validateGrammarSequence(exprs: unknown): GrammarValidationError[
     } else if (kind === 'bind') {
       if (typeof value.name !== 'string' || !value.name.trim()) add('empty-binding-name', 'Binding name cannot be empty', nodePath, id)
       else if (/\s/.test(value.name)) add('invalid-binding-name', 'Binding name cannot contain whitespace', nodePath, id)
-      else if (bindingNames.has(value.name)) add('duplicate-binding-name', `Binding name "${value.name}" is already used`, nodePath, id)
-      else bindingNames.set(value.name, nodePath)
+      else {
+        paths = paths.map((names) => {
+          const next = new Set(names)
+          if (names.has(value.name as string)) add('duplicate-binding-name', `Binding name "${value.name}" is already used`, nodePath, id)
+          else next.add(value.name as string)
+          return next
+        })
+      }
       if (!('child' in value) || value.child === undefined || value.child === null) add('missing-bind-child', 'Binding needs an expression', nodePath, id)
-      else visit(value.child, nodePath, id)
+      else paths = visit(value.child, nodePath, id, paths)
     } else if (kind === 'range_radix') {
       if (!Array.isArray(value.children) || value.children.length === 0) add('invalid-radix-definition', 'Radix range must contain one or more fields', nodePath, id)
-      else value.children.forEach((child, index) => visit(child, `${nodePath}[${index}]`))
+      else value.children.forEach((child, index) => { paths = visit(child, `${nodePath}[${index}]`, undefined, paths) })
     } else if (kind === 'choice') {
       if (!Array.isArray(value.children) || value.children.length === 0) add('empty-choice', 'Choice must contain one or more alternatives', nodePath, id)
-      else value.children.forEach((alternative, index) => {
-        const alternativePath = `${nodePath}[${index}]`
-        if (!Array.isArray(alternative) || alternative.length === 0) add('empty-choice-alternative', 'Choice alternatives cannot be empty', alternativePath, id)
-        else alternative.forEach((child, childIndex) => visit(child, `${alternativePath}[${childIndex}]`))
-      })
+      else {
+        const incomingPaths = paths
+        let choicePaths: Set<string>[] = []
+        value.children.forEach((alternative, index) => {
+          const alternativePath = `${nodePath}[${index}]`
+          if (!Array.isArray(alternative) || alternative.length === 0) add('empty-choice-alternative', 'Choice alternatives cannot be empty', alternativePath, id)
+          else {
+            let alternativePaths = incomingPaths.map((names) => new Set(names))
+            alternative.forEach((child, childIndex) => { alternativePaths = visit(child, `${alternativePath}[${childIndex}]`, undefined, alternativePaths) })
+            choicePaths.push(...alternativePaths)
+          }
+        })
+        paths = choicePaths.length ? choicePaths : incomingPaths
+      }
     } else {
       add('unsupported-node', `Unsupported grammar node kind "${kind}"`, nodePath, id)
     }
+    return paths
   }
 
   if (!Array.isArray(exprs)) add('incomplete-node', 'Grammar root must be a sequence', 'root')
-  else exprs.forEach((expr, index) => visit(expr, `root[${index}]`))
+  else {
+    let paths: Set<string>[] = [new Set()]
+    exprs.forEach((expr, index) => { paths = visit(expr, `root[${index}]`, undefined, paths) })
+  }
   return errors
 }
 

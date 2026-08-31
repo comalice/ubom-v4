@@ -28,6 +28,9 @@ function sequenceStructureNode(node: SeqDefNode, path: string): StructureNode {
     label: node.kind === 'bind' ? (node.name ?? 'unnamed') : node.kind,
     blockType: node.kind === 'bind' ? 'binding' : node.kind,
     summary: sequenceSummary(node),
+    ...(node.kind === 'bind' && node.child?.kind === 'range' && typeof node.child.max === 'number'
+      ? { numericDomain: { min: node.child.min ?? 0, max: node.child.max } }
+      : {}),
     children,
   }
 }
@@ -54,15 +57,38 @@ function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predic
 
 export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, grammar: TaxonomyGrammar): TaxonomyDraftNode {
   const targetFor = (predicates: TaxonomyDefinition['root']['predicates']) => {
-    const field = predicates?.[0]?.field
+    const predicate = predicates?.[0]
+    const field = predicate?.field
     if (!field) return 'grammar-root'
-    let target = 'grammar-root'
+    const candidates: StructureNode[] = []
     const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
-      if (node.label === field && node.blockType === 'binding') target = String(node.id)
+      if (node.label === field && node.blockType === 'binding') candidates.push(node)
       visit(node.children)
     })
     visit(grammar.nodes)
-    return target
+    if (candidates.length <= 1) return candidates[0] ? String(candidates[0].id) : 'grammar-root'
+
+    const numericPredicate = predicate?.kind === 'numeric-range'
+      ? { min: predicate.min ?? 0, max: predicate.max ?? 0 }
+      : predicate?.kind === 'exact' && /^-?\d+(?:\.\d+)?$/.test(predicate.value ?? '')
+        ? { min: Number(predicate.value), max: Number(predicate.value) }
+        : undefined
+    if (!numericPredicate) return 'grammar-root'
+
+    const compatible = candidates.filter((candidate): candidate is StructureNode & { numericDomain: { min: number; max: number } } => candidate.numericDomain !== undefined
+      && candidate.numericDomain.min <= numericPredicate.min
+      && candidate.numericDomain.max >= numericPredicate.max)
+    if (compatible.length === 1) return String(compatible[0].id)
+    if (compatible.length > 1) {
+      const narrowest = compatible.filter((candidate) => candidate.numericDomain
+        && !compatible.some((other) => other !== candidate && other.numericDomain
+          && other.numericDomain.min >= candidate.numericDomain.min
+          && other.numericDomain.max <= candidate.numericDomain.max
+          && (other.numericDomain.min !== candidate.numericDomain.min || other.numericDomain.max !== candidate.numericDomain.max)))
+      if (narrowest.length === 1) return String(narrowest[0].id)
+    }
+    // Equal or incomparable compatible domains stay unresolved instead of using traversal order.
+    return 'grammar-root'
   }
   const toNode = (node: TaxonomyDefinition['root'], isRoot = false): TaxonomyDraftNode => {
     const predicates = node.predicates ?? []

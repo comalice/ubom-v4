@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -41,12 +42,42 @@ describe('taxonomy persisted-definition adapters', () => {
 
   it('maps taxonomy predicates, assignments, and descendants to editor nodes', () => {
     const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-1', definitionId: 'seq', version: 1, root: { kind: 'bind', name: 'family', child: { kind: 'literal', text: 'A' } } })
-    const draft = taxonomyDraftFromDefinition({ id: 'tax-1', seqDef: 'seq-1', attributeDefs: [], root: {
+    const draft = taxonomyDraftFromDefinition({ id: 'tax-1', definitionId: 'tax', version: 1, seqDef: 'seq-1', attributeDefs: [], root: {
       id: 'root', label: 'Parts', attributes: [{ attributeDefId: 'finish', required: true }], children: [{ id: 'metal', label: 'Metal', predicates: [{ field: 'family', kind: 'exact', value: 'A' }], children: [] }],
     } }, grammar)
     expect(draft.attributes).toEqual([{ attributeDefId: 'finish', required: true }])
     expect(draft.children[0].targetId).toBe('grammar-root')
     expect(draft.children[0].placements[0].predicate).toBe('family = A')
+  })
+
+  it('targets duplicate numeric bindings by predicate domain', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'gtd-pn-v1', definitionId: 'gtd-pn', version: 1, root: { kind: 'choice', children: [
+      { kind: 'concat', children: [{ kind: 'bind', name: 'family', child: { kind: 'range', min: 100, max: 999, width: 3 } }] },
+      { kind: 'concat', children: [{ kind: 'bind', name: 'family', child: { kind: 'range', max: 99, width: 3 } }] },
+    ] } })
+    const definition = (id: string, predicate: TaxonomyPredicate) => ({
+      id: 'taxonomy', definitionId: 'taxonomy', version: 1, seqDef: 'gtd-pn-v1', attributeDefs: [], root: {
+        id: 'root', label: 'Parts', children: [{ id, label: id, predicates: [predicate], children: [] }],
+      },
+    })
+    const target = (id: string, predicate: TaxonomyPredicate) => taxonomyDraftFromDefinition(definition(id, predicate), grammar).children[0]
+    const nonRaw = target('family-100-999', { field: 'family', kind: 'numeric-range', min: 100, max: 999 })
+    const raw = target('raw-material', { field: 'family', kind: 'numeric-range', min: 0, max: 99 })
+    const exact = target('family-302', { field: 'family', kind: 'exact', value: '302' })
+
+    expect(nonRaw.targetId).toBe('grammar-root-alternative-0-0')
+    expect(raw.targetId).toBe('grammar-root-alternative-1-0')
+    expect(exact.targetId).toBe('grammar-root-alternative-0-0')
+    expect(nonRaw.placements[0].predicate).toBe('family = 100..999')
+    expect(exact.placements[0].predicate).toBe('family = 302')
+  })
+
+  it('keeps unique binding targeting unchanged', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-unique', definitionId: 'seq', version: 1, root: { kind: 'bind', name: 'family', child: { kind: 'range', min: 0, max: 999, width: 3 } } })
+    const draft = taxonomyDraftFromDefinition({ id: 'tax-unique', definitionId: 'tax', version: 1, seqDef: 'seq-unique', attributeDefs: [], root: {
+      id: 'root', label: 'Parts', children: [{ id: 'family', label: 'Family', predicates: [{ field: 'family', kind: 'numeric-range', min: 100, max: 199 }], children: [] }],
+    } }, grammar)
+    expect(draft.children[0].targetId).toBe('grammar-root')
   })
 
   it('serializes nested category predicates before each node\'s rules', () => {

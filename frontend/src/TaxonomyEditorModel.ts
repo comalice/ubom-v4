@@ -161,6 +161,10 @@ export type TaxonomyPlacedDragPayload = {
 
 export type TaxonomyDragPayload = TaxonomyPaletteDragPayload | TaxonomyPlacedDragPayload
 
+export function acceptsTaxonomyRuleDrop(payload: TaxonomyDragPayload | undefined): payload is TaxonomyPaletteDragPayload {
+  return payload?.kind === 'palette' && payload.taxonomyType === 'rule'
+}
+
 export type TaxonomyAttributeDefinition = {
   id: string
   label: string

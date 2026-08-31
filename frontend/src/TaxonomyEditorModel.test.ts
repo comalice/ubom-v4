@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -170,10 +170,10 @@ describe('taxonomyDefinitionInputFromDraft', () => {
 })
 
 describe('taxonomy draft editing', () => {
-  it('accepts palette rules and same-node existing rules, but rejects other drops', () => {
+  it('accepts palette, same-node, and cross-node existing rules, but rejects missing source context', () => {
     expect(acceptsTaxonomyRuleDrop({ kind: 'palette', taxonomyType: 'rule' })).toBe(true)
     expect(acceptsTaxonomyRuleDrop({ kind: 'taxonomy', taxonomyType: 'rule', placementId: 'rule', sourceNodeId: 'node' }, 'node')).toBe(true)
-    expect(acceptsTaxonomyRuleDrop({ kind: 'taxonomy', taxonomyType: 'rule', placementId: 'rule', sourceNodeId: 'other' }, 'node')).toBe(false)
+    expect(acceptsTaxonomyRuleDrop({ kind: 'taxonomy', taxonomyType: 'rule', placementId: 'rule', sourceNodeId: 'other' }, 'node')).toBe(true)
     expect(acceptsTaxonomyRuleDrop({ kind: 'taxonomy', taxonomyType: 'rule', placementId: 'rule' }, 'node')).toBe(false)
     expect(acceptsTaxonomyRuleDrop({ kind: 'palette', taxonomyType: 'category' })).toBe(false)
     expect(acceptsTaxonomyRuleDrop(undefined)).toBe(false)
@@ -232,5 +232,44 @@ describe('taxonomy draft editing', () => {
     expect(reorderTaxonomyDraftRule(draft, 'root', 'rule', 0)).toBe(draft)
     expect(reorderTaxonomyDraftRule(draft, 'unknown', 'rule', 0)).toBe(draft)
     expect(reorderTaxonomyDraftRule(draft, 'root', 'unknown', 0)).toBe(draft)
+  })
+
+  it('moves a rule across nested nodes while preserving predicate data and serializes it under the destination', () => {
+    const rule: TaxonomyPlacement = { id: 'move', targetId: 'source', type: 'rule', title: 'Original title', summary: 'Original summary', predicate: 'source-field = value', predicateData: { kind: 'exact', field: 'source-field', value: 'value' } }
+    const draft: TaxonomyDraftNode = {
+      id: 'root', label: 'Root', targetId: 'grammar-root', placements: [], rules: [], children: [{
+        id: 'source', label: 'Source', targetId: 'source-target', placements: [], rules: [rule], children: [],
+      }, {
+        id: 'branch', label: 'Branch', targetId: 'branch-target', placements: [], rules: [], children: [{
+          id: 'destination', label: 'Destination', targetId: 'destination-target', placements: [{ id: 'destination-category', targetId: 'destination-target', type: 'category', title: 'Destination', summary: 'destination-category = x', label: 'Destination', nodeId: 'destination', predicateData: { kind: 'exact', field: 'destination-category', value: 'x' } }], rules: [{ id: 'existing', targetId: 'destination', type: 'rule', title: 'Existing', summary: 'Existing', predicateData: { kind: 'exact', field: 'destination-field', value: 'x' } }], children: [],
+        }],
+      }],
+    }
+    const result = moveTaxonomyDraftRule(draft, 'source', 'destination', 'move', 1)
+    expect(result.children[0].rules).toEqual([])
+    expect(result.children[1].children[0].rules.map(({ id }) => id)).toEqual(['existing', 'move'])
+    expect(result.children[1].children[0].rules[1]).toEqual({ ...rule, targetId: 'destination' })
+    expect(taxonomyDefinitionInputFromDraft('seq', undefined, [], result).root.children?.[1].children?.[0].predicates).toEqual([{ field: 'destination-category', kind: 'exact', value: 'x' }, { field: 'destination-field', kind: 'exact', value: 'x' }, { field: 'source-field', kind: 'exact', value: 'value' }])
+    expect(draft.children[0].rules[0]).toBe(rule)
+    expect(draft.children[1].children[0].rules).toHaveLength(1)
+  })
+
+  it('supports same-node first, middle, and last insertion gaps through move semantics', () => {
+    const rules = ['first', 'middle', 'last'].map((id) => ({ id, targetId: 'node', type: 'rule' as const, title: id, summary: id }))
+    const draft: TaxonomyDraftNode = { id: 'node', label: 'Node', targetId: 'field', placements: [], rules, children: [] }
+    expect(moveTaxonomyDraftRule(draft, 'node', 'node', 'first', 3).rules.map(({ id }) => id)).toEqual(['middle', 'last', 'first'])
+    expect(moveTaxonomyDraftRule(draft, 'node', 'node', 'middle', 0).rules.map(({ id }) => id)).toEqual(['middle', 'first', 'last'])
+    expect(moveTaxonomyDraftRule(draft, 'node', 'node', 'last', 1).rules.map(({ id }) => id)).toEqual(['first', 'last', 'middle'])
+  })
+
+  it('rejects missing or ambiguous ownership and invalid destination indexes immutably', () => {
+    const rule: TaxonomyPlacement = { id: 'rule', targetId: 'source', type: 'rule', title: 'Rule', summary: 'Rule' }
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [{ id: 'source', label: 'Source', targetId: 'source', placements: [], rules: [rule], children: [] }, { id: 'destination', label: 'Destination', targetId: 'destination', placements: [], rules: [], children: [] }] }
+    expect(moveTaxonomyDraftRule(draft, 'missing', 'destination', 'rule', 0)).toBe(draft)
+    expect(moveTaxonomyDraftRule(draft, 'source', 'destination', 'missing', 0)).toBe(draft)
+    expect(moveTaxonomyDraftRule(draft, 'source', 'destination', 'rule', 2)).toBe(draft)
+    expect(moveTaxonomyDraftRule(draft, 'source', 'destination', 'rule', -1)).toBe(draft)
+    const ambiguous = { ...draft, children: [...draft.children, { ...draft.children[1], id: 'other', rules: [rule] }] }
+    expect(moveTaxonomyDraftRule(ambiguous, 'source', 'destination', 'rule', 0)).toBe(ambiguous)
   })
 })

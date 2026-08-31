@@ -5,7 +5,7 @@
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
-  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, removeTaxonomyAttribute, removeTaxonomyDraftRule, reorderTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
+  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, moveTaxonomyDraftRule, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   export let grammar: TaxonomyGrammar
@@ -73,8 +73,8 @@
     if (!parent) return
     if (item.kind === 'palette' && item.taxonomyType === 'rule') {
       taxonomyDraft = addTaxonomyDraftRule(taxonomyDraft, parentID, newPlacement(item, parent.targetId), targetIndex)
-    } else if (item.kind === 'taxonomy' && item.taxonomyType === 'rule' && item.sourceNodeId === parentID) {
-      taxonomyDraft = reorderTaxonomyDraftRule(taxonomyDraft, parentID, item.placementId, targetIndex)
+    } else if (item.kind === 'taxonomy' && item.taxonomyType === 'rule' && item.sourceNodeId) {
+      taxonomyDraft = moveTaxonomyDraftRule(taxonomyDraft, item.sourceNodeId, parentID, item.placementId, targetIndex)
     }
   }
 

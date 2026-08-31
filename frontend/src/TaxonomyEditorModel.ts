@@ -164,7 +164,7 @@ export type TaxonomyDragPayload = TaxonomyPaletteDragPayload | TaxonomyPlacedDra
 
 export function acceptsTaxonomyRuleDrop(payload: TaxonomyDragPayload | undefined, destinationNodeID?: string): boolean {
   if (payload?.kind === 'palette') return payload.taxonomyType === 'rule'
-  return payload?.kind === 'taxonomy' && payload.taxonomyType === 'rule' && Boolean(destinationNodeID && payload.sourceNodeId === destinationNodeID)
+  return payload?.kind === 'taxonomy' && payload.taxonomyType === 'rule' && Boolean(destinationNodeID?.trim() && payload.sourceNodeId?.trim())
 }
 
 export type TaxonomyAttributeDefinition = {
@@ -389,6 +389,45 @@ export function reorderTaxonomyDraftRule(node: TaxonomyDraftNode, nodeID: string
   }
   const children = node.children.map((child) => reorderTaxonomyDraftRule(child, nodeID, ruleID, targetIndex))
   return children.some((child, index) => child !== node.children[index]) ? { ...node, children } : node
+}
+
+/** Moves an existing rule between taxonomy nodes without rewriting its predicate. */
+export function moveTaxonomyDraftRule(node: TaxonomyDraftNode, sourceNodeID: string, destinationNodeID: string, ruleID: string, destinationIndex: number): TaxonomyDraftNode {
+  if (!sourceNodeID || !destinationNodeID || !ruleID || !Number.isInteger(destinationIndex) || destinationIndex < 0) return node
+
+  const nodes: TaxonomyDraftNode[] = []
+  const visit = (current: TaxonomyDraftNode) => {
+    nodes.push(current)
+    current.children.forEach(visit)
+  }
+  visit(node)
+
+  const sourceNodes = nodes.filter((current) => current.id === sourceNodeID)
+  const destinationNodes = nodes.filter((current) => current.id === destinationNodeID)
+  const owners = nodes.filter((current) => current.rules.some((rule) => rule.id === ruleID))
+  const occurrences = nodes.reduce((count, current) => count + current.rules.filter((rule) => rule.id === ruleID).length, 0)
+  if (sourceNodes.length !== 1 || destinationNodes.length !== 1 || owners.length !== 1 || owners[0] !== sourceNodes[0] || occurrences !== 1) return node
+
+  const source = sourceNodes[0]
+  const destination = destinationNodes[0]
+  if (destinationIndex > destination.rules.length) return node
+  if (source === destination) return reorderTaxonomyDraftRule(node, sourceNodeID, ruleID, destinationIndex)
+
+  const rule = source.rules.find((current) => current.id === ruleID)
+  if (!rule) return node
+  const movedRule = { ...rule, targetId: destinationNodeID }
+  const replace = (current: TaxonomyDraftNode): TaxonomyDraftNode => {
+    const nextChildren = current.children.map(replace)
+    const nextRules = current === source
+      ? current.rules.filter((currentRule) => currentRule.id !== ruleID)
+      : current === destination
+        ? [...current.rules.slice(0, destinationIndex), movedRule, ...current.rules.slice(destinationIndex)]
+        : current.rules
+    return nextRules !== current.rules || nextChildren.some((child, index) => child !== current.children[index])
+      ? { ...current, rules: nextRules, children: nextChildren }
+      : current
+  }
+  return replace(node)
 }
 
 export function addTaxonomyAttribute(node: TaxonomyDraftNode, nodeID: string, assignment: TaxonomyAttributeAssignment): TaxonomyDraftNode {

@@ -25,7 +25,9 @@
   }
 
   $: label = dropLabel(node)
-  $: filled = placements.length > 0
+  $: rootPlacementIDs = new Set(taxonomyDraft?.children.flatMap((child) => child.placements.map((placement) => placement.id)) ?? [])
+  $: visiblePlacements = taxonomyDraft ? placements.filter((placement) => rootPlacementIDs.has(placement.id)) : placements
+  $: filled = visiblePlacements.length > 0
   $: container = taxonomyTargetContainer(String(node.id))
   function categoryNode(placement: TaxonomyPlacement) { return taxonomyDraft ? findTaxonomyDraftNode(taxonomyDraft, placement.id) : undefined }
   function accepts(state: DragDropState<TaxonomyDragPayload>) {
@@ -40,7 +42,7 @@
 </script>
 
 {#if filled}
-  {#each placements as placement, index (placement.id)}
+   {#each visiblePlacements as placement, index (placement.id)}
       {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy ${index + 1} for ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), index)} />{/if}
     {#if placement.type === 'category'}
       {@const draftNode = categoryNode(placement)}
@@ -49,7 +51,7 @@
       <TaxonomyRuleBlock title={placement.title} field={node.label} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} readOnly={readOnly} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} onPredicateChange={(predicate) => onRulePredicateChange(placement.id, predicate)} />
     {/if}
   {/each}
-   {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), placements.length)} />{/if}
+    {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy after ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), visiblePlacements.length)} />{/if}
 {:else}
   {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone" ariaLabel={`${label} drop zone`} onDrop={(state) => onDrop(state, String(node.id), 0)} />{/if}
 {/if}

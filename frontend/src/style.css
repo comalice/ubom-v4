@@ -276,9 +276,9 @@ ul { line-height: 1.8; }
 .block-shell-open { border-color: var(--accent); }
 .block-shell-header { position: relative; display: flex; align-items: center; gap: .4rem; min-height: 3rem; padding: .65rem 2rem .65rem .65rem; color: var(--accent); background: var(--accent-light); }
 .block-shell-removable .block-shell-header { padding-right: 3.5rem; }
-.block-shell-drag { display: flex; align-items: center; gap: .4rem; min-width: 0; flex: 1; cursor: grab; }
-.block-shell-drag strong { font: .68rem ui-monospace, monospace; }
-.block-shell-summary { min-width: 0; overflow: hidden; color: var(--muted); font: .62rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.block-shell-drag { display: flex; align-items: center; gap: .4rem; min-width: 0; overflow: hidden; flex: 1; cursor: grab; }
+.block-shell-drag strong { min-width: 0; overflow: hidden; font: .68rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.block-shell-summary { min-width: 0; overflow: hidden; flex: 1; color: var(--muted); font: .62rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .block-shell-body { padding: .6rem; background: var(--surface); border-top: 1px solid var(--hairline); }
 .block-shell-body:empty { display: none; }
 .block-shell.component-size-small .block-shell-header { min-height: 1.5rem; padding: .1rem 1.7rem .1rem .45rem; }
@@ -338,6 +338,7 @@ ul { line-height: 1.8; }
 .grammar-editor-count { color: var(--muted); font-size: .58rem; }
 .grammar-editor-root-label { margin: 1.2rem 0 .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .grammar-editor-sequence-row { display: grid; gap: .45rem; }
+.grammar-editor-row { min-width: 0; }
 .grammar-editor-sequence-row .block-shell { min-width: 0; }
 .grammar-editor-block-body { padding: .55rem .6rem; color: var(--muted); background: var(--surface); border-top: 1px solid var(--hairline); font: .62rem ui-monospace, monospace; }
 .grammar-editor-map { padding: 1rem .7rem; background: var(--ground); border-left: 1px solid var(--hairline); }

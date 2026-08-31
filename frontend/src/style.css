@@ -338,6 +338,8 @@ ul { line-height: 1.8; }
 .grammar-editor-count { color: var(--muted); font-size: .58rem; }
 .grammar-editor-root-label { margin: 1.2rem 0 .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .grammar-editor-sequence-row { display: grid; gap: .45rem; }
+.grammar-editor .block-shell-drag strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grammar-editor .block-shell-summary { width: 0; flex: 1 1 0; }
 .grammar-editor-sequence-row .block-shell { min-width: 0; }
 .grammar-editor-block-body { padding: .55rem .6rem; color: var(--muted); background: var(--surface); border-top: 1px solid var(--hairline); font: .62rem ui-monospace, monospace; }
 .grammar-editor-map { padding: 1rem .7rem; background: var(--ground); border-left: 1px solid var(--hairline); }

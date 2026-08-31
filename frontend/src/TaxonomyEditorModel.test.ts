@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
+import { effectiveTaxonomyAttributes, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode } from './TaxonomyEditorModel'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -47,6 +47,75 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(draft.attributes).toEqual([{ attributeDefId: 'finish', required: true }])
     expect(draft.children[0].targetId).toBe('grammar-root')
     expect(draft.children[0].placements[0].predicate).toBe('family = A')
+  })
+
+  it('serializes nested category predicates before each node\'s rules', () => {
+    const draft: TaxonomyDraftNode = {
+      id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [],
+      rules: [{ id: 'root-rule', targetId: 'root', type: 'rule', title: 'kind = part', summary: 'kind = part', predicate: 'kind = part', predicateData: { kind: 'exact', field: 'kind', value: 'part' } }],
+      children: [{
+        id: 'metal', label: 'Metal', targetId: 'grammar-family',
+        placements: [{ id: 'metal', targetId: 'grammar-family', type: 'category', title: 'Metal', summary: 'family = metal', label: 'Metal', nodeId: 'metal', predicate: 'family = metal', predicateData: { kind: 'exact', field: 'family', value: 'metal' } }],
+        rules: [{ id: 'metal-rule', targetId: 'metal', type: 'rule', title: 'finish = matte', summary: 'finish = matte', predicate: 'finish = matte', predicateData: { kind: 'exact', field: 'finish', value: 'matte' } }],
+        children: [{
+          id: 'resistor', label: 'Resistor', targetId: 'grammar-subtype',
+          placements: [{ id: 'resistor', targetId: 'grammar-subtype', type: 'category', title: 'Resistor', summary: 'subtype = resistor', label: 'Resistor', nodeId: 'resistor', predicate: 'subtype = resistor', predicateData: { kind: 'exact', field: 'subtype', value: 'resistor' } }],
+          rules: [{ id: 'resistor-rule', targetId: 'resistor', type: 'rule', title: 'resistance = 1..9', summary: 'resistance = 1..9', predicate: 'resistance = 1..9', predicateData: { kind: 'numeric-range', field: 'resistance', min: 1, max: 9 } }],
+          children: [],
+        }],
+      }],
+    }
+
+    expect(taxonomyDefinitionInputFromDraft('seq-v1', 'tax-v1', [], draft).root).toEqual({
+      id: 'root', label: 'Parts',
+      predicates: [{ field: 'kind', kind: 'exact', value: 'part' }],
+      children: [{
+        id: 'metal', label: 'Metal',
+        predicates: [
+          { field: 'family', kind: 'exact', value: 'metal' },
+          { field: 'finish', kind: 'exact', value: 'matte' },
+        ],
+        children: [{
+          id: 'resistor', label: 'Resistor',
+          predicates: [
+            { field: 'subtype', kind: 'exact', value: 'resistor' },
+            { field: 'resistance', kind: 'numeric-range', min: 1, max: 9 },
+          ],
+        }],
+      }],
+    })
+  })
+
+  it('round-trips nested predicates and rules while preserving target IDs', () => {
+    const definition = {
+      id: 'tax-v1', definitionId: 'tax', version: 1, seqDef: 'seq-v1', attributeDefs: [], root: {
+        id: 'root', label: 'Parts', predicates: [{ field: 'kind', kind: 'exact' as const, value: 'part' }], children: [{
+          id: 'metal', label: 'Metal', predicates: [{ field: 'family', kind: 'exact' as const, value: 'metal' }, { field: 'finish', kind: 'exact' as const, value: 'matte' }], children: [{
+            id: 'resistor', label: 'Resistor', predicates: [{ field: 'subtype', kind: 'exact' as const, value: 'resistor' }, { field: 'resistance', kind: 'numeric-range' as const, min: 1, max: 9 }],
+          }],
+        }],
+      },
+    }
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-v1', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
+      { kind: 'bind', name: 'family', child: { kind: 'literal', text: 'M' } },
+      { kind: 'bind', name: 'subtype', child: { kind: 'literal', text: 'R' } },
+    ] } })
+    const draft = taxonomyDraftFromDefinition(definition, grammar)
+    const roundTrip = taxonomyDefinitionInputFromDraft('seq-v1', 'parent', [], draft)
+
+    expect(roundTrip.root).toEqual(definition.root)
+    expect(draft.children[0]).toMatchObject({ id: 'metal', targetId: 'grammar-0' })
+    expect(draft.children[0].placements[0].targetId).toBe('grammar-0')
+    expect(draft.children[0].rules.map((rule) => ({ id: rule.id, targetId: rule.targetId }))).toEqual([
+      { id: 'metal-rule-0', targetId: 'metal' },
+    ])
+    expect(draft.children[0].children[0]).toMatchObject({ id: 'resistor', targetId: 'grammar-1' })
+    expect(draft.children[0].children[0].placements[0].targetId).toBe('grammar-1')
+    expect(draft.children[0].children[0].rules.map((rule) => ({ id: rule.id, targetId: rule.targetId }))).toEqual([
+      { id: 'resistor-rule-0', targetId: 'resistor' },
+    ])
+    expect(taxonomyTargetContainer('metal')).toBe('taxonomy-editor:target:metal')
+    expect(taxonomyTargetContainer('resistor')).toBe('taxonomy-editor:target:resistor')
   })
 })
 

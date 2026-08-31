@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 
 const definitions: TaxonomyAttributeDefinition[] = [
   { id: 'footprint', label: 'Footprint', valueType: 'enum' },
@@ -170,6 +170,47 @@ describe('taxonomyDefinitionInputFromDraft', () => {
 })
 
 describe('taxonomy draft editing', () => {
+  it('accepts palette and existing category child payloads, but requires source context', () => {
+    expect(acceptsTaxonomyCategoryChildDrop({ kind: 'palette', taxonomyType: 'category' }, 'destination')).toBe(true)
+    expect(acceptsTaxonomyCategoryChildDrop({ kind: 'taxonomy', taxonomyType: 'category', placementId: 'source-placement', sourceNodeId: 'source' }, 'destination')).toBe(true)
+    expect(acceptsTaxonomyCategoryChildDrop({ kind: 'taxonomy', taxonomyType: 'category', placementId: 'source-placement' }, 'destination')).toBe(false)
+    expect(acceptsTaxonomyCategoryChildDrop({ kind: 'taxonomy', taxonomyType: 'category', placementId: 'source-placement', sourceNodeId: 'destination' }, 'destination')).toBe(false)
+  })
+
+  it('moves an existing category under another category without changing identity', () => {
+    const source: TaxonomyDraftNode = { id: 'source', label: 'Source', targetId: 'source-field', placements: [{ id: 'source-placement', targetId: 'source-field', type: 'category', title: 'Source', summary: 'Source', nodeId: 'source' }], rules: [], children: [] }
+    const destination: TaxonomyDraftNode = { id: 'destination', label: 'Destination', targetId: 'destination-field', placements: [{ id: 'destination-placement', targetId: 'destination-field', type: 'category', title: 'Destination', summary: 'Destination', nodeId: 'destination' }], rules: [], children: [] }
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [source, destination] }
+    const result = moveTaxonomyDraftChild(draft, 'source', 'destination')
+
+    expect(result.children.map(({ id }) => id)).toEqual(['destination'])
+    expect(result.children[0].children[0]).toBe(source)
+    expect(result.children[0].children[0].placements[0]).toBe(source.placements[0])
+    expect(draft.children).toEqual([source, destination])
+  })
+
+  it('supports nested moves and rejects self, descendant, missing, and invalid destinations', () => {
+    const leaf: TaxonomyDraftNode = { id: 'leaf', label: 'Leaf', targetId: 'leaf-field', placements: [], rules: [], children: [] }
+    const branch: TaxonomyDraftNode = { id: 'branch', label: 'Branch', targetId: 'branch-field', placements: [], rules: [], children: [leaf] }
+    const other: TaxonomyDraftNode = { id: 'other', label: 'Other', targetId: 'other-field', placements: [], rules: [], children: [] }
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [branch, other] }
+
+    const nested = moveTaxonomyDraftChild(draft, 'leaf', 'other')
+    expect(nested.children[0].children).toEqual([])
+    expect(nested.children[1].children[0]).toBe(leaf)
+    expect(moveTaxonomyDraftChild(draft, 'branch', 'leaf')).toBe(draft)
+    expect(moveTaxonomyDraftChild(draft, 'branch', 'branch')).toBe(draft)
+    expect(moveTaxonomyDraftChild(draft, 'missing', 'other')).toBe(draft)
+    expect(moveTaxonomyDraftChild(draft, 'branch', 'other', 2)).toBe(draft)
+  })
+
+  it('honors child insertion indexes and adjusts same-parent moves', () => {
+    const children = ['one', 'two', 'three'].map((id) => ({ id, label: id, targetId: id, placements: [], rules: [], children: [] })) as TaxonomyDraftNode[]
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children }
+    expect(moveTaxonomyDraftChild(draft, 'three', 'root', 0).children.map(({ id }) => id)).toEqual(['three', 'one', 'two'])
+    expect(moveTaxonomyDraftChild(draft, 'one', 'root', 3).children.map(({ id }) => id)).toEqual(['two', 'three', 'one'])
+  })
+
   it('accepts palette, same-node, and cross-node existing rules, but rejects missing source context', () => {
     expect(acceptsTaxonomyRuleDrop({ kind: 'palette', taxonomyType: 'rule' })).toBe(true)
     expect(acceptsTaxonomyRuleDrop({ kind: 'taxonomy', taxonomyType: 'rule', placementId: 'rule', sourceNodeId: 'node' }, 'node')).toBe(true)

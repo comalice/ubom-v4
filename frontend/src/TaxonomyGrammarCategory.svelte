@@ -31,7 +31,7 @@
   layout="tree"
   {readOnly}
   container={parentContainer}
-  dragData={{ kind: 'taxonomy', taxonomyType: 'category', placementId: placement.id }}
+  dragData={{ kind: 'taxonomy', taxonomyType: 'category', placementId: placement.id, sourceNodeId: nodeID }}
   showRuleDropZone
   suppressLegacyRuleDropZone
   showChildren

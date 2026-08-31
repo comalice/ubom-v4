@@ -167,6 +167,11 @@ export function acceptsTaxonomyRuleDrop(payload: TaxonomyDragPayload | undefined
   return payload?.kind === 'taxonomy' && payload.taxonomyType === 'rule' && Boolean(destinationNodeID?.trim() && payload.sourceNodeId?.trim())
 }
 
+export function acceptsTaxonomyCategoryChildDrop(payload: TaxonomyDragPayload | undefined, destinationNodeID?: string): boolean {
+  if (payload?.kind === 'palette') return payload.taxonomyType === 'category'
+  return payload?.kind === 'taxonomy' && payload.taxonomyType === 'category' && Boolean(payload.sourceNodeId?.trim() && destinationNodeID?.trim() && payload.sourceNodeId !== destinationNodeID)
+}
+
 export type TaxonomyAttributeDefinition = {
   id: string
   label: string
@@ -364,6 +369,54 @@ export function findTaxonomyDraftPath(node: TaxonomyDraftNode, nodeID: string, p
 export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string, child: TaxonomyDraftNode): TaxonomyDraftNode {
   if (node.id === parentID) return { ...node, children: [...node.children, child] }
   return { ...node, children: node.children.map((current) => addTaxonomyDraftChild(current, parentID, child)) }
+}
+
+/** Moves an existing category node without changing its placement or descendants. */
+export function moveTaxonomyDraftChild(node: TaxonomyDraftNode, sourceNodeID: string, destinationNodeID: string, destinationIndex?: number): TaxonomyDraftNode {
+  if (!sourceNodeID || !destinationNodeID || sourceNodeID === node.id || destinationIndex !== undefined && (!Number.isInteger(destinationIndex) || destinationIndex < 0)) return node
+
+  const nodes: TaxonomyDraftNode[] = []
+  const parents = new Map<TaxonomyDraftNode, TaxonomyDraftNode | undefined>()
+  const visit = (current: TaxonomyDraftNode, parent?: TaxonomyDraftNode) => {
+    nodes.push(current)
+    parents.set(current, parent)
+    current.children.forEach((child) => visit(child, current))
+  }
+  visit(node)
+
+  const sources = nodes.filter((current) => current.id === sourceNodeID)
+  const destinations = nodes.filter((current) => current.id === destinationNodeID)
+  if (sources.length !== 1 || destinations.length !== 1) return node
+  const source = sources[0]
+  const destination = destinations[0]
+  const insertionIndex = destinationIndex ?? destination.children.length
+  if (insertionIndex > destination.children.length) return node
+
+  // A destination below the source would make the tree cyclic.
+  for (let current: TaxonomyDraftNode | undefined = destination; current; current = parents.get(current)) {
+    if (current === source) return node
+  }
+
+  const sourceParent = parents.get(source)
+  if (!sourceParent) return node
+  const sourceIndex = sourceParent.children.indexOf(source)
+  const adjustedIndex = sourceParent === destination && sourceIndex < insertionIndex ? insertionIndex - 1 : insertionIndex
+  if (sourceParent === destination && adjustedIndex === sourceIndex) return node
+
+  const remove = (current: TaxonomyDraftNode): TaxonomyDraftNode => ({
+    ...current,
+    children: current.children.filter((child) => child !== source).map(remove),
+  })
+  const insert = (current: TaxonomyDraftNode): TaxonomyDraftNode => {
+    if (current.id === destinationNodeID) {
+      const children = [...current.children]
+      children.splice(adjustedIndex, 0, source)
+      return { ...current, children }
+    }
+    const children = current.children.map(insert)
+    return children.some((child, index) => child !== current.children[index]) ? { ...current, children } : current
+  }
+  return insert(remove(node))
 }
 
 export function addTaxonomyDraftRule(node: TaxonomyDraftNode, parentID: string, rule: TaxonomyPlacement, targetIndex = node.rules.length): TaxonomyDraftNode {

@@ -147,8 +147,7 @@ async function patch<T>(path: string, value: unknown): Promise<T> {
 export const getTaxonomyNode = (taxonomyID: string, nodeID: string) =>
   get<TaxonomyNodeView>(`/api/taxonomies/${encodeURIComponent(taxonomyID)}/nodes/${encodeURIComponent(nodeID)}`)
 
-export async function getTaxonomyNodeByPath(segments: string[]): Promise<TaxonomyNodeView> {
-  const taxonomyID = 'sample-taxonomy-v1'
+export async function getTaxonomyNodeByPath(taxonomyID: string, segments: string[]): Promise<TaxonomyNodeView> {
   let node = await getTaxonomyNode(taxonomyID, segments[0])
   for (const segment of segments.slice(1)) {
     const child = node.children.find(item => taxonomySlug(item.label) === segment)

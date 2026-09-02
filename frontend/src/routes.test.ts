@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
-import { parseRoute } from './routes'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { parseRoute, taxonomyPath } from './routes'
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('sequence definition routes', () => {
   it('parses the list page', () => {
@@ -17,6 +19,16 @@ describe('taxonomy routes', () => {
     expect(parseRoute('/settings/taxonomies')).toEqual({ kind: 'taxonomy-list' })
     expect(parseRoute('/settings/taxonomies/new')).toEqual({ kind: 'taxonomy-new' })
     expect(parseRoute('/settings/taxonomies/example-taxonomy')).toEqual({ kind: 'taxonomy-detail', id: 'example-taxonomy' })
+  })
+
+  it('carries an explicit sequence definition context on parts taxonomy URLs', () => {
+    expect(parseRoute('/parts/components/resistors?seqDef=electronics-v2')).toEqual({ kind: 'taxonomy', segments: ['components', 'resistors'], seqDef: 'electronics-v2' })
+    expect(taxonomyPath(['Components', 'Resistors'], 'electronics-v2')).toBe('/parts/components/resistors?seqDef=electronics-v2')
+  })
+
+  it('preserves the sequence definition when parsing the current browser URL', () => {
+    vi.stubGlobal('window', { location: { pathname: '/settings/taxonomies/new', search: '?seqDef=sample-pn-v1' } })
+    expect(parseRoute()).toEqual({ kind: 'taxonomy-new', seqDef: 'sample-pn-v1' })
   })
 })
 

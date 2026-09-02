@@ -18,11 +18,12 @@
   import AsyncState from './AsyncState.svelte'
   import Playground from './Playground.svelte'
   import TaxonomyCardGrid from './TaxonomyCardGrid.svelte'
-  import { getArtifact, getArtifacts, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
+  import { getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
   let route: Route = parseRoute()
   let taxonomy: TaxonomyNodeView | null = null
+  let taxonomySeqDef = ''
   let partsList: PartListItem[] = []
   let part: PartNumberView | null = null
   let revision: RevisionView | null = null
@@ -63,7 +64,7 @@
   function taxonomyBreadcrumbs(view: TaxonomyNodeView): Breadcrumb[] {
     return view.path.map((item, index) => ({
       label: item.label,
-      href: index < view.path.length - 1 ? taxonomyPath(view.path.slice(0, index + 1).map(pathItem => pathItem.label)) : undefined,
+      href: index < view.path.length - 1 ? taxonomyPath(view.path.slice(0, index + 1).map(pathItem => pathItem.label), taxonomySeqDef) : undefined,
     }))
   }
 
@@ -83,7 +84,13 @@
       if (route.kind === 'parts') partsList = await getParts()
       else if (route.kind === 'artifacts') [artifacts, sources] = await Promise.all([getArtifacts(), getSources()])
       else if (route.kind === 'artifact') [artifact, snapshots] = await Promise.all([getArtifact(route.id), getSnapshots(route.id)])
-      else if (route.kind === 'taxonomy') taxonomy = await getTaxonomyNodeByPath(route.segments)
+      else if (route.kind === 'taxonomy') {
+        // URLs may omit the context for existing bookmarks; choose a current taxonomy explicitly here.
+        taxonomySeqDef = route.seqDef ?? (await getTaxonomyDefs()).find(summary => summary.current)?.seqDef ?? ''
+        if (!taxonomySeqDef) throw new Error('No current taxonomy is available')
+        const currentTaxonomy = await getCurrentTaxonomyDef(taxonomySeqDef)
+        taxonomy = await getTaxonomyNodeByPath(currentTaxonomy.id, route.segments)
+      }
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
         else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def' || route.kind === 'taxonomy-list' || route.kind === 'taxonomy-new' || route.kind === 'taxonomy-detail' || route.kind === 'playground') return
@@ -134,12 +141,12 @@
   {:else if taxonomy && route.kind === 'taxonomy'}
     <p class="eyebrow">Parts</p>
     <h1>{taxonomy.label}</h1>
-    <TaxonomyCardGrid taxonomyPath={taxonomy.path} childCategories={taxonomy.children} />
+    <TaxonomyCardGrid taxonomyPath={taxonomy.path} childCategories={taxonomy.children} seqDef={taxonomySeqDef} />
     <section aria-labelledby="parts-heading">
       <Authoring taxonomy={taxonomy} />
       <h2 id="parts-heading">Parts</h2>
       {#if taxonomy.partNumbers.length > 0}
-        <PartTable parts={taxonomy.partNumbers} columns={taxonomy.attributes} />
+        <PartTable parts={taxonomy.partNumbers} columns={taxonomy.attributes} seqDef={taxonomySeqDef} />
       {:else}
         <p class="empty-state">No parts at this level.</p>
       {/if}

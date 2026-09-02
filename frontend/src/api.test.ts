@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDefHistory, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
+import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDefHistory, getTaxonomyNodeByPath, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -60,6 +60,22 @@ describe('taxonomy revision history API', () => {
 
     await expect(getTaxonomyDefHistory('taxonomy')).resolves.toEqual(history)
     expect(fetchMock).toHaveBeenCalledWith('/api/taxonomy-defs/taxonomy/history')
+  })
+})
+
+describe('taxonomy node API', () => {
+  it('uses the resolved taxonomy definition ID for every node lookup', async () => {
+    const root = { id: 'components', label: 'Components', children: [{ id: 'resistors', label: 'Resistors' }] }
+    const resistor = { ...root, id: 'resistors', label: 'Resistors', children: [] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify(root), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(resistor), { status: 200 }))
+
+    await expect(getTaxonomyNodeByPath('electronics-taxonomy-v3', ['components', 'resistors'])).resolves.toEqual(resistor)
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/taxonomies/electronics-taxonomy-v3/nodes/components',
+      '/api/taxonomies/electronics-taxonomy-v3/nodes/resistors',
+    ])
   })
 })
 

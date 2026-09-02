@@ -2,7 +2,7 @@ export type Route =
   | { kind: 'parts' }
   | { kind: 'artifacts' }
   | { kind: 'artifact'; id: string }
-  | { kind: 'taxonomy'; segments: string[] }
+  | { kind: 'taxonomy'; segments: string[]; seqDef?: string }
   | { kind: 'part'; id: string }
   | { kind: 'revision'; partNumber: string; id: string }
   | { kind: 'settings' }
@@ -16,8 +16,10 @@ export type Route =
   | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' }
   | { kind: 'not-found' }
 
-export function parseRoute(pathname = window.location.pathname): Route {
-  const parts = pathname.split('/').filter(Boolean).map(decodeURIComponent)
+export function parseRoute(pathname?: string): Route {
+  const currentPath = pathname ?? (typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/')
+  const url = new URL(currentPath, 'http://localhost')
+  const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
   if (parts.length === 1 && parts[0] === 'parts') return { kind: 'parts' }
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
   if (parts.length === 1 && parts[0] === 'settings') return { kind: 'settings' }
@@ -27,7 +29,7 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'sequence-definitions' && parts[2]) return { kind: 'seq-def', id: parts[2] }
   if (parts.length === 2 && parts[0] === 'settings' && parts[1] === 'taxonomies') return { kind: 'taxonomy-list' }
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'taxonomies' && parts[2] === 'new') {
-    const selectedSeqDef = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('seqDef') : null
+    const selectedSeqDef = url.searchParams.get('seqDef')
     return { kind: 'taxonomy-new', ...(selectedSeqDef ? { seqDef: selectedSeqDef } : {}) }
   }
   if (parts.length === 3 && parts[0] === 'settings' && parts[1] === 'taxonomies' && parts[2]) return { kind: 'taxonomy-detail', id: parts[2] }
@@ -42,7 +44,8 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 1 && parts[0] === 'playground') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'artifacts') return { kind: 'artifact', id: parts[1] }
   if (parts.length >= 2 && parts[0] === 'parts') {
-    return { kind: 'taxonomy', segments: parts.slice(1).length > 0 ? parts.slice(1) : ['components'] }
+    const seqDef = url.searchParams.get('seqDef') ?? undefined
+    return { kind: 'taxonomy', segments: parts.slice(1).length > 0 ? parts.slice(1) : ['components'], ...(seqDef ? { seqDef } : {}) }
   }
   if (parts.length === 2 && parts[0] === 'part') return { kind: 'part', id: parts[1] }
   if (parts.length === 4 && parts[0] === 'part' && parts[2] === 'revision') {
@@ -54,8 +57,10 @@ export function parseRoute(pathname = window.location.pathname): Route {
 export const taxonomySlug = (label: string) =>
   label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
-export const taxonomyPath = (labels: string[]) =>
-  `/parts/${labels.map(taxonomySlug).map(encodeURIComponent).join('/')}`
+export const taxonomyPath = (labels: string[], seqDef?: string) => {
+  const path = `/parts/${labels.map(taxonomySlug).map(encodeURIComponent).join('/')}`
+  return seqDef ? `${path}?seqDef=${encodeURIComponent(seqDef)}` : path
+}
 
 export const partPath = (value: string) => `/part/${encodeURIComponent(value)}`
 

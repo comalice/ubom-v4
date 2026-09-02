@@ -55,8 +55,26 @@
     else if (item.kind === 'taxonomy' && item.taxonomyType === 'rule' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftRule(taxonomyDraft, item.sourceNodeId, parentID, item.placementId, targetIndex)
   }
 
+  function removeTaxonomyDraftCategorySubtree(node: TaxonomyDraftNode, placementID: string): TaxonomyDraftNode {
+    const children = node.children
+      .filter((child) => !child.placements.some((placement) => placement.type === 'category' && placement.id === placementID))
+      .map((child) => removeTaxonomyDraftCategorySubtree(child, placementID))
+    return children.length !== node.children.length || children.some((child, index) => child !== node.children[index]) ? { ...node, children } : node
+  }
+
   function removePlacement(placementID: string) {
-    taxonomyDraft = removeTaxonomyDraftRule(taxonomyDraft, placementID)
+    const categoryNode = findTaxonomyDraftNode(taxonomyDraft, placementID)
+    const categoryPlacement = categoryNode?.placements.find((placement) => placement.id === placementID)
+    if (categoryPlacement?.type === 'category' && categoryNode) {
+      const selectedPath = findTaxonomyDraftPath(taxonomyDraft, selectedNodeID)
+      const selectedCategory = selectedPath.some((node) => node === categoryNode)
+      const categoryPath = findTaxonomyDraftPath(taxonomyDraft, categoryNode.id)
+      const parent = categoryPath.length > 1 ? categoryPath[categoryPath.length - 2] : undefined
+      taxonomyDraft = removeTaxonomyDraftCategorySubtree(taxonomyDraft, placementID)
+      if (selectedCategory) selectedNodeID = parent?.id ?? taxonomyDraft.id
+    } else {
+      taxonomyDraft = removeTaxonomyDraftRule(taxonomyDraft, placementID)
+    }
   }
 
   function updateNodeLabel(nodeID: string, label: string) { taxonomyDraft = updateTaxonomyDraftNode(taxonomyDraft, nodeID, { label }) }
@@ -90,7 +108,7 @@
         <div class="taxonomy-first-branches">
           {#each taxonomyDraft.children as child (child.id)}
             {#if child.placements[0]}
-              <div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={() => selectedNodeID = child.id} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}>
+              <div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => { if (!(event.target as HTMLElement).closest('.block-shell-remove')) selectedNodeID = child.id }} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}>
                 <TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onAttributes={(nodeID) => selectedNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} />
               </div>
             {/if}

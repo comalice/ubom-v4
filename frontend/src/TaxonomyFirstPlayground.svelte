@@ -3,7 +3,7 @@
   import DropZone from './DropZone.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
   import TaxonomyPalette from './TaxonomyPalette.svelte'
-  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, moveTaxonomyDraftChild, moveTaxonomyDraftRule, removeTaxonomyDraftRule, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftChild, moveTaxonomyDraftRule, removeTaxonomyDraftRule, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   let placementNumber = 1
   let taxonomyDraft: TaxonomyDraftNode = {
@@ -16,12 +16,15 @@
     ],
   }
   let selectedNodeID = 'family-302'
-  let selectedGrammarField = 'family'
 
-  $: placements = flattenTaxonomyDraft(taxonomyDraft)
   $: selectedNode = findTaxonomyDraftNode(taxonomyDraft, selectedNodeID) ?? taxonomyDraft
   $: selectedPath = findTaxonomyDraftPath(taxonomyDraft, selectedNode.id)
   $: effectivePredicate = selectedPath.slice(1).map((node) => node.placements.find((placement) => placement.type === 'category')?.predicate).filter(Boolean).join(' AND ')
+  $: activeFieldLanes = selectedNode.id === taxonomyDraft.id
+    ? ['family']
+    : selectedNode.targetId === 'family'
+      ? ['group', 'uid']
+      : ['uid']
 
   function newPlacement(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, targetId: string): TaxonomyPlacement {
     const id = `taxonomy-${payload.taxonomyType}-${placementNumber++}`
@@ -35,15 +38,26 @@
     selectedNodeID = placement.id
   }
 
-  function handleRootDrop(state: DragDropState<TaxonomyDragPayload>) {
+  function nextGrammarField(targetId: string) {
+    if (targetId === 'grammar-root' || targetId === 'root') return 'family'
+    if (targetId === 'family') return 'group'
+    if (targetId === 'group') return 'uid'
+    return targetId
+  }
+
+  function acceptsFieldDrop(state: DragDropState<TaxonomyDragPayload>) {
+    return state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'
+  }
+
+  function handleFieldDrop(state: DragDropState<TaxonomyDragPayload>, field: string) {
     const item = state.draggedItem
-    if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, taxonomyDraft.id, selectedGrammarField)
+    if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, selectedNode.id, field)
   }
 
   function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string) {
     const item = state.draggedItem
     if (!item) return
-    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, selectedGrammarField)
+    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, nextGrammarField(findTaxonomyDraftNode(taxonomyDraft, parentID)?.targetId ?? parentID))
     else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftChild(taxonomyDraft, item.sourceNodeId, parentID)
   }
 
@@ -80,6 +94,14 @@
   function updateNodeLabel(nodeID: string, label: string) { taxonomyDraft = updateTaxonomyDraftNode(taxonomyDraft, nodeID, { label }) }
   function updateNodeID(nodeID: string, id: string) { taxonomyDraft = updateTaxonomyDraftNode(taxonomyDraft, nodeID, { id }) }
   function updateRulePredicate(ruleID: string, predicate: TaxonomyRulePredicate) { taxonomyDraft = updateTaxonomyDraftRule(taxonomyDraft, ruleID, predicate) }
+
+  function selectCategory(event: MouseEvent, fallbackNodeID?: string) {
+    const target = event.target as HTMLElement
+    const block = target.closest('.block-shell')
+    const nodeID = block?.querySelector('.block-shell-body')?.querySelectorAll('input')[1]?.value
+    const nextNodeID = nodeID && findTaxonomyDraftNode(taxonomyDraft, nodeID) ? nodeID : fallbackNodeID
+    if (nextNodeID) selectedNodeID = nextNodeID
+  }
 </script>
 
 <section class="taxonomy-first-draft" aria-labelledby="taxonomy-first-heading">
@@ -91,24 +113,28 @@
   <div class="taxonomy-first-workflow taxonomy-editor">
     <section class="taxonomy-first-authoring-row" aria-label="Authoring blocks">
       <TaxonomyPalette />
-      <label class="taxonomy-first-field-picker">New category grammar field
-        <select bind:value={selectedGrammarField} aria-label="New category grammar field">
-          <option value="family">family</option>
-          <option value="group">group</option>
-          <option value="number">number</option>
-        </select>
-      </label>
     </section>
     <main class="taxonomy-editor-canvas">
       <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>Part Numbers</h3></div><span class="taxonomy-editor-count">gtd-pn-taxonomy-v1 · local draft</span></div>
       <p class="taxonomy-grammar-note">Select a category to focus it. Categories are the hierarchy; rules stay local to the selected category.</p>
+      <section class="taxonomy-first-field-view" aria-labelledby="taxonomy-first-fields-heading">
+        <div class="taxonomy-first-field-heading"><div><span class="mock-section-label">Grammar context</span><h4 id="taxonomy-first-fields-heading">Available fields</h4></div><small>for {selectedNode.label}</small></div>
+        <p class="taxonomy-first-field-note">Read-only grammar context. Drop a category on a field to add it below the selected node.</p>
+        <div class="taxonomy-first-field-lanes">
+          {#each activeFieldLanes as field}
+            <div class="taxonomy-first-field-lane">
+              <span class="taxonomy-grammar-kind">{field}</span>
+              <DropZone variant="slot" mode="inactive" showLabel label={`Drop category on ${field}`} container={taxonomyTargetContainer(`${selectedNode.id}:field:${field}`)} accepts={acceptsFieldDrop} onDrop={(state) => handleFieldDrop(state, field)} ariaLabel={`Drop a category on ${field} for ${selectedNode.label}`} />
+            </div>
+          {/each}
+        </div>
+      </section>
       <div class="taxonomy-grammar-tree">
-        <div class="taxonomy-first-root"><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small></div>
-        <DropZone variant="slot" mode="inactive" container={taxonomyTargetContainer(taxonomyDraft.id)} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={handleRootDrop} className="taxonomy-first-root-drop" ariaLabel="Drop a first category here" />
+        <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root" role="button" tabindex="0" on:click={() => selectedNodeID = taxonomyDraft.id} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = taxonomyDraft.id)}><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small></div>
         <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">
           {#each taxonomyDraft.children as child (child.id)}
             {#if child.placements[0]}
-              <div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => { if (!(event.target as HTMLElement).closest('.block-shell-remove')) selectedNodeID = child.id }} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}>
+              <div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => { if (!(event.target as HTMLElement).closest('.block-shell-remove')) selectCategory(event, child.id) }} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}>
                 <TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onAttributes={(nodeID) => selectedNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} />
               </div>
             {/if}
@@ -124,9 +150,16 @@
   .taxonomy-first-draft { max-width: 1280px; }.taxonomy-first-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; margin-bottom: 1.5rem; }.taxonomy-first-heading h2 { margin: .15rem 0 .55rem; letter-spacing: -.035em; font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }.taxonomy-first-intro { max-width: 650px; margin: 0; color: var(--muted); line-height: 1.5; }.taxonomy-first-status { padding: .35rem .55rem; color: var(--muted); border: 1px solid var(--hairline); border-radius: .2rem; font: .6rem ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
   .taxonomy-first-workflow { display: grid; gap: 1rem; }
   .taxonomy-first-authoring-row { display: grid; gap: 1rem; background: var(--ground); }
-  .taxonomy-first-field-picker { display: grid; gap: .3rem; align-content: start; max-width: 14rem; padding: 0 1rem 1rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
-  .taxonomy-first-field-picker select { padding: .45rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: inherit; }
+  .taxonomy-first-field-view { display: grid; gap: .65rem; margin-bottom: .8rem; padding: .8rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }
+  .taxonomy-first-field-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .taxonomy-first-field-heading h4 { margin: .2rem 0 0; font-size: .95rem; font-weight: 500; }
+  .taxonomy-first-field-heading small, .taxonomy-first-field-note { color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .taxonomy-first-field-note { margin: 0; line-height: 1.4; }
+  .taxonomy-first-field-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .55rem; }
+  .taxonomy-first-field-lane { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; min-width: 0; padding: .35rem .45rem; background: var(--surface); border: 1px solid var(--hairline-light); border-radius: .2rem; }
+  .taxonomy-first-field-lane .taxonomy-grammar-kind { margin: 0; }
   .taxonomy-first-root { display: grid; gap: .15rem; padding: .6rem .55rem; border-bottom: 1px solid var(--hairline); }
+  .taxonomy-first-root.selected { color: var(--accent); background: var(--accent-light); }
   .taxonomy-first-root small { color: var(--muted); font: .65rem ui-monospace, monospace; }
   .taxonomy-first-branches { display: grid; gap: .5rem; padding: .5rem 0 0 1.15rem; border-left: 1px solid var(--hairline); }
   .taxonomy-first-category { padding: .15rem; border: 1px solid transparent; border-radius: .25rem; cursor: pointer; }

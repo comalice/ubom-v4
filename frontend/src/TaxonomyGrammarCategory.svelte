@@ -56,7 +56,7 @@
           {#each contextFields as field}
             <div class="taxonomy-category-context-lane">
               <span class="taxonomy-grammar-kind">{field}</span>
-              {#if !readOnly}<DropZone variant="slot" mode="inactive" container={taxonomyTargetContainer(`${draftNode.id}:field:${field}`)} accepts={acceptsContextDrop} onDrop={(state) => onContextDrop(state, draftNode.id, field)} ariaLabel={`Drop a category on ${field} for ${draftNode.label}`} />{/if}
+              {#if !readOnly}<DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={taxonomyTargetContainer(`${draftNode.id}:field:${field}`)} accepts={acceptsContextDrop} onDrop={(state) => onContextDrop(state, draftNode.id, field)} ariaLabel={`Drop a category on ${field} for ${draftNode.label}`} />{/if}
               {#if draftNode}
                 {#each draftNode.children.filter((child) => child.targetId === field) as child (child.id)}
                   {#if child.placements[0]}

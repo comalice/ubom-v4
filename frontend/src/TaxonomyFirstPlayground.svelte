@@ -105,7 +105,7 @@
       <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>Part Numbers</h3></div><span class="taxonomy-editor-count">gtd-pn-taxonomy-v1 · local draft</span></div>
       <p class="taxonomy-grammar-note">Select a category to focus it. Categories are the hierarchy; rules stay local to the selected category.</p>
       <div class="taxonomy-grammar-tree">
-       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root" role="button" tabindex="0" on:click={() => selectedNodeID = taxonomyDraft.id} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = taxonomyDraft.id)}><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small><div class="taxonomy-first-root-context"><span class="taxonomy-grammar-kind">family</span><div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field="family" onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onAttributes={(nodeID) => selectedNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div></div></div>
+       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root" role="button" tabindex="0" on:click={() => selectedNodeID = taxonomyDraft.id} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = taxonomyDraft.id)}><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small><div class="taxonomy-first-root-context"><div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field="family" onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onAttributes={(nodeID) => selectedNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div></div></div>
         <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">
            {#each taxonomyDraft.children.filter((child) => child.targetId !== 'family') as child (child.id)}
             {#if child.placements[0]}
@@ -128,8 +128,7 @@
   .taxonomy-first-root { display: grid; gap: .15rem; padding: .6rem .55rem; border-bottom: 1px solid var(--hairline); }
   .taxonomy-first-root.selected { color: var(--accent); background: var(--accent-light); }
   .taxonomy-first-root small { color: var(--muted); font: .65rem ui-monospace, monospace; }
-  .taxonomy-first-root-context { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; margin-top: .35rem; }
-   .taxonomy-first-root-context .taxonomy-grammar-kind { margin: 0; }
+  .taxonomy-first-root-context { display: grid; margin-top: .35rem; }
    .taxonomy-first-context-lane { display: grid; gap: .45rem; min-width: 0; }
   .taxonomy-first-branches { display: grid; gap: .5rem; padding: .5rem 0 0 1.15rem; border-left: 1px solid var(--hairline); }
   .taxonomy-first-category { padding: .15rem; border: 1px solid transparent; border-radius: .25rem; cursor: pointer; }

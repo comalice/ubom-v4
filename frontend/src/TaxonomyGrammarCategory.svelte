@@ -54,8 +54,7 @@
         <div class="taxonomy-category-context-lanes">
           {#each contextFields as field}
             <div class="taxonomy-category-context-lane">
-              <span class="taxonomy-grammar-kind">{field}</span>
-             <TaxonomyCategoryChildren parent={draftNode} field={field} {readOnly} onDrop={onChildDrop} onContextDrop={onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
+              <TaxonomyCategoryChildren parent={draftNode} field={field} {readOnly} onDrop={onChildDrop} onContextDrop={onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
             </div>
           {/each}
         </div>

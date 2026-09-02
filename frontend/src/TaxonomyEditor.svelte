@@ -67,7 +67,7 @@
     const item = state.draggedItem
     if (!item) return
     if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
-      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, findTaxonomyDraftNode(taxonomyDraft, item.sourceNodeId)?.targetId ?? parentID, targetIndex)
+      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, parentID, targetIndex)
     } else if (item.kind === 'palette' && item.taxonomyType === 'category') {
       const placement = newPlacement(item, parentID)
       taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], rules: [], children: [] }, targetIndex)

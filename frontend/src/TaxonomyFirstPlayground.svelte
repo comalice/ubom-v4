@@ -32,13 +32,6 @@
     selectedNodeID = placement.id
   }
 
-  function nextGrammarField(targetId: string) {
-    if (targetId === 'grammar-root' || targetId === 'root') return 'family'
-    if (targetId === 'family') return 'group'
-    if (targetId === 'group') return 'uid'
-    return targetId
-  }
-
   function handleFieldDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) {
     const item = state.draggedItem
     if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, field, targetIndex)
@@ -51,8 +44,8 @@
   function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex?: number) {
     const item = state.draggedItem
     if (!item) return
-    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, nextGrammarField(findTaxonomyDraftNode(taxonomyDraft, parentID)?.targetId ?? parentID), targetIndex)
-    else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, findTaxonomyDraftNode(taxonomyDraft, item.sourceNodeId)?.targetId ?? parentID, targetIndex)
+    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, parentID, targetIndex)
+    else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, parentID, targetIndex)
   }
 
   function handleRuleDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) {

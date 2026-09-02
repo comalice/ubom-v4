@@ -42,7 +42,7 @@
 </script>
 
   <BlockShell title={title} summary={summary} kind="taxonomy" collapsible initiallyOpen={true} container={readOnly ? '' : container} dragData={readOnly ? undefined : dragData} dragHandle=".block-shell-drag" interactive={['input', 'select', 'button']} {onDragEnd} onRemove={readOnly ? undefined : onRemove}>
-  <svelte:fragment slot="header-actions">{#if !readOnly}<PrimitiveButton variant="secondary" size="small" type="button" aria-label={`View attributes for ${label}`} on:click={onAttributes}>attributes</PrimitiveButton>{/if}</svelte:fragment>
+  <svelte:fragment slot="header-actions"><PrimitiveButton variant="secondary" size="small" type="button" aria-label={`View attributes for ${label}`} on:click={onAttributes}>attributes</PrimitiveButton></svelte:fragment>
   {#if layout === 'tree'}
     <div class="taxonomy-block-fields">
        <label>Label<input value={label} readonly={readOnly} on:input={(event) => onLabelChange(event.currentTarget.value)} /></label>

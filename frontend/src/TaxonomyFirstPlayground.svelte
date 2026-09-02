@@ -88,7 +88,7 @@
     <span class="taxonomy-first-status">Exploration draft</span>
   </div>
 
-  <div class="taxonomy-first-workflow">
+  <div class="taxonomy-first-workflow taxonomy-editor">
     <section class="taxonomy-first-authoring-row" aria-label="Authoring blocks">
       <TaxonomyPalette />
       <label class="taxonomy-first-field-picker">New category grammar field
@@ -99,13 +99,13 @@
         </select>
       </label>
     </section>
-    <main class="taxonomy-first-canvas">
-      <div class="taxonomy-first-canvas-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>Part Numbers</h3></div><span class="taxonomy-editor-count">gtd-pn-taxonomy-v1 · local draft</span></div>
-      <p class="taxonomy-first-note">Select a category to focus it. Categories are the hierarchy; rules stay local to the selected category.</p>
-      <div class="taxonomy-first-tree">
+    <main class="taxonomy-editor-canvas">
+      <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>Part Numbers</h3></div><span class="taxonomy-editor-count">gtd-pn-taxonomy-v1 · local draft</span></div>
+      <p class="taxonomy-grammar-note">Select a category to focus it. Categories are the hierarchy; rules stay local to the selected category.</p>
+      <div class="taxonomy-grammar-tree">
         <div class="taxonomy-first-root"><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small></div>
         <DropZone variant="slot" mode="inactive" container={taxonomyTargetContainer(taxonomyDraft.id)} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={handleRootDrop} className="taxonomy-first-root-drop" ariaLabel="Drop a first category here" />
-        <div class="taxonomy-first-branches">
+        <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">
           {#each taxonomyDraft.children as child (child.id)}
             {#if child.placements[0]}
               <div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => { if (!(event.target as HTMLElement).closest('.block-shell-remove')) selectedNodeID = child.id }} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}>
@@ -122,6 +122,22 @@
 
 <style>
   .taxonomy-first-draft { max-width: 1280px; }.taxonomy-first-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; margin-bottom: 1.5rem; }.taxonomy-first-heading h2 { margin: .15rem 0 .55rem; letter-spacing: -.035em; font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }.taxonomy-first-intro { max-width: 650px; margin: 0; color: var(--muted); line-height: 1.5; }.taxonomy-first-status { padding: .35rem .55rem; color: var(--muted); border: 1px solid var(--hairline); border-radius: .2rem; font: .6rem ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
-  .taxonomy-first-workflow { display: grid; gap: 1rem; }.taxonomy-first-authoring-row, .taxonomy-first-canvas { padding: 1rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .25rem; }.taxonomy-first-authoring-row { display: grid; gap: 1rem; background: var(--ground); }.taxonomy-first-field-picker { display: grid; gap: .3rem; align-content: start; max-width: 14rem; color: var(--muted); font: .65rem ui-monospace, monospace; }.taxonomy-first-field-picker select { padding: .45rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: inherit; }.taxonomy-first-canvas-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--hairline-light); }.taxonomy-first-canvas-heading h3 { margin: .25rem 0 0; font-size: 1.1rem; }.taxonomy-first-note { margin: .7rem 0; color: var(--muted); font: .65rem ui-monospace, monospace; }.taxonomy-first-tree { padding: .25rem .7rem .7rem; background: var(--ground); border: 1px solid var(--hairline); border-radius: .25rem; }.taxonomy-first-root { display: grid; gap: .15rem; padding: .6rem .55rem; border-bottom: 1px solid var(--hairline); }.taxonomy-first-root small, .taxonomy-first-effective small { color: var(--muted); font: .65rem ui-monospace, monospace; }.taxonomy-first-branches { display: grid; gap: .5rem; padding: .5rem 0 0 1.15rem; border-left: 1px solid var(--hairline); }.taxonomy-first-category { padding: .15rem; border: 1px solid transparent; border-radius: .25rem; cursor: pointer; }.taxonomy-first-category:hover, .taxonomy-first-category.selected { border-color: var(--accent); background: var(--accent-light); }.taxonomy-first-effective { display: grid; gap: .35rem; margin-top: .7rem; padding: .7rem; color: var(--surface); background: var(--ink); border-radius: .2rem; }.taxonomy-first-effective .mock-section-label { color: var(--muted); }.taxonomy-first-effective code { font: .75rem ui-monospace, monospace; }
-  @media (max-width: 680px) { .taxonomy-first-heading { display: block; }.taxonomy-first-status { display: inline-block; margin-top: 1rem; }.taxonomy-first-canvas-heading { display: block; }.taxonomy-first-canvas-heading .taxonomy-editor-count { display: block; margin-top: .35rem; } }
+  .taxonomy-first-workflow { display: grid; gap: 1rem; }
+  .taxonomy-first-authoring-row { display: grid; gap: 1rem; background: var(--ground); }
+  .taxonomy-first-field-picker { display: grid; gap: .3rem; align-content: start; max-width: 14rem; padding: 0 1rem 1rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .taxonomy-first-field-picker select { padding: .45rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: inherit; }
+  .taxonomy-first-root { display: grid; gap: .15rem; padding: .6rem .55rem; border-bottom: 1px solid var(--hairline); }
+  .taxonomy-first-root small { color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .taxonomy-first-branches { display: grid; gap: .5rem; padding: .5rem 0 0 1.15rem; border-left: 1px solid var(--hairline); }
+  .taxonomy-first-category { padding: .15rem; border: 1px solid transparent; border-radius: .25rem; cursor: pointer; }
+  .taxonomy-first-category:hover, .taxonomy-first-category.selected { border-color: var(--accent); background: var(--accent-light); }
+  .taxonomy-first-effective { display: grid; gap: .35rem; margin-top: .7rem; padding: .7rem; color: var(--surface); background: var(--ink); border-radius: .2rem; }
+  .taxonomy-first-effective .mock-section-label { color: var(--muted); }
+  .taxonomy-first-effective code { color: var(--surface); font: .78rem ui-monospace, monospace; }
+  .taxonomy-first-effective small { color: var(--muted); font: .65rem ui-monospace, monospace; }
+  @media (max-width: 680px) {
+    .taxonomy-first-heading { display: block; }
+    .taxonomy-first-status { display: inline-block; margin-top: 1rem; }
+    .taxonomy-editor-heading { align-items: flex-start; flex-wrap: wrap; }
+  }
 </style>

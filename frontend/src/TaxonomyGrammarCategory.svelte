@@ -23,7 +23,7 @@
   $: nodeID = draftNode?.id ?? placement.nodeId ?? placement.id
   $: nodeContainer = draftNode ? taxonomyTargetContainer(draftNode.id) : ''
   function acceptsContextDrop(state: DragDropState<TaxonomyDragPayload>) {
-    return state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'
+    return state.draggedItem?.taxonomyType === 'category'
   }
 </script>
 
@@ -57,6 +57,13 @@
             <div class="taxonomy-category-context-lane">
               <span class="taxonomy-grammar-kind">{field}</span>
               {#if !readOnly}<DropZone variant="slot" mode="inactive" container={taxonomyTargetContainer(`${draftNode.id}:field:${field}`)} accepts={acceptsContextDrop} onDrop={(state) => onContextDrop(state, draftNode.id, field)} ariaLabel={`Drop a category on ${field} for ${draftNode.label}`} />{/if}
+              {#if draftNode}
+                {#each draftNode.children.filter((child) => child.targetId === field) as child (child.id)}
+                  {#if child.placements[0]}
+                    <svelte:self placement={child.placements[0]} draftNode={child} parentContainer={nodeContainer} {readOnly} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFields={child.targetId === 'family' ? ['group', 'uid'] : ['uid']} {onContextDrop} />
+                  {/if}
+                {/each}
+              {/if}
             </div>
           {/each}
         </div>
@@ -84,7 +91,7 @@
   </svelte:fragment>
   <svelte:fragment slot="children">
     {#if draftNode}
-      {#each draftNode.children as child (child.id)}
+      {#each draftNode.children.filter((child) => !contextFields.includes(child.targetId)) as child (child.id)}
         {#if child.placements[0]}
           <svelte:self
             placement={child.placements[0]}

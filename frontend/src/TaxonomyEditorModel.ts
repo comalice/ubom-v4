@@ -8,6 +8,52 @@ export type TaxonomyGrammar = {
   nodes: StructureNode[]
 }
 
+/** Returns binding names in their grammar order, without duplicate lanes. */
+export function taxonomyGrammarBindingFields(grammar: TaxonomyGrammar): string[] {
+  const fields: string[] = []
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (node.blockType === 'binding' && node.label && !fields.includes(node.label)) fields.push(node.label)
+    visit(node.children)
+  })
+  visit(grammar.nodes)
+  return fields
+}
+
+/** Resolves persisted structure targets and new field-name targets to a binding name. */
+export function taxonomyTargetField(grammar: TaxonomyGrammar, targetId: string): string | undefined {
+  const fields = taxonomyGrammarBindingFields(grammar)
+  if (fields.includes(targetId)) return targetId
+  let field: string | undefined
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (!field && String(node.id) === targetId && node.blockType === 'binding') field = node.label
+    visit(node.children)
+  })
+  visit(grammar.nodes)
+  return field
+}
+
+/**
+ * Finds the fields available below a taxonomy target. Root targets expose the
+ * first field; unresolved targets expose all fields as a useful recovery path.
+ */
+export function taxonomyContextFields(grammar: TaxonomyGrammar, targetId: string): string[] {
+  const fields = taxonomyGrammarBindingFields(grammar)
+  if (!fields.length) return []
+  const targets: StructureNode[] = []
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (String(node.id) === targetId || node.label === targetId) targets.push(node)
+    visit(node.children)
+  })
+  visit(grammar.nodes)
+  const target = targets.find((node) => node.blockType === 'binding')
+  if (target) {
+    const index = fields.indexOf(target.label)
+    return index < 0 ? [] : fields.slice(index + 1)
+  }
+  const root = targets.find((node) => node.id === 'grammar-root' || node.blockType === 'sequence')
+  return root || targetId === 'grammar-root' ? fields.slice(0, 1) : fields
+}
+
 function sequenceSummary(node: SeqDefNode): string {
   if (node.kind === 'literal') return JSON.stringify(node.text ?? '')
   if (node.kind === 'range') return `${node.min ?? 0}..${node.max ?? 0} / width ${node.width ?? 1}`

@@ -1,12 +1,10 @@
 <script lang="ts">
-  import TaxonomyPalette from './TaxonomyPalette.svelte'
-  import TaxonomyGrammarTree from './TaxonomyGrammarTree.svelte'
+  import TaxonomyFirstCanvas from './TaxonomyFirstCanvas.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
-  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyAttribute, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
-  import type { DragDropState } from '@thisux/sveltednd'
+  import { addTaxonomyAttribute, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, removeTaxonomyAttribute, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
 
   export let grammar: TaxonomyGrammar
   export let initialAttributeDefinitions: TaxonomyAttributeDefinition[] = []
@@ -14,105 +12,12 @@
   export let readOnly = false
   export let onChange: (draft: TaxonomyDraftNode, definitions: TaxonomyAttributeDefinition[]) => void = () => {}
 
-  let placementNumber = 1
   let attributeNumber = 1
   let attributesNodeID: string | undefined
   let attributeDefinitions: TaxonomyAttributeDefinition[] = initialAttributeDefinitions
   let taxonomyDraft: TaxonomyDraftNode = initialDraft
+
   $: placements = flattenTaxonomyDraft(taxonomyDraft)
-
-  function updatePlacements(next: TaxonomyPlacement[]) {
-    taxonomyDraft = replaceTaxonomyDraftPlacements(taxonomyDraft, next)
-  }
-
-  function newPlacement(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, targetId: string): TaxonomyPlacement {
-    const id = `taxonomy-${payload.taxonomyType}-${placementNumber++}`
-    if (payload.taxonomyType === 'category') return { id, targetId, type: 'category', title: 'New category', summary: `Attached to ${targetId}`, label: 'New category', nodeId: id, predicate: `${targetId} = A` }
-    return { id, targetId, type: 'rule', title: 'New rule', summary: `${targetId} = A`, predicateData: { kind: 'exact', field: targetId, value: 'A' } }
-  }
-
-  function handleDrop(state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) {
-    const item = state.draggedItem
-    if (!item) return
-    const targetPlacements = placements.filter((placement) => placement.targetId === targetId)
-    if (item.kind === 'palette') {
-      const placement = newPlacement(item, targetId)
-      if (item.taxonomyType === 'category') {
-        const targetChildren = taxonomyDraft.children.filter((child) => child.targetId === targetId)
-        const nextChildren = [...taxonomyDraft.children]
-        const childIndex = nextChildren.findIndex((child) => child === targetChildren[targetIndex])
-        nextChildren.splice(childIndex < 0 ? nextChildren.length : childIndex, 0, { id: placement.id, label: placement.label ?? placement.title, targetId, placements: [placement], rules: [], children: [] })
-        taxonomyDraft = { ...taxonomyDraft, children: nextChildren }
-        return
-      }
-      const next = [...targetPlacements]
-      next.splice(targetIndex, 0, placement)
-      updatePlacements([...placements.filter((placement) => placement.targetId !== targetId), ...next])
-      return
-    }
-    if (item.taxonomyType === 'category' && item.sourceNodeId) {
-      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, taxonomyDraft.id, targetId, targetIndex)
-      return
-    }
-    const existing = placements.find((placement) => placement.id === item.placementId)
-    if (!existing) return
-    const sourceIndex = targetPlacements.findIndex((placement) => placement.id === item.placementId)
-    const next = targetPlacements.filter((placement) => placement.id !== item.placementId)
-    const insertIndex = existing.targetId === targetId && sourceIndex >= 0 && sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
-    next.splice(insertIndex, 0, { ...existing, targetId })
-    updatePlacements([...placements.filter((placement) => placement.targetId !== existing.targetId && placement.targetId !== targetId), ...next])
-  }
-
-  function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex?: number) {
-    const item = state.draggedItem
-    if (!item) return
-    if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
-      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, parentID, targetIndex)
-    } else if (item.kind === 'palette' && item.taxonomyType === 'category') {
-      const placement = newPlacement(item, parentID)
-      taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], rules: [], children: [] }, targetIndex)
-    }
-  }
-
-  function handleContextDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) {
-    const item = state.draggedItem
-    if (!item) return
-    if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
-      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, field, targetIndex)
-    } else if (item.kind === 'palette' && item.taxonomyType === 'category') {
-      const placement = newPlacement(item, field)
-      const child = { id: placement.id, label: placement.label ?? placement.title, targetId: field, placements: [placement], rules: [], children: [] }
-      const parent = findTaxonomyDraftNode(taxonomyDraft, parentID)
-      const index = targetIndex ?? parent?.children.length ?? 0
-      const firstVisible = parent?.children.findIndex((child) => child.targetId === field) ?? -1
-      const completeIndex = firstVisible < 0 ? (parent?.children.length ?? 0) : Math.min(firstVisible + index, parent?.children.length ?? 0)
-      taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, child, completeIndex)
-    }
-  }
-
-  function handleRuleDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) {
-    const item = state.draggedItem
-    if (!item) return
-    const parent = findTaxonomyDraftNode(taxonomyDraft, parentID)
-    if (!parent) return
-    if (item.kind === 'palette' && item.taxonomyType === 'rule') {
-      taxonomyDraft = addTaxonomyDraftRule(taxonomyDraft, parentID, newPlacement(item, parent.targetId), targetIndex)
-    } else if (item.kind === 'taxonomy' && item.taxonomyType === 'rule' && item.sourceNodeId) {
-      taxonomyDraft = moveTaxonomyDraftRule(taxonomyDraft, item.sourceNodeId, parentID, item.placementId, targetIndex)
-    }
-  }
-
-  function removePlacement(placementId: string) {
-    const categoryNode = findTaxonomyDraftNode(taxonomyDraft, placementId)
-    if (categoryNode?.placements.some((placement) => placement.id === placementId && placement.type === 'category')) {
-      taxonomyDraft = removeTaxonomyDraftCategorySubtree(taxonomyDraft, placementId)
-      return
-    }
-    taxonomyDraft = removeTaxonomyDraftRule(taxonomyDraft, placementId)
-    updatePlacements(placements.filter((placement) => placement.id !== placementId))
-  }
-
-  function handleDragEnd() {}
 
   function updateNodeLabel(nodeID: string, label: string) {
     if (!readOnly) taxonomyDraft = updateTaxonomyDraftNode(taxonomyDraft, nodeID, { label })
@@ -175,17 +80,7 @@
 </script>
 
 <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
-  {#if !readOnly}<TaxonomyPalette onDragEnd={handleDragEnd} />{/if}
-
-  <section class="taxonomy-editor-canvas" aria-labelledby="taxonomy-canvas-heading">
-    <div class="taxonomy-editor-heading">
-        <div><span class="mock-section-label" id="taxonomy-canvas-heading">Grammar and taxonomy overlay</span><h3>{grammar.label}</h3></div>
-        <div class="taxonomy-editor-heading-controls"><span class="taxonomy-editor-count">{grammar.fields} fields · {placements.length} taxonomy items</span></div>
-    </div>
-    <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
-
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} {readOnly} onDrop={handleDrop} onChildDrop={handleChildDrop} onContextDrop={handleContextDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div>
-  </section>
+  <TaxonomyFirstCanvas grammar={grammar} taxonomyDraft={taxonomyDraft} {readOnly} onDraftChange={(next) => taxonomyDraft = next} {updateNodeLabel} {updateNodeID} {updateRulePredicate} onAttributes={(nodeID) => attributesNodeID = nodeID} />
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">
     <div class="taxonomy-editor-heading"><span class="mock-section-label" id="taxonomy-status-heading">Definition status</span><span class="taxonomy-editor-count">{readOnly ? 'historical revision' : 'local draft'}</span></div>

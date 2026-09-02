@@ -20,6 +20,7 @@
   export let contextFields: string[] = []
   export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) => void = () => {}
   export let readOnly = false
+  export let contextFieldsForNode: (targetId: string) => string[] = () => []
 
   $: nodeID = draftNode?.id ?? placement.nodeId ?? placement.id
   $: nodeContainer = draftNode ? taxonomyTargetContainer(draftNode.id) : ''
@@ -54,7 +55,7 @@
         <div class="taxonomy-category-context-lanes">
           {#each contextFields as field}
             <div class="taxonomy-category-context-lane">
-              <TaxonomyCategoryChildren parent={draftNode} field={field} {readOnly} onDrop={onChildDrop} onContextDrop={onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
+              <TaxonomyCategoryChildren parent={draftNode} field={field} {readOnly} onDrop={onChildDrop} onContextDrop={onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {contextFieldsForNode} />
             </div>
           {/each}
         </div>
@@ -82,7 +83,7 @@
   </svelte:fragment>
   <svelte:fragment slot="children">
     {#if draftNode}
-      <TaxonomyCategoryChildren parent={draftNode} excludedFields={contextFields} {readOnly} onDrop={onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onContextDrop} />
+      <TaxonomyCategoryChildren parent={draftNode} excludedFields={contextFields} {readOnly} onDrop={onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onContextDrop} {contextFieldsForNode} />
     {/if}
   </svelte:fragment>
 </TaxonomyCategoryBlock>

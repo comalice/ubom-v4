@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -26,6 +26,29 @@ describe('effectiveTaxonomyAttributes', () => {
 })
 
 describe('taxonomy persisted-definition adapters', () => {
+  it('resolves persisted grammar targets and field-name targets to the same binding field', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-1', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
+      { kind: 'bind', name: 'region-code', child: { kind: 'literal', text: 'EU' } },
+      { kind: 'bind', name: 'part', child: { kind: 'literal', text: 'A' } },
+    ] } })
+
+    expect(taxonomyTargetField(grammar, 'grammar-0')).toBe('region-code')
+    expect(taxonomyTargetField(grammar, 'region-code')).toBe('region-code')
+    expect(taxonomyTargetField(grammar, 'missing')).toBeUndefined()
+  })
+
+  it('derives arbitrary binding and later context fields in grammar order', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'arbitrary', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
+      { kind: 'bind', name: 'region-code', child: { kind: 'literal', text: 'EU' } },
+      { kind: 'bind', name: 'component_family', child: { kind: 'literal', text: 'R' } },
+      { kind: 'bind', name: 'size_mm', child: { kind: 'range', min: 1, max: 9 } },
+    ] } })
+    expect(taxonomyGrammarBindingFields(grammar)).toEqual(['region-code', 'component_family', 'size_mm'])
+    expect(taxonomyContextFields(grammar, 'grammar-0')).toEqual(['component_family', 'size_mm'])
+    expect(taxonomyContextFields(grammar, 'grammar-root')).toEqual(['region-code'])
+    expect(taxonomyContextFields(grammar, 'missing-target')).toEqual(['region-code', 'component_family', 'size_mm'])
+  })
+
   it('renders every persisted sequence node kind into the taxonomy grammar', () => {
     const grammar = taxonomyGrammarFromSeqDef({ id: 'seq-1', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
       { kind: 'literal', text: 'PN-' },

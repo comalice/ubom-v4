@@ -17,6 +17,7 @@
   export let onNodeIdChange: (nodeID: string, newNodeID: string) => void = () => {}
   export let onRulePredicateChange: (ruleID: string, predicate: TaxonomyRulePredicate) => void = () => {}
   export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex: number) => void = () => {}
+  export let contextFieldsForNode: (targetId: string) => string[] = () => []
 
   $: sourceChildren = parent.children
   $: visibleChildren = sourceChildren.filter((child) => field === undefined
@@ -60,8 +61,9 @@
         {onNodeLabelChange}
         {onNodeIdChange}
         {onRulePredicateChange}
-        contextFields={field === undefined ? [] : (child.targetId === 'family' ? ['group', 'uid'] : ['uid'])}
+        contextFields={field === undefined ? [] : contextFieldsForNode(child.targetId)}
         {onContextDrop}
+        {contextFieldsForNode}
       />
     {/if}
     {#if !readOnly}

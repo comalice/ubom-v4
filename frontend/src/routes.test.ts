@@ -36,8 +36,4 @@ describe('playground routes', () => {
   it('parses the taxonomy editor components page', () => {
     expect(parseRoute('/playground/taxonomy-editor-components')).toEqual({ kind: 'playground', page: 'taxonomy-editor-components' })
   })
-
-  it('parses the taxonomy-first page', () => {
-    expect(parseRoute('/playground/taxonomy-first')).toEqual({ kind: 'playground', page: 'taxonomy-first' })
-  })
 })

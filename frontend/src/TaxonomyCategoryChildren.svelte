@@ -5,7 +5,7 @@
   import { acceptsTaxonomyCategoryChildDrop, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let parent: TaxonomyDraftNode
-  export let children: TaxonomyDraftNode[] = parent.children
+  export let children: TaxonomyDraftNode[] | undefined = undefined
   export let field: string | undefined = undefined
   export let excludedFields: string[] = []
   export let readOnly = false
@@ -19,13 +19,14 @@
   export let onRulePredicateChange: (ruleID: string, predicate: TaxonomyRulePredicate) => void = () => {}
   export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex: number) => void = () => {}
 
-  $: visibleChildren = children.filter((child) => field === undefined
+  $: sourceChildren = children ?? parent.children
+  $: visibleChildren = sourceChildren.filter((child) => field === undefined
     ? !excludedFields.includes(child.targetId)
     : child.targetId === field)
   $: container = taxonomyTargetContainer(field === undefined ? parent.id : `${parent.id}:field:${field}`)
 
   function childIndex(child: TaxonomyDraftNode) {
-    return parent.children.indexOf(child)
+    return sourceChildren.indexOf(child)
   }
 
   function accepts(state: DragDropState<TaxonomyDragPayload>) {
@@ -41,7 +42,7 @@
 </script>
 
 {#if !readOnly}
-  <DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={container} accepts={accepts} onDrop={drop(visibleChildren.length ? childIndex(visibleChildren[0]) : parent.children.length)} ariaLabel={field ? `Drop a category on ${field} for ${parent.label}` : 'Drop a child category'} />
+  <DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={container} accepts={accepts} onDrop={drop(visibleChildren.length ? childIndex(visibleChildren[0]) : sourceChildren.length)} ariaLabel={field ? `Drop a category on ${field} for ${parent.label}` : 'Drop a child category'} />
 {/if}
 {#each visibleChildren as child, index (child.id)}
   {#if child.placements[0]}

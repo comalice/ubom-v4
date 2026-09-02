@@ -16,10 +16,15 @@
   export let onNodeLabelChange: (nodeID: string, label: string) => void = () => {}
   export let onNodeIdChange: (nodeID: string, newNodeID: string) => void = () => {}
   export let onRulePredicateChange: (ruleID: string, predicate: TaxonomyRulePredicate) => void = () => {}
+  export let contextFields: string[] = []
+  export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string) => void = () => {}
   export let readOnly = false
 
   $: nodeID = draftNode?.id ?? placement.nodeId ?? placement.id
   $: nodeContainer = draftNode ? taxonomyTargetContainer(draftNode.id) : ''
+  function acceptsContextDrop(state: DragDropState<TaxonomyDragPayload>) {
+    return state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'
+  }
 </script>
 
 <TaxonomyCategoryBlock
@@ -43,6 +48,21 @@
   onLabelChange={draftNode ? (label) => onNodeLabelChange(draftNode.id, label) : undefined}
   onNodeIdChange={draftNode ? (nodeId) => onNodeIdChange(draftNode.id, nodeId) : undefined}
 >
+  <svelte:fragment slot="context">
+    {#if draftNode && contextFields.length}
+      <div class="taxonomy-category-context">
+        <span class="taxonomy-category-context-label">Grammar context</span>
+        <div class="taxonomy-category-context-lanes">
+          {#each contextFields as field}
+            <div class="taxonomy-category-context-lane">
+              <span class="taxonomy-grammar-kind">{field}</span>
+              {#if !readOnly}<DropZone variant="slot" mode="inactive" container={taxonomyTargetContainer(`${draftNode.id}:field:${field}`)} accepts={acceptsContextDrop} onDrop={(state) => onContextDrop(state, draftNode.id, field)} ariaLabel={`Drop a category on ${field} for ${draftNode.label}`} />{/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </svelte:fragment>
   <svelte:fragment slot="rules">
     {#if draftNode}
       {#each draftNode.rules as rule, index (rule.id)}
@@ -78,8 +98,10 @@
             {onAttributes}
             {onNodeLabelChange}
             {onNodeIdChange}
-            {onRulePredicateChange}
-          />
+             {onRulePredicateChange}
+            contextFields={contextFields.length ? (child.targetId === 'family' ? ['group', 'uid'] : ['uid']) : []}
+            {onContextDrop}
+           />
         {/if}
       {/each}
     {/if}

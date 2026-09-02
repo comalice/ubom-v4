@@ -653,6 +653,11 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-block-meta strong { color: var(--ink); font-weight: 500; }
 .taxonomy-rule-range { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .taxonomy-category-rules { display: grid; gap: .35rem; padding-top: .5rem; border-top: 1px solid var(--hairline-light); }
+.taxonomy-category-context { display: grid; gap: .35rem; padding-top: .5rem; border-top: 1px solid var(--hairline-light); }
+.taxonomy-category-context-label { color: var(--muted); font: .58rem ui-monospace, monospace; text-transform: uppercase; }
+.taxonomy-category-context-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .55rem; }
+.taxonomy-category-context-lane { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; min-width: 0; padding: .35rem .45rem; background: var(--surface); border: 1px solid var(--hairline-light); border-radius: .2rem; }
+.taxonomy-category-context-lane .taxonomy-grammar-kind { margin: 0; }
 .taxonomy-category-rules-label { color: var(--muted); font: .58rem ui-monospace, monospace; text-transform: uppercase; }
 .taxonomy-rule-drop-zone { min-height: 2.25rem; }
 .taxonomy-category-children { display: grid; gap: .4rem; margin: .15rem 0 0 .7rem; padding: .5rem 0 0 .7rem; border-top: 1px solid var(--hairline-light); border-left: 1px solid var(--hairline); }

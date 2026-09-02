@@ -18,11 +18,13 @@
   export let onRulePredicateChange: (ruleID: string, predicate: TaxonomyRulePredicate) => void = () => {}
   export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex: number) => void = () => {}
   export let contextFieldsForNode: (targetId: string) => string[] = () => []
+  export let targetFieldForNode: (targetId: string) => string | undefined = (targetId) => targetId
 
   $: sourceChildren = parent.children
+  $: normalizedExcludedFields = excludedFields.map((targetId) => targetFieldForNode(targetId) ?? targetId)
   $: visibleChildren = sourceChildren.filter((child) => field === undefined
-    ? !excludedFields.includes(child.targetId)
-    : child.targetId === field)
+    ? !normalizedExcludedFields.includes(targetFieldForNode(child.targetId) ?? child.targetId)
+    : targetFieldForNode(child.targetId) === field)
   $: container = taxonomyTargetContainer(field === undefined ? parent.id : `${parent.id}:field:${field}`)
 
   function childIndex(child: TaxonomyDraftNode) {
@@ -64,6 +66,7 @@
         contextFields={field === undefined ? [] : contextFieldsForNode(child.targetId)}
         {onContextDrop}
         {contextFieldsForNode}
+        {targetFieldForNode}
       />
     {/if}
     {#if !readOnly}

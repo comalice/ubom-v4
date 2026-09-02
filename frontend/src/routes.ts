@@ -13,7 +13,7 @@ export type Route =
   | { kind: 'taxonomy-list' }
   | { kind: 'taxonomy-new'; seqDef?: string }
   | { kind: 'taxonomy-detail'; id: string }
-  | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' }
+  | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'taxonomy-first' }
   | { kind: 'not-found' }
 
 export function parseRoute(pathname = window.location.pathname): Route {
@@ -37,6 +37,7 @@ export function parseRoute(pathname = window.location.pathname): Route {
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'taxonomy-editor-components') return { kind: 'playground', page: 'taxonomy-editor-components' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'grammar-editor') return { kind: 'playground', page: 'grammar-editor' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'taxonomy-editor') return { kind: 'playground', page: 'taxonomy-editor' }
+  if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'taxonomy-first') return { kind: 'playground', page: 'taxonomy-first' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'core-components') return { kind: 'playground', page: 'core-components' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'html-primitives') return { kind: 'playground', page: 'html-primitives' }
   if (parts.length === 1 && parts[0] === 'playground') return { kind: 'playground', page: 'dnd-ops' }

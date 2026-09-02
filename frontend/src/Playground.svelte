@@ -1,6 +1,6 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor'
+  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'taxonomy-first'
   import CoreComponentsPlayground from './CoreComponentsPlayground.svelte'
   import HtmlPrimitivesPlayground from './HtmlPrimitivesPlayground.svelte'
   import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
@@ -9,6 +9,7 @@
   import GrammarEditorPlayground from './GrammarEditorPlayground.svelte'
   import TaxonomyEditorPlayground from './TaxonomyEditorPlayground.svelte'
   import TaxonomyEditorComponentsPlayground from './TaxonomyEditorComponentsPlayground.svelte'
+  import TaxonomyFirstPlayground from './TaxonomyFirstPlayground.svelte'
 
   const links = [
     { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
@@ -19,6 +20,7 @@
     { label: 'Taxonomy editor components', path: '/playground/taxonomy-editor-components', page: 'taxonomy-editor-components' as const },
     { label: 'Grammar editor', path: '/playground/grammar-editor', page: 'grammar-editor' as const },
     { label: 'Taxonomy editor', path: '/playground/taxonomy-editor', page: 'taxonomy-editor' as const },
+    { label: 'Taxonomy-first', path: '/playground/taxonomy-first', page: 'taxonomy-first' as const },
   ]
 </script>
 
@@ -51,6 +53,8 @@
       <GrammarEditorPlayground />
     {:else if page === 'taxonomy-editor'}
       <TaxonomyEditorPlayground />
+    {:else if page === 'taxonomy-first'}
+      <TaxonomyFirstPlayground />
     {/if}
   </main>
 </div>

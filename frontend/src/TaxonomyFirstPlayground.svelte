@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { DragDropState } from '@thisux/sveltednd'
-  import DropZone from './DropZone.svelte'
+  import TaxonomyCategoryChildren from './TaxonomyCategoryChildren.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
   import TaxonomyPalette from './TaxonomyPalette.svelte'
-  import { acceptsTaxonomyCategoryChildDrop, addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   let placementNumber = 1
   let taxonomyDraft: TaxonomyDraftNode = {
@@ -26,9 +26,9 @@
     return { id, targetId, type: 'rule', title: 'New rule', summary: `${targetId} = A`, predicate: `${targetId} = A`, predicateData: { kind: 'exact', field: targetId, value: 'A' } }
   }
 
-  function addCategory(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, parentID: string, targetId: string) {
+  function addCategory(payload: Extract<TaxonomyDragPayload, { kind: 'palette' }>, parentID: string, targetId: string, targetIndex?: number) {
     const placement = newPlacement(payload, targetId)
-    taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId, placements: [placement], rules: [], children: [] })
+    taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId, placements: [placement], rules: [], children: [] }, targetIndex)
     selectedNodeID = placement.id
   }
 
@@ -39,13 +39,9 @@
     return targetId
   }
 
-  function acceptsFieldDrop(state: DragDropState<TaxonomyDragPayload>) {
-    return acceptsTaxonomyCategoryChildDrop(state.draggedItem, taxonomyDraft.id)
-  }
-
   function handleFieldDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) {
     const item = state.draggedItem
-    if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, field)
+    if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, field, targetIndex)
     else if (item?.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
       taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, field, targetIndex)
       selectedNodeID = item.sourceNodeId
@@ -55,7 +51,7 @@
   function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex?: number) {
     const item = state.draggedItem
     if (!item) return
-    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, nextGrammarField(findTaxonomyDraftNode(taxonomyDraft, parentID)?.targetId ?? parentID))
+    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, nextGrammarField(findTaxonomyDraftNode(taxonomyDraft, parentID)?.targetId ?? parentID), targetIndex)
     else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, findTaxonomyDraftNode(taxonomyDraft, item.sourceNodeId)?.targetId ?? parentID, targetIndex)
   }
 
@@ -109,7 +105,7 @@
       <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>Part Numbers</h3></div><span class="taxonomy-editor-count">gtd-pn-taxonomy-v1 · local draft</span></div>
       <p class="taxonomy-grammar-note">Select a category to focus it. Categories are the hierarchy; rules stay local to the selected category.</p>
       <div class="taxonomy-grammar-tree">
-       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root" role="button" tabindex="0" on:click={() => selectedNodeID = taxonomyDraft.id} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = taxonomyDraft.id)}><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small><div class="taxonomy-first-root-context"><span class="taxonomy-grammar-kind">family</span><div class="taxonomy-first-context-lane"><DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={taxonomyTargetContainer(`${taxonomyDraft.id}:field:family`)} accepts={acceptsFieldDrop} onDrop={(state) => handleFieldDrop(state, taxonomyDraft.id, 'family')} ariaLabel="Drop a category on family for Part Numbers" />{#each taxonomyDraft.children.filter((child) => child.targetId === 'family') as child (child.id)}{#if child.placements[0]}<TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} contextFields={['group', 'uid']} onContextDrop={handleFieldDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onAttributes={(nodeID) => selectedNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} />{/if}{/each}</div></div></div>
+       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root" role="button" tabindex="0" on:click={() => selectedNodeID = taxonomyDraft.id} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = taxonomyDraft.id)}><span class="taxonomy-grammar-kind">root scope</span><strong>Part Numbers</strong><small>all values matching gtd-pn-v1</small><div class="taxonomy-first-root-context"><span class="taxonomy-grammar-kind">family</span><div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field="family" onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onAttributes={(nodeID) => selectedNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div></div></div>
         <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">
            {#each taxonomyDraft.children.filter((child) => child.targetId !== 'family') as child (child.id)}
             {#if child.placements[0]}

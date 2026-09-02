@@ -70,7 +70,23 @@
       taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, findTaxonomyDraftNode(taxonomyDraft, item.sourceNodeId)?.targetId ?? parentID, targetIndex)
     } else if (item.kind === 'palette' && item.taxonomyType === 'category') {
       const placement = newPlacement(item, parentID)
-      taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], rules: [], children: [] })
+      taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], rules: [], children: [] }, targetIndex)
+    }
+  }
+
+  function handleContextDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) {
+    const item = state.draggedItem
+    if (!item) return
+    if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
+      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, field, targetIndex)
+    } else if (item.kind === 'palette' && item.taxonomyType === 'category') {
+      const placement = newPlacement(item, field)
+      const child = { id: placement.id, label: placement.label ?? placement.title, targetId: field, placements: [placement], rules: [], children: [] }
+      const parent = findTaxonomyDraftNode(taxonomyDraft, parentID)
+      const index = targetIndex ?? parent?.children.length ?? 0
+      const firstVisible = parent?.children.findIndex((child) => child.targetId === field) ?? -1
+      const completeIndex = firstVisible < 0 ? (parent?.children.length ?? 0) : Math.min(firstVisible + index, parent?.children.length ?? 0)
+      taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, child, completeIndex)
     }
   }
 
@@ -168,7 +184,7 @@
     </div>
     <p class="taxonomy-grammar-note">Read-only grammar <span aria-hidden="true">·</span> taxonomy drop zones are shown below each grammar node</p>
 
-    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} {readOnly} onDrop={handleDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div>
+    <div class="taxonomy-grammar-tree"><TaxonomyGrammarTree grammarNodes={grammar.nodes} {placements} {taxonomyDraft} {readOnly} onDrop={handleDrop} onChildDrop={handleChildDrop} onContextDrop={handleContextDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} onDragEnd={handleDragEnd} onAttributes={(nodeID) => attributesNodeID = nodeID} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} /></div>
   </section>
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">

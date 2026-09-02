@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -240,6 +240,16 @@ describe('taxonomy draft editing', () => {
     const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children }
     expect(moveTaxonomyDraftChild(draft, 'three', 'root', 0).children.map(({ id }) => id)).toEqual(['three', 'one', 'two'])
     expect(moveTaxonomyDraftChild(draft, 'one', 'root', 3).children.map(({ id }) => id)).toEqual(['two', 'three', 'one'])
+  })
+
+  it('inserts new children at the requested complete-array index immutably', () => {
+    const first: TaxonomyDraftNode = { id: 'first', label: 'First', targetId: 'family', placements: [], rules: [], children: [] }
+    const second: TaxonomyDraftNode = { id: 'second', label: 'Second', targetId: 'group', placements: [], rules: [], children: [] }
+    const inserted: TaxonomyDraftNode = { id: 'inserted', label: 'Inserted', targetId: 'family', placements: [], rules: [], children: [] }
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [first, second] }
+    const result = addTaxonomyDraftChild(draft, 'root', inserted, 1)
+    expect(result.children.map(({ id }) => id)).toEqual(['first', 'inserted', 'second'])
+    expect(draft.children).toEqual([first, second])
   })
 
   it('moves and retargets a category atomically while preserving identity and descendants', () => {

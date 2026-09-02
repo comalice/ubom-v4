@@ -392,9 +392,14 @@ export function findTaxonomyDraftPath(node: TaxonomyDraftNode, nodeID: string, p
   return []
 }
 
-export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string, child: TaxonomyDraftNode): TaxonomyDraftNode {
-  if (node.id === parentID) return { ...node, children: [...node.children, child] }
-  return { ...node, children: node.children.map((current) => addTaxonomyDraftChild(current, parentID, child)) }
+export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string, child: TaxonomyDraftNode, targetIndex = node.children.length): TaxonomyDraftNode {
+  if (node.id === parentID) {
+    if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex > node.children.length) return node
+    const children = [...node.children]
+    children.splice(targetIndex, 0, child)
+    return { ...node, children }
+  }
+  return { ...node, children: node.children.map((current) => addTaxonomyDraftChild(current, parentID, child, targetIndex)) }
 }
 
 /** Moves an existing category node without changing its placement or descendants. */

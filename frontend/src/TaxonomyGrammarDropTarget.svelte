@@ -10,6 +10,7 @@
   export let taxonomyDraft: TaxonomyDraftNode | undefined
   export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onChildDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
+  export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) => void = () => {}
   export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
@@ -46,7 +47,7 @@
       {#if !readOnly}<DropZone variant="gap" {container} {getMode} accepts={accepts} className="taxonomy-drop-zone taxonomy-drop-gap" ariaLabel={`Insert taxonomy ${index + 1} for ${node.label}`} onDrop={(state) => onDrop(state, String(node.id), index)} />{/if}
     {#if placement.type === 'category'}
       {@const draftNode = categoryNode(placement)}
-       <TaxonomyGrammarCategory placement={placement} {draftNode} parentContainer={container} {readOnly} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
+        <TaxonomyGrammarCategory placement={placement} {draftNode} parentContainer={container} {readOnly} {onChildDrop} {onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
     {:else if placement.type === 'rule'}
       <TaxonomyRuleBlock title={placement.title} field={node.label} predicate={placement.predicateData ?? { kind: 'exact', field: node.label, value: 'A' }} readOnly={readOnly} container={container} dragData={{ kind: 'taxonomy', taxonomyType: placement.type, placementId: placement.id }} {onDragEnd} onRemove={() => onRemove(placement.id)} onPredicateChange={(predicate) => onRulePredicateChange(placement.id, predicate)} />
     {/if}

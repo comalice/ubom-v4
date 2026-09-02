@@ -9,6 +9,7 @@
   export let taxonomyDraft: TaxonomyDraftNode | undefined
   export let onDrop: (state: DragDropState<TaxonomyDragPayload>, targetId: string, targetIndex: number) => void = () => {}
   export let onChildDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
+  export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) => void = () => {}
   export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
@@ -22,6 +23,6 @@
 
 <ul class="dnd-structure-tree taxonomy-grammar-structure-tree">
   {#each grammarNodes as node (node.id)}
-     <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {readOnly} {onDrop} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
+     <TaxonomyGrammarNode {node} {placements} {taxonomyDraft} {readOnly} {onDrop} {onChildDrop} {onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
   {/each}
 </ul>

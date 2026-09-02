@@ -445,6 +445,61 @@ export function moveTaxonomyDraftChild(node: TaxonomyDraftNode, sourceNodeID: st
   return insert(remove(node))
 }
 
+/** Moves a category and keeps its grammar target metadata in sync. */
+export function moveTaxonomyDraftCategory(
+  node: TaxonomyDraftNode,
+  sourceNodeID: string,
+  destinationNodeID: string,
+  targetId: string,
+  destinationIndex?: number,
+): TaxonomyDraftNode {
+  if (!targetId.trim()) return node
+  const nodes: TaxonomyDraftNode[] = []
+  const parents = new Map<TaxonomyDraftNode, TaxonomyDraftNode | undefined>()
+  const visit = (current: TaxonomyDraftNode, parent?: TaxonomyDraftNode) => {
+    nodes.push(current)
+    parents.set(current, parent)
+    current.children.forEach((child) => visit(child, current))
+  }
+  visit(node)
+  const sources = nodes.filter((current) => current.id === sourceNodeID)
+  const destinations = nodes.filter((current) => current.id === destinationNodeID)
+  if (sources.length !== 1 || destinations.length !== 1 || sources[0] === destinations[0]) return node
+  const source = sources[0]
+  const destination = destinations[0]
+  if (destinationIndex !== undefined && (!Number.isInteger(destinationIndex) || destinationIndex < 0 || destinationIndex > destination.children.length)) return node
+  for (let current: TaxonomyDraftNode | undefined = destination; current; current = parents.get(current)) if (current === source) return node
+  const moved = moveTaxonomyDraftChild(node, sourceNodeID, destinationNodeID, destinationIndex)
+
+  const update = (current: TaxonomyDraftNode): TaxonomyDraftNode => {
+    if (current.id === sourceNodeID) {
+      const placements = current.placements.map((placement) => {
+        if (placement.type !== 'category') return placement
+        const predicateData = placement.predicateData
+          ? { ...placement.predicateData, field: targetId }
+          : undefined
+        const predicate = predicateData
+          ? predicateData.kind === 'numeric-range'
+            ? `${targetId} = ${predicateData.min}..${predicateData.max}`
+            : `${targetId} = ${predicateData.value}`
+          : placement.predicate?.replace(/^\s*[^=]+?\s*=\s*/, `${targetId} = `)
+        return { ...placement, targetId, predicate, ...(predicateData ? { predicateData } : {}) }
+      })
+      return { ...current, targetId, placements }
+    }
+    const children = current.children.map(update)
+    return children.some((child, index) => child !== current.children[index]) ? { ...current, children } : current
+  }
+  return update(moved)
+}
+
+export function removeTaxonomyDraftCategorySubtree(node: TaxonomyDraftNode, placementID: string): TaxonomyDraftNode {
+  const children = node.children
+    .filter((child) => !child.placements.some((placement) => placement.type === 'category' && placement.id === placementID))
+    .map((child) => removeTaxonomyDraftCategorySubtree(child, placementID))
+  return children.length !== node.children.length || children.some((child, index) => child !== node.children[index]) ? { ...node, children } : node
+}
+
 export function addTaxonomyDraftRule(node: TaxonomyDraftNode, parentID: string, rule: TaxonomyPlacement, targetIndex = node.rules.length): TaxonomyDraftNode {
   if (node.id === parentID) {
     const rules = [...node.rules]

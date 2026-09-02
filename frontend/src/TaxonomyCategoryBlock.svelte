@@ -18,6 +18,7 @@
   export let showChildren = false
   export let childContainer = ''
   export let childDropMode: DropZoneMode = 'inactive'
+  export let suppressChildDropZone = false
   export let onChildDragOver: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
   export let onChildDragLeave: (() => void) | undefined
   export let onChildDrop: ((state: DragDropState<TaxonomyDragPayload>) => void) | undefined
@@ -49,7 +50,7 @@
     </div>
     <div class="taxonomy-block-meta"><span>{predicateLabel}</span><strong>{predicate}</strong></div>
      {#if showRuleDropZone}<div class="taxonomy-category-rules"><span class="taxonomy-category-rules-label">Rules</span>{#if !suppressLegacyRuleDropZone && !readOnly}<DropZone variant="slot" mode={ruleDropMode} className="taxonomy-rule-drop-zone" container={ruleContainer} accepts={(state) => acceptsTaxonomyRuleDrop(state.draggedItem)} onDragOver={onRuleDragOver} onDragLeave={onRuleDragLeave} onDrop={onRuleDrop} ariaLabel={ruleDropLabel} />{/if}<slot name="rules" /></div>{/if}
-     {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span>{#if !readOnly}<DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => acceptsTaxonomyCategoryChildDrop(state.draggedItem, nodeId)} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} />{/if}<slot name="children" /></div>{/if}
+      {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span>{#if !suppressChildDropZone && !readOnly}<DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => acceptsTaxonomyCategoryChildDrop(state.draggedItem, nodeId)} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} />{/if}<slot name="children" /></div>{/if}
      <slot name="context" />
   {:else}
     <div class="taxonomy-block-body">
@@ -57,7 +58,7 @@
        <label>Node ID<input value={nodeId} readonly={readOnly} aria-label="Category node ID" on:input={(event) => onNodeIdChange(event.currentTarget.value)} /></label>
       <div class="taxonomy-block-rule"><span>{predicateLabel}</span><strong>{predicate}</strong></div>
          {#if showRuleDropZone}<div class="taxonomy-category-rules"><span class="taxonomy-category-rules-label">Rules</span>{#if !suppressLegacyRuleDropZone && !readOnly}<DropZone variant="slot" mode={ruleDropMode} className="taxonomy-rule-drop-zone" container={ruleContainer} accepts={(state) => acceptsTaxonomyRuleDrop(state.draggedItem)} onDragOver={onRuleDragOver} onDragLeave={onRuleDragLeave} onDrop={onRuleDrop} ariaLabel={ruleDropLabel} />{/if}<slot name="rules" /></div>{/if}
-        {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span>{#if !readOnly}<DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => acceptsTaxonomyCategoryChildDrop(state.draggedItem, nodeId)} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} />{/if}<slot name="children" /></div>{/if}
+         {#if showChildren}<div class="taxonomy-category-children"><span class="taxonomy-category-children-label">Child categories</span>{#if !suppressChildDropZone && !readOnly}<DropZone variant="gap" mode={childDropMode} className="taxonomy-child-drop-zone" container={childContainer} accepts={(state) => acceptsTaxonomyCategoryChildDrop(state.draggedItem, nodeId)} onDragOver={onChildDragOver} onDragLeave={onChildDragLeave} onDrop={onChildDrop} ariaLabel={addChildLabel} />{/if}<slot name="children" /></div>{/if}
          <slot name="context" />
     </div>
   {/if}

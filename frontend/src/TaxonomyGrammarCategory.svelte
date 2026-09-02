@@ -1,6 +1,7 @@
 <script lang="ts">
   import { type DragDropState } from '@thisux/sveltednd'
   import TaxonomyCategoryBlock from './TaxonomyCategoryBlock.svelte'
+  import TaxonomyCategoryChildren from './TaxonomyCategoryChildren.svelte'
   import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
   import DropZone from './DropZone.svelte'
   import { acceptsTaxonomyRuleDrop, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
@@ -8,7 +9,7 @@
   export let placement: TaxonomyPlacement
   export let draftNode: TaxonomyDraftNode | undefined
   export let parentContainer = ''
-  export let onChildDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string) => void = () => {}
+  export let onChildDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex?: number) => void = () => {}
   export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) => void = () => {}
   export let onRemove: (placementId: string) => void = () => {}
   export let onDragEnd: () => void = () => {}
@@ -17,14 +18,11 @@
   export let onNodeIdChange: (nodeID: string, newNodeID: string) => void = () => {}
   export let onRulePredicateChange: (ruleID: string, predicate: TaxonomyRulePredicate) => void = () => {}
   export let contextFields: string[] = []
-  export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string) => void = () => {}
+  export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) => void = () => {}
   export let readOnly = false
 
   $: nodeID = draftNode?.id ?? placement.nodeId ?? placement.id
   $: nodeContainer = draftNode ? taxonomyTargetContainer(draftNode.id) : ''
-  function acceptsContextDrop(state: DragDropState<TaxonomyDragPayload>) {
-    return state.draggedItem?.taxonomyType === 'category'
-  }
 </script>
 
 <TaxonomyCategoryBlock
@@ -40,8 +38,9 @@
   showRuleDropZone
   suppressLegacyRuleDropZone
   showChildren
+  suppressChildDropZone
   childContainer={nodeContainer}
-  onChildDrop={draftNode ? (state) => onChildDrop(state, draftNode.id) : undefined}
+  onChildDrop={draftNode ? (state, _parentID, targetIndex) => onChildDrop(state, draftNode.id, targetIndex) : undefined}
   {onDragEnd}
   onRemove={() => onRemove(placement.id)}
   onAttributes={() => { if (draftNode) onAttributes(draftNode.id) }}
@@ -56,14 +55,7 @@
           {#each contextFields as field}
             <div class="taxonomy-category-context-lane">
               <span class="taxonomy-grammar-kind">{field}</span>
-              {#if !readOnly}<DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={taxonomyTargetContainer(`${draftNode.id}:field:${field}`)} accepts={acceptsContextDrop} onDrop={(state) => onContextDrop(state, draftNode.id, field)} ariaLabel={`Drop a category on ${field} for ${draftNode.label}`} />{/if}
-              {#if draftNode}
-                {#each draftNode.children.filter((child) => child.targetId === field) as child (child.id)}
-                  {#if child.placements[0]}
-                    <svelte:self placement={child.placements[0]} draftNode={child} parentContainer={nodeContainer} {readOnly} {onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFields={child.targetId === 'family' ? ['group', 'uid'] : ['uid']} {onContextDrop} />
-                  {/if}
-                {/each}
-              {/if}
+              <TaxonomyCategoryChildren parent={draftNode} field={field} {readOnly} onContextDrop={onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
             </div>
           {/each}
         </div>
@@ -91,26 +83,7 @@
   </svelte:fragment>
   <svelte:fragment slot="children">
     {#if draftNode}
-      {#each draftNode.children.filter((child) => !contextFields.includes(child.targetId)) as child (child.id)}
-        {#if child.placements[0]}
-          <svelte:self
-            placement={child.placements[0]}
-            draftNode={child}
-            parentContainer={nodeContainer}
-            {readOnly}
-            {onChildDrop}
-            {onRuleDrop}
-            {onRemove}
-            {onDragEnd}
-            {onAttributes}
-            {onNodeLabelChange}
-            {onNodeIdChange}
-             {onRulePredicateChange}
-            contextFields={contextFields.length ? (child.targetId === 'family' ? ['group', 'uid'] : ['uid']) : []}
-            {onContextDrop}
-           />
-        {/if}
-      {/each}
+      <TaxonomyCategoryChildren parent={draftNode} excludedFields={contextFields} {readOnly} onDrop={onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onContextDrop} />
     {/if}
   </svelte:fragment>
 </TaxonomyCategoryBlock>

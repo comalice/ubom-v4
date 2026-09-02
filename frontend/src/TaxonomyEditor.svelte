@@ -5,7 +5,7 @@
   import SlideOut from './SlideOut.svelte'
   import TableFrame from './TableFrame.svelte'
   import TaxonomyAttributeTableRow from './TaxonomyAttributeTableRow.svelte'
-  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, moveTaxonomyDraftChild, moveTaxonomyDraftRule, removeTaxonomyAttribute, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
+  import { addTaxonomyAttribute, addTaxonomyDraftChild, addTaxonomyDraftRule, effectiveTaxonomyAttributes, findTaxonomyDraftNode, findTaxonomyDraftPath, flattenTaxonomyDraft, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyAttribute, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, replaceTaxonomyDraftPlacements, taxonomyAssignmentErrorKey, updateTaxonomyAttribute, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyAttributeValueType, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyEffectiveAttribute, type TaxonomyRulePredicate, type TaxonomyValidationError } from './TaxonomyEditorModel'
   import type { DragDropState } from '@thisux/sveltednd'
 
   export let grammar: TaxonomyGrammar
@@ -50,6 +50,10 @@
       updatePlacements([...placements.filter((placement) => placement.targetId !== targetId), ...next])
       return
     }
+    if (item.taxonomyType === 'category' && item.sourceNodeId) {
+      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, taxonomyDraft.id, targetId, targetIndex)
+      return
+    }
     const existing = placements.find((placement) => placement.id === item.placementId)
     if (!existing) return
     const sourceIndex = targetPlacements.findIndex((placement) => placement.id === item.placementId)
@@ -59,11 +63,11 @@
     updatePlacements([...placements.filter((placement) => placement.targetId !== existing.targetId && placement.targetId !== targetId), ...next])
   }
 
-  function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string) {
+  function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex?: number) {
     const item = state.draggedItem
     if (!item) return
     if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
-      taxonomyDraft = moveTaxonomyDraftChild(taxonomyDraft, item.sourceNodeId, parentID)
+      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, findTaxonomyDraftNode(taxonomyDraft, item.sourceNodeId)?.targetId ?? parentID, targetIndex)
     } else if (item.kind === 'palette' && item.taxonomyType === 'category') {
       const placement = newPlacement(item, parentID)
       taxonomyDraft = addTaxonomyDraftChild(taxonomyDraft, parentID, { id: placement.id, label: placement.label ?? placement.title, targetId: placement.targetId, placements: [placement], rules: [], children: [] })
@@ -83,6 +87,11 @@
   }
 
   function removePlacement(placementId: string) {
+    const categoryNode = findTaxonomyDraftNode(taxonomyDraft, placementId)
+    if (categoryNode?.placements.some((placement) => placement.id === placementId && placement.type === 'category')) {
+      taxonomyDraft = removeTaxonomyDraftCategorySubtree(taxonomyDraft, placementId)
+      return
+    }
     taxonomyDraft = removeTaxonomyDraftRule(taxonomyDraft, placementId)
     updatePlacements(placements.filter((placement) => placement.id !== placementId))
   }

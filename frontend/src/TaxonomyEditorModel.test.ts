@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, effectiveTaxonomyAttributes, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -240,6 +240,38 @@ describe('taxonomy draft editing', () => {
     const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children }
     expect(moveTaxonomyDraftChild(draft, 'three', 'root', 0).children.map(({ id }) => id)).toEqual(['three', 'one', 'two'])
     expect(moveTaxonomyDraftChild(draft, 'one', 'root', 3).children.map(({ id }) => id)).toEqual(['two', 'three', 'one'])
+  })
+
+  it('moves and retargets a category atomically while preserving identity and descendants', () => {
+    const source: TaxonomyDraftNode = {
+      id: 'source', label: 'Source', targetId: 'family',
+      placements: [{ id: 'source-placement', targetId: 'family', type: 'category', title: 'Source', summary: 'family = A', label: 'Source', nodeId: 'source', predicate: 'family = A', predicateData: { kind: 'exact', field: 'family', value: 'A' } }],
+      rules: [], children: [{ id: 'grandchild', label: 'Grandchild', targetId: 'group', placements: [], rules: [], children: [] }],
+    }
+    const destination: TaxonomyDraftNode = { id: 'destination', label: 'Destination', targetId: 'group', placements: [], rules: [], children: [] }
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [source, destination] }
+
+    const result = moveTaxonomyDraftCategory(draft, 'source', 'destination', 'uid', 0)
+    const moved = result.children[0].children[0]
+    expect(moved.id).toBe(source.id)
+    expect(moved.children[0]).toBe(source.children[0])
+    expect(moved.targetId).toBe('uid')
+    expect(moved.placements[0]).toMatchObject({ id: 'source-placement', targetId: 'uid', predicate: 'uid = A', predicateData: { field: 'uid', value: 'A' } })
+    expect(result.children[0].id).toBe(destination.id)
+    expect(draft.children).toEqual([source, destination])
+  })
+
+  it('rejects invalid atomic category moves without partial retargeting', () => {
+    const source: TaxonomyDraftNode = { id: 'source', label: 'Source', targetId: 'family', placements: [{ id: 'placement', targetId: 'family', type: 'category', title: 'Source', summary: 'family = A', predicate: 'family = A', predicateData: { kind: 'exact', field: 'family', value: 'A' } }], rules: [], children: [] }
+    const descendant: TaxonomyDraftNode = { id: 'descendant', label: 'Descendant', targetId: 'group', placements: [], rules: [], children: [] }
+    source.children = [descendant]
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [source] }
+
+    expect(moveTaxonomyDraftCategory(draft, 'source', 'descendant', 'uid', 0)).toBe(draft)
+    expect(moveTaxonomyDraftCategory(draft, 'missing', 'descendant', 'uid', 0)).toBe(draft)
+    expect(moveTaxonomyDraftCategory(draft, 'source', 'root', 'uid', 3)).toBe(draft)
+    expect(source.targetId).toBe('family')
+    expect(source.placements[0].predicate).toBe('family = A')
   })
 
   it('accepts palette, same-node, and cross-node existing rules, but rejects missing source context', () => {

@@ -3,7 +3,7 @@
   import DropZone from './DropZone.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
   import TaxonomyPalette from './TaxonomyPalette.svelte'
-  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftChild, moveTaxonomyDraftRule, removeTaxonomyDraftRule, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyCategoryChildDrop, addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, taxonomyTargetContainer, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   let placementNumber = 1
   let taxonomyDraft: TaxonomyDraftNode = {
@@ -40,35 +40,23 @@
   }
 
   function acceptsFieldDrop(state: DragDropState<TaxonomyDragPayload>) {
-    return state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'
+    return acceptsTaxonomyCategoryChildDrop(state.draggedItem, taxonomyDraft.id)
   }
 
-  function handleFieldDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string) {
+  function handleFieldDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) {
     const item = state.draggedItem
     if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, field)
     else if (item?.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) {
-      const moved = moveTaxonomyDraftChild(taxonomyDraft, item.sourceNodeId, parentID)
-      taxonomyDraft = updateCategoryTarget(moved, item.sourceNodeId, field)
+      taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, field, targetIndex)
       selectedNodeID = item.sourceNodeId
     }
   }
 
-  function updateCategoryTarget(node: TaxonomyDraftNode, nodeID: string, targetId: string): TaxonomyDraftNode {
-    if (node.id === nodeID) {
-      const placements = node.placements.map((placement) => placement.type === 'category'
-        ? { ...placement, targetId, predicate: `${targetId} = A`, predicateData: { kind: 'exact' as const, field: targetId, value: 'A' } }
-        : placement)
-      return { ...node, targetId, placements }
-    }
-    const children = node.children.map((child) => updateCategoryTarget(child, nodeID, targetId))
-    return children.some((child, index) => child !== node.children[index]) ? { ...node, children } : node
-  }
-
-  function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string) {
+  function handleChildDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex?: number) {
     const item = state.draggedItem
     if (!item) return
     if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, nextGrammarField(findTaxonomyDraftNode(taxonomyDraft, parentID)?.targetId ?? parentID))
-    else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftChild(taxonomyDraft, item.sourceNodeId, parentID)
+    else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, findTaxonomyDraftNode(taxonomyDraft, item.sourceNodeId)?.targetId ?? parentID, targetIndex)
   }
 
   function handleRuleDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) {
@@ -77,13 +65,6 @@
     if (!item || !parent) return
     if (item.kind === 'palette' && item.taxonomyType === 'rule') taxonomyDraft = addTaxonomyDraftRule(taxonomyDraft, parentID, newPlacement(item, parent.targetId), targetIndex)
     else if (item.kind === 'taxonomy' && item.taxonomyType === 'rule' && item.sourceNodeId) taxonomyDraft = moveTaxonomyDraftRule(taxonomyDraft, item.sourceNodeId, parentID, item.placementId, targetIndex)
-  }
-
-  function removeTaxonomyDraftCategorySubtree(node: TaxonomyDraftNode, placementID: string): TaxonomyDraftNode {
-    const children = node.children
-      .filter((child) => !child.placements.some((placement) => placement.type === 'category' && placement.id === placementID))
-      .map((child) => removeTaxonomyDraftCategorySubtree(child, placementID))
-    return children.length !== node.children.length || children.some((child, index) => child !== node.children[index]) ? { ...node, children } : node
   }
 
   function removePlacement(placementID: string) {

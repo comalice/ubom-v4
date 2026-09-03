@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import AsyncState from './AsyncState.svelte'
   import CatalogBrowser from './CatalogBrowser.svelte'
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
@@ -10,6 +11,7 @@
   import { catalogPath, type CatalogRouteState } from './routes'
 
   export let state: CatalogRouteState | undefined = undefined
+  export let navigate: (path: string) => void
 
   let definition: TaxonomyDefinitionView | null = null
   let node: TaxonomyNodeView | null = null
@@ -67,12 +69,26 @@
   }
 
   function scopedState(overrides: Partial<CatalogRouteState> = {}): CatalogRouteState {
-    return { ...state, ...overrides, taxonomyDef: definition?.id, filters }
+    return { ...state, ...overrides, taxonomyDef: definition?.id ?? state?.taxonomyDef, filters: overrides.filters ?? filters }
   }
 
   function categoryHref(id: string) {
-    return catalogPath(scopedState({ node: id }))
+    return catalogPath(scopedState({ node: id, page: undefined }))
   }
+
+  function handleCatalogLink(event: MouseEvent) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const link = (event.target as Element | null)?.closest('a')
+    const href = link?.getAttribute('href')
+    if (!href || !(/^\/catalog(?:[?#]|$)/.test(href))) return
+    event.preventDefault()
+    navigate(href)
+  }
+
+  onMount(() => {
+    document.addEventListener('click', handleCatalogLink)
+    return () => document.removeEventListener('click', handleCatalogLink)
+  })
 
   function breadcrumbs() {
     if (!node || !definition) return []
@@ -100,16 +116,16 @@
     if (values.length) nextFilters[attribute] = values
     else delete nextFilters[attribute]
     filters = nextFilters
-    load({ ...state, taxonomyDef: definition?.id, node: node?.id, q: query || undefined, filters: nextFilters })
+    navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, filters: nextFilters, page: undefined })))
   }
 
   function clearFilters() {
     filters = {}
-    load({ ...state, taxonomyDef: definition?.id, node: node?.id, q: query || undefined, filters: {} })
+    navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, filters: {}, page: undefined })))
   }
 
   function submitSearch() {
-    load({ ...state, taxonomyDef: definition?.id, node: node?.id, q: query || undefined, filters })
+    navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, page: undefined })))
   }
 </script>
 
@@ -144,7 +160,7 @@
     </svelte:fragment>
     <div class="catalog-main">
       <nav class="catalog-breadcrumbs" aria-label="Catalog scope">
-        <a href={catalogPath({ taxonomyDef: definition.id })}>Catalog</a>
+        <a href={catalogPath(scopedState({ node: undefined, page: undefined }))}>Catalog</a>
         {#each breadcrumbs() as crumb, index}<span aria-hidden="true">/</span>{#if crumb.href}<a href={crumb.href}>{crumb.label}</a>{:else}<strong aria-current="page">{crumb.label}</strong>{/if}{/each}
       </nav>
       <div class="catalog-main-heading"><div><p class="eyebrow">Category</p><h2>{node.label}</h2></div><span class="catalog-result-count">{total} {total === 1 ? 'part' : 'parts'}</span></div>

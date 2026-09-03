@@ -35,6 +35,20 @@ describe('sequence definition routes', () => {
     expect(parseCatalogRouteState(serializeCatalogRouteState(state))).toEqual(state)
     expect(catalogPath()).toBe('/catalog')
   })
+
+  it('serializes every catalog interaction state, including pagination and sorting', () => {
+    const state = {
+      taxonomyDef: 'components-v3',
+      node: 'resistors',
+      q: '10k',
+      filters: { material: ['Steel'] },
+      page: 3,
+      pageSize: 50,
+      sort: 'updatedAt',
+      order: 'desc' as const,
+    }
+    expect(parseCatalogRouteState(new URL(catalogPath(state), 'http://localhost').search)).toEqual(state)
+  })
   it('parses the list page', () => {
     expect(parseRoute('/settings/sequence-definitions')).toEqual({ kind: 'seq-def-list' })
   })

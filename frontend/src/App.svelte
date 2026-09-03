@@ -129,7 +129,7 @@
   {:else if route.kind === 'home'}
     <Home />
   {:else if route.kind === 'catalog'}
-    <Catalog state={route.state} />
+    <Catalog state={route.state} navigate={navigate} />
   {:else if route.kind === 'parts'}
     <PartLog />
   {:else if route.kind === 'artifacts'}

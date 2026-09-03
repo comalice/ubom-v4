@@ -3,6 +3,7 @@
   import FilterOptionList, { type FilterOption } from './FilterOptionList.svelte'
   import FilterRange from './FilterRange.svelte'
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
+  import CategoryTile from './CategoryTile.svelte'
 
   const shortOptions: FilterOption[] = [
     { label: 'Steel', count: 21, selected: true },
@@ -30,6 +31,22 @@
     { label: 'Pipe, Tubing, Hose & Fittings', count: 19 },
     { label: 'Raw Materials', count: 14 },
   ]
+
+  const tileGridItems = [
+    { title: 'Bolts', description: 'Machine bolts and structural fasteners.', image: 'IMG', partCount: 48 },
+    { title: 'Screws', description: 'Thread-forming and machine screws.', image: 'IMG', partCount: 82 },
+    { title: 'Nuts', description: 'Hex, lock, wing, and specialty nuts.', image: 'IMG', partCount: 35 },
+    { title: 'Washers', description: 'Spacers, shims, and load distribution.', partCount: 26 },
+    { title: 'Threaded Rod', description: 'Continuous-thread rod and studs.', partCount: 19 },
+    { title: 'Rivets', description: 'Permanent joining hardware.', partCount: 31 },
+    { title: 'Adhesives', description: 'Structural and general-purpose bonding.', partCount: 44 },
+    { title: 'Welding', description: 'Welding, brazing, and soldering supplies.', partCount: 57 },
+    { title: 'Clamps', description: 'Clamps for holding and joining parts.', partCount: 21 },
+  ]
+
+  let tileCount = 6
+  $: visibleTileItems = tileGridItems.slice(0, tileCount)
+  $: gridTileSize = tileCount <= 3 ? 'feature' : tileCount <= 6 ? 'standard' : 'compact'
 
 </script>
 
@@ -115,6 +132,47 @@
       </article>
     </div>
   </section>
+
+  <section class="catalog-components-group" aria-labelledby="category-tiles-heading">
+    <div class="catalog-components-group-heading">
+      <p class="mock-section-label">Catalog navigation</p>
+      <h3 id="category-tiles-heading">Category tiles</h3>
+      <p class="muted">A unified grid can vary tile density while keeping the image, title, description, and part count aligned.</p>
+    </div>
+    <div class="category-tile-grid category-tile-grid-compact">
+      <article class="catalog-component-card">
+        <p class="mock-section-label">Compact</p>
+        <h4>Small tile</h4>
+        <CategoryTile title="Bolts" size="compact" partCount={48} />
+      </article>
+      <article class="catalog-component-card">
+        <p class="mock-section-label">Standard</p>
+        <h4>Standard tile</h4>
+        <CategoryTile title="Threaded fasteners" description="Machine screws, studs, and related hardware." size="standard" image="IMG" partCount={126} />
+      </article>
+      <article class="catalog-component-card catalog-component-card-wide">
+        <p class="mock-section-label">Feature</p>
+        <h4>Large tile</h4>
+        <CategoryTile title="Measuring & Inspecting" description="Tools and instruments for checking dimensions, surfaces, and material properties." size="feature" image="IMG" partCount={314} />
+      </article>
+    </div>
+  </section>
+
+  <section class="catalog-components-group" aria-labelledby="category-tile-grid-heading">
+    <div class="catalog-components-group-heading catalog-tile-grid-heading">
+      <div>
+        <p class="mock-section-label">Catalog navigation</p>
+        <h3 id="category-tile-grid-heading">Category tile grid</h3>
+        <p class="muted">The grid changes tile density as the number of visible categories changes.</p>
+      </div>
+      <label>Tiles in grid<select bind:value={tileCount}><option value={3}>3</option><option value={6}>6</option><option value={9}>9</option></select></label>
+    </div>
+    <div class={`category-tile-grid category-tile-grid-${gridTileSize}`}>
+      {#each visibleTileItems as tile}
+        <CategoryTile title={tile.title} description={tile.description} image={tile.image} partCount={tile.partCount} size={gridTileSize} />
+      {/each}
+    </div>
+  </section>
 </section>
 
 <style>
@@ -129,5 +187,13 @@
   .catalog-component-card { min-width: 0; padding: 1rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .3rem; }
   .catalog-component-card-wide { grid-column: 1 / -1; }
   .catalog-component-card > .muted { margin: 0 0 1rem; font-size: .7rem; }
+  .category-tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .category-tile-grid-compact .catalog-component-card-wide { grid-column: 1 / -1; }
+  .catalog-tile-grid-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+  .catalog-tile-grid-heading label { display: grid; flex: none; gap: .3rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .catalog-tile-grid-heading select { min-width: 6rem; padding: .45rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .7rem ui-monospace, monospace; }
+  .category-tile-grid-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .category-tile-grid-feature { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 700px) { .catalog-component-layout { grid-template-columns: 1fr; } .catalog-component-card-wide { grid-column: auto; } }
+  @media (max-width: 700px) { .catalog-tile-grid-heading { align-items: start; flex-direction: column; } .category-tile-grid-compact, .category-tile-grid-feature { grid-template-columns: 1fr; } }
 </style>

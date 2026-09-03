@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDefHistory, getTaxonomyNodeByPath, previewSeqDefCandidate, previewSeqDefRoot, searchParts, type SeqDefNode } from './api'
+import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, previewSeqDefCandidate, previewSeqDefRoot, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -79,6 +79,33 @@ describe('taxonomy node API', () => {
   })
 })
 
+describe('catalog taxonomy API', () => {
+  it('fetches taxonomy summaries, the current taxonomy, a detail view, and a node', async () => {
+    const summary: TaxonomyDefSummary = { id: 'components-v3', definitionId: 'components', version: 3, seqDef: 'components-seq-v2', current: true }
+    const definition: TaxonomyDefinitionView = { ...summary, parentId: undefined, root: { id: 'components', label: 'Components' }, seqDef: summary.seqDef, current: true }
+    const node: TaxonomyNodeView = {
+      id: 'resistors', taxonomyDefId: summary.id, seqDefId: summary.seqDef, label: 'Resistors', path: [{ id: 'resistors', label: 'Resistors' }],
+      attributes: [], children: [], partNumbers: [],
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify([summary]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(definition), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(definition), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(node), { status: 200 }))
+
+    await expect(getTaxonomyDefs()).resolves.toEqual([summary])
+    await expect(getCurrentTaxonomyDef(summary.seqDef)).resolves.toEqual(definition)
+    await expect(getTaxonomyDef(summary.id)).resolves.toEqual(definition)
+    await expect(getTaxonomyNode(summary.id, node.id)).resolves.toEqual(node)
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/taxonomy-defs',
+      '/api/seq-defs/components-seq-v2/taxonomy',
+      '/api/taxonomy-defs/components-v3',
+      '/api/taxonomies/components-v3/nodes/resistors',
+    ])
+  })
+})
+
 describe('part search API', () => {
   it('encodes part-log filters and pagination', async () => {
     const result = { items: [], total: 0, page: 2, pageSize: 25 }
@@ -86,6 +113,18 @@ describe('part search API', () => {
 
     await expect(searchParts({ q: 'R-10', taxonomyNode: 'resistors', page: 2, pageSize: 25 })).resolves.toEqual(result)
     expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=R-10&taxonomyNode=resistors&page=2&pageSize=25')
+  })
+
+  it('serializes catalog state and repeated exact attribute filters', async () => {
+    const result = { items: [], total: 0, page: 3, pageSize: 50 }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }))
+
+    await expect(searchParts({
+      taxonomyDef: 'components/v3', node: 'resistors', q: '10k +',
+      filters: { tolerance: ['1%', '5%'], footprint: ['0603'] },
+      page: 3, pageSize: 50, sort: 'updatedAt', order: 'desc',
+    })).resolves.toEqual(result)
+    expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=10k+%2B&taxonomyNode=resistors&taxonomyDef=components%2Fv3&attribute=footprint%3D0603&attribute=tolerance%3D1%25&attribute=tolerance%3D5%25&page=3&pageSize=50&sort=updatedAt&order=desc')
   })
 })
 

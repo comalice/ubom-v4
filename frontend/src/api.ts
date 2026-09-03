@@ -1,4 +1,4 @@
-import { taxonomySlug } from './routes'
+import { taxonomySlug, type CatalogRouteState } from './routes'
 
 export type SeqDefNode = {
   kind: 'literal' | 'concat' | 'choice' | 'range_radix' | 'bind' | 'places' | 'range'
@@ -163,9 +163,26 @@ export async function getTaxonomyNodeByPath(taxonomyID: string, segments: string
 export const getPart = (value: string) => get<PartNumberView>(`/api/parts/by-value/${encodeURIComponent(value)}`)
 
 export const getParts = () => get<PartListItem[]>('/api/parts')
-export async function searchParts(options: { q?: string; taxonomyNode?: string; taxonomyDef?: string; page?: number; pageSize?: number } = {}) {
+export type PartSearchOptions = CatalogRouteState & {
+  /** Legacy name retained for existing part-log callers. */
+  taxonomyNode?: string
+}
+
+export async function searchParts(options: PartSearchOptions = {}) {
   const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(options)) if (value) params.set(key, String(value))
+  if (options.q) params.set('q', options.q)
+  const taxonomyNode = options.taxonomyNode ?? options.node
+  if (taxonomyNode) params.set('taxonomyNode', taxonomyNode)
+  if (options.taxonomyDef) params.set('taxonomyDef', options.taxonomyDef)
+  for (const attributeID of Object.keys(options.filters ?? {}).sort()) {
+    for (const value of options.filters?.[attributeID] ?? []) {
+      if (value) params.append('attribute', `${attributeID}=${value}`)
+    }
+  }
+  if (options.page) params.set('page', String(options.page))
+  if (options.pageSize) params.set('pageSize', String(options.pageSize))
+  if (options.sort) params.set('sort', options.sort)
+  if (options.order) params.set('order', options.order)
   return get<PartSearchResult>(`/api/parts?${params.toString()}`)
 }
 

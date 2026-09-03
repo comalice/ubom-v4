@@ -1,6 +1,6 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'catalog-components' | 'catalog'
+  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'catalog-components' | 'catalog' | 'part-views'
   import CoreComponentsPlayground from './CoreComponentsPlayground.svelte'
   import HtmlPrimitivesPlayground from './HtmlPrimitivesPlayground.svelte'
   import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
@@ -11,6 +11,7 @@
   import TaxonomyEditorComponentsPlayground from './TaxonomyEditorComponentsPlayground.svelte'
   import CatalogComponentsPlayground from './CatalogComponentsPlayground.svelte'
   import CatalogPlayground from './CatalogPlayground.svelte'
+  import PartViewsPlayground from './PartViewsPlayground.svelte'
 
   const links = [
     { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
@@ -23,6 +24,7 @@
     { label: 'Taxonomy editor', path: '/playground/taxonomy-editor', page: 'taxonomy-editor' as const },
     { label: 'Catalog components', path: '/playground/catalog-components', page: 'catalog-components' as const },
     { label: 'Catalog mock', path: '/playground/catalog', page: 'catalog' as const },
+    { label: 'Part views', path: '/playground/part-views', page: 'part-views' as const },
   ]
 </script>
 
@@ -59,6 +61,8 @@
       <CatalogComponentsPlayground />
     {:else if page === 'catalog'}
       <CatalogPlayground />
+    {:else if page === 'part-views'}
+      <PartViewsPlayground />
     {/if}
   </main>
 </div>

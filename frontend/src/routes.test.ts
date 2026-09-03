@@ -56,4 +56,8 @@ describe('playground routes', () => {
     expect(parseRoute('/playground/catalog-components')).toEqual({ kind: 'playground', page: 'catalog-components' })
     expect(parseRoute('/playground/catalog')).toEqual({ kind: 'playground', page: 'catalog' })
   })
+
+  it('parses the part views playground page', () => {
+    expect(parseRoute('/playground/part-views')).toEqual({ kind: 'playground', page: 'part-views' })
+  })
 })

@@ -14,7 +14,7 @@ export type Route =
   | { kind: 'taxonomy-list' }
   | { kind: 'taxonomy-new'; seqDef?: string }
   | { kind: 'taxonomy-detail'; id: string }
-  | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'catalog-components' | 'catalog' }
+  | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'catalog-components' | 'catalog' | 'part-views' }
   | { kind: 'not-found' }
 
 export function parseRoute(pathname?: string): Route {
@@ -45,6 +45,7 @@ export function parseRoute(pathname?: string): Route {
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'html-primitives') return { kind: 'playground', page: 'html-primitives' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'catalog-components') return { kind: 'playground', page: 'catalog-components' }
   if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'catalog') return { kind: 'playground', page: 'catalog' }
+  if (parts.length === 2 && parts[0] === 'playground' && parts[1] === 'part-views') return { kind: 'playground', page: 'part-views' }
   if (parts.length === 1 && parts[0] === 'playground') return { kind: 'playground', page: 'dnd-ops' }
   if (parts.length === 2 && parts[0] === 'artifacts') return { kind: 'artifact', id: parts[1] }
   if (parts.length >= 2 && parts[0] === 'parts') {

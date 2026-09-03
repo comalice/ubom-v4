@@ -1,6 +1,6 @@
 <script lang="ts">
   export let navigate: (path: string) => void
-  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor'
+  export let page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'catalog-components' | 'catalog'
   import CoreComponentsPlayground from './CoreComponentsPlayground.svelte'
   import HtmlPrimitivesPlayground from './HtmlPrimitivesPlayground.svelte'
   import BlockExamplesPlayground from './BlockExamplesPlayground.svelte'
@@ -9,6 +9,8 @@
   import GrammarEditorPlayground from './GrammarEditorPlayground.svelte'
   import TaxonomyEditorPlayground from './TaxonomyEditorPlayground.svelte'
   import TaxonomyEditorComponentsPlayground from './TaxonomyEditorComponentsPlayground.svelte'
+  import CatalogComponentsPlayground from './CatalogComponentsPlayground.svelte'
+  import CatalogPlayground from './CatalogPlayground.svelte'
 
   const links = [
     { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
@@ -19,6 +21,8 @@
     { label: 'Taxonomy editor components', path: '/playground/taxonomy-editor-components', page: 'taxonomy-editor-components' as const },
     { label: 'Grammar editor', path: '/playground/grammar-editor', page: 'grammar-editor' as const },
     { label: 'Taxonomy editor', path: '/playground/taxonomy-editor', page: 'taxonomy-editor' as const },
+    { label: 'Catalog components', path: '/playground/catalog-components', page: 'catalog-components' as const },
+    { label: 'Catalog mock', path: '/playground/catalog', page: 'catalog' as const },
   ]
 </script>
 
@@ -51,6 +55,10 @@
       <GrammarEditorPlayground />
     {:else if page === 'taxonomy-editor'}
       <TaxonomyEditorPlayground />
+    {:else if page === 'catalog-components'}
+      <CatalogComponentsPlayground />
+    {:else if page === 'catalog'}
+      <CatalogPlayground />
     {/if}
   </main>
 </div>

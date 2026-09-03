@@ -51,4 +51,9 @@ describe('playground routes', () => {
   it('parses the taxonomy editor components page', () => {
     expect(parseRoute('/playground/taxonomy-editor-components')).toEqual({ kind: 'playground', page: 'taxonomy-editor-components' })
   })
+
+  it('parses the catalog playground pages', () => {
+    expect(parseRoute('/playground/catalog-components')).toEqual({ kind: 'playground', page: 'catalog-components' })
+    expect(parseRoute('/playground/catalog')).toEqual({ kind: 'playground', page: 'catalog' })
+  })
 })

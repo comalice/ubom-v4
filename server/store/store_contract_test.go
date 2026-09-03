@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"os"
 	"reflect"
 	"testing"
 
@@ -36,6 +37,16 @@ func TestStoreContract(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			runStoreContract(t, test.build(t))
+		})
+	}
+	if dsn := os.Getenv("UBOM_DATABASE_URL"); dsn != "" {
+		t.Run("postgres", func(t *testing.T) {
+			persistence, err := OpenPostgresStore(dsn)
+			if err != nil {
+				t.Fatalf("OpenPostgresStore() error = %v", err)
+			}
+			t.Cleanup(func() { persistence.Close() })
+			runStoreContract(t, persistence)
 		})
 	}
 }

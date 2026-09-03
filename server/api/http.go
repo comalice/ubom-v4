@@ -16,6 +16,7 @@ import (
 type Server struct {
 	service         *app.Service
 	snapshotService *app.SnapshotService
+	readiness       func() error
 }
 
 func NewServer(service *app.Service) *Server {
@@ -28,6 +29,8 @@ func NewServerWithSnapshotService(service *app.Service, snapshotService *app.Sna
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", s.handleHealth)
+	mux.HandleFunc("/readyz", s.handleReady)
 	mux.HandleFunc("/api/parts", s.handlePartNumbers)
 	mux.HandleFunc("/api/seq-defs", s.handleSeqDefs)
 	mux.HandleFunc("/api/seq-defs/preview", s.handleUnsavedSeqDefPreview)
@@ -53,6 +56,24 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/artifacts/", s.handleArtifact)
 	return mux
 }
+
+func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleReady(w http.ResponseWriter, _ *http.Request) {
+	if s.readiness != nil {
+		if err := s.readiness(); err != nil {
+			writeError(w, http.StatusServiceUnavailable, "database is not ready")
+			return
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// SetReadiness adds an optional dependency check without coupling the API to a
+// particular persistence implementation.
+func (s *Server) SetReadiness(check func() error) { s.readiness = check }
 
 func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

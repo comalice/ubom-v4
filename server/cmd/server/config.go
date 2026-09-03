@@ -20,6 +20,7 @@ type HTTPConfig struct {
 
 type DatabaseConfig struct {
 	Path string
+	DSN  string
 }
 
 type ArtifactConfig struct {

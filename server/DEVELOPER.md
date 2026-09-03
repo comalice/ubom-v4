@@ -9,6 +9,8 @@ The executable composes the top-level configuration:
 Config
   HTTP
   Database
+    DSN
+    Path
   Artifacts
     SnapshotRoot
     LocalSource
@@ -50,10 +52,15 @@ an invalid startup configuration.
 ## Command-Line Flags
 
 - `-listen`: HTTP listen address. Defaults to `127.0.0.1:8080`.
-- `-db`: SQLite database path. Empty uses the in-memory sample.
+- `-database-url`: Postgres connection URL. Defaults to `UBOM_DATABASE_URL` when set.
+- `-db`: SQLite database path. Used when no Postgres URL is configured; empty uses the in-memory sample.
 - `-artifact-snapshot-root`: filesystem root for retained snapshot content.
 - `-local-source-id`: existing local artifact source ID.
 - `-local-source-root`: filesystem root exposed by that source.
 
 Do not add source-specific connection details to domain types. Add them to the
 configuration for the relevant adapter instead.
+
+The API exposes `/healthz` for process health and `/readyz` for database
+readiness. Postgres-backed startup runs embedded, versioned migrations before
+the listener is opened. SQLite remains the local-development option.

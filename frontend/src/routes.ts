@@ -1,5 +1,6 @@
 export type Route =
   | { kind: 'home' }
+  | { kind: 'catalog'; state?: CatalogRouteState }
   | { kind: 'parts' }
   | { kind: 'artifacts' }
   | { kind: 'artifact'; id: string }
@@ -17,11 +18,81 @@ export type Route =
   | { kind: 'playground'; page: 'core-components' | 'html-primitives' | 'dnd-ops' | 'block-examples' | 'grammar-blocks' | 'taxonomy-editor-components' | 'grammar-editor' | 'taxonomy-editor' | 'catalog-components' | 'catalog' | 'part-views' }
   | { kind: 'not-found' }
 
+export type CatalogRouteState = {
+  taxonomyDef?: string
+  node?: string
+  q?: string
+  filters?: Record<string, string[]>
+  page?: number
+  pageSize?: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+const catalogDefaults = {
+  page: 1,
+  pageSize: 25,
+  sort: 'value',
+  order: 'asc' as const,
+}
+
+const positiveInteger = (value: string | null, fallback: number) => {
+  if (!value || !/^\d+$/.test(value)) return fallback
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+export function parseCatalogRouteState(search: string | URLSearchParams): CatalogRouteState {
+  const params = typeof search === 'string' ? new URLSearchParams(search) : search
+  const filters: Record<string, string[]> = {}
+  for (const [key, value] of params) {
+    if (key.startsWith('filter.') && key.length > 'filter.'.length && value) {
+      const attribute = key.slice('filter.'.length)
+      filters[attribute] = [...new Set([...(filters[attribute] ?? []), value])].sort()
+    }
+  }
+
+  const page = positiveInteger(params.get('page'), catalogDefaults.page)
+  const pageSize = positiveInteger(params.get('pageSize'), catalogDefaults.pageSize)
+  const order = params.get('order') === 'desc' ? 'desc' : catalogDefaults.order
+  const sort = params.get('sort') || catalogDefaults.sort
+  return {
+    ...(params.get('taxonomyDef') ? { taxonomyDef: params.get('taxonomyDef')! } : {}),
+    ...(params.get('node') ? { node: params.get('node')! } : {}),
+    ...(params.get('q') ? { q: params.get('q')! } : {}),
+    ...(Object.keys(filters).length ? { filters } : {}),
+    ...(page !== catalogDefaults.page ? { page } : {}),
+    ...(pageSize !== catalogDefaults.pageSize ? { pageSize } : {}),
+    ...(sort !== catalogDefaults.sort ? { sort } : {}),
+    ...(order !== catalogDefaults.order ? { order } : {}),
+  }
+}
+
+export function serializeCatalogRouteState(state: CatalogRouteState = {}): string {
+  const params = new URLSearchParams()
+  if (state.taxonomyDef) params.set('taxonomyDef', state.taxonomyDef)
+  if (state.node) params.set('node', state.node)
+  if (state.q) params.set('q', state.q)
+  for (const key of Object.keys(state.filters ?? {}).sort()) {
+    if (!key) continue
+    for (const value of [...new Set(state.filters?.[key] ?? [])].filter(Boolean).sort()) params.append(`filter.${key}`, value)
+  }
+  if (state.page && state.page !== catalogDefaults.page) params.set('page', String(state.page))
+  if (state.pageSize && state.pageSize !== catalogDefaults.pageSize) params.set('pageSize', String(state.pageSize))
+  if (state.sort && state.sort !== catalogDefaults.sort) params.set('sort', state.sort)
+  if (state.order && state.order !== catalogDefaults.order) params.set('order', state.order)
+  return params.toString()
+}
+
 export function parseRoute(pathname?: string): Route {
   const currentPath = pathname ?? (typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/')
   const url = new URL(currentPath, 'http://localhost')
   const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
   if (parts.length === 0) return { kind: 'home' }
+  if (parts.length === 1 && parts[0] === 'catalog') {
+    const state = parseCatalogRouteState(url.searchParams)
+    return Object.keys(state).length ? { kind: 'catalog', state } : { kind: 'catalog' }
+  }
   if (parts.length === 1 && parts[0] === 'parts') return { kind: 'parts' }
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
   if (parts.length === 1 && parts[0] === 'settings') return { kind: 'settings' }
@@ -65,6 +136,11 @@ export const taxonomySlug = (label: string) =>
 export const taxonomyPath = (labels: string[], seqDef?: string) => {
   const path = `/parts/${labels.map(taxonomySlug).map(encodeURIComponent).join('/')}`
   return seqDef ? `${path}?seqDef=${encodeURIComponent(seqDef)}` : path
+}
+
+export const catalogPath = (state?: CatalogRouteState) => {
+  const query = serializeCatalogRouteState(state)
+  return query ? `/catalog?${query}` : '/catalog'
 }
 
 export const partPath = (value: string) => `/part/${encodeURIComponent(value)}`

@@ -19,6 +19,7 @@
   import Playground from './Playground.svelte'
   import TaxonomyCardGrid from './TaxonomyCardGrid.svelte'
   import Home from './Home.svelte'
+  import Catalog from './Catalog.svelte'
   import PartLog from './PartLog.svelte'
   import { getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, searchParts, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
@@ -35,7 +36,9 @@
   let error = ''
   let loading = true
 
-  $: breadcrumbs = route.kind === 'parts'
+  $: breadcrumbs = route.kind === 'catalog'
+    ? [{ label: 'Catalog' }]
+    : route.kind === 'parts'
     ? [{ label: 'Parts' }]
     : route.kind === 'artifacts'
       ? [{ label: 'Artifacts' }]
@@ -81,7 +84,7 @@
     error = ''
     loading = true
     try {
-      if (route.kind === 'parts' || route.kind === 'home') return
+      if (route.kind === 'parts' || route.kind === 'home' || route.kind === 'catalog') return
       else if (route.kind === 'artifacts') [artifacts, sources] = await Promise.all([getArtifacts(), getSources()])
       else if (route.kind === 'artifact') [artifact, snapshots] = await Promise.all([getArtifact(route.id), getSnapshots(route.id)])
       else if (route.kind === 'taxonomy') {
@@ -117,7 +120,7 @@
   })
 </script>
 
-<Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts'}>
+<Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts' || route.kind === 'catalog'}>
   <Breadcrumbs items={breadcrumbs} />
   {#if loading}
     <AsyncState state="loading" message="Loading..." />
@@ -125,6 +128,8 @@
     <AsyncState state="error" message={error} />
   {:else if route.kind === 'home'}
     <Home />
+  {:else if route.kind === 'catalog'}
+    <Catalog state={route.state} />
   {:else if route.kind === 'parts'}
     <PartLog />
   {:else if route.kind === 'artifacts'}

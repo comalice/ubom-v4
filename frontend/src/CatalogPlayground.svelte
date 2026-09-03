@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CatalogBrowser from './CatalogBrowser.svelte'
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
   import CategoryTileGrid from './CategoryTileGrid.svelte'
   import FilterOptionList, { type FilterOption } from './FilterOptionList.svelte'
@@ -87,18 +88,10 @@
   ]
 </script>
 
-<section class="catalog-playground" aria-labelledby="catalog-heading">
-  <div class="catalog-masthead">
-    <div>
-      <p class="eyebrow">Catalog</p>
-      <h1 id="catalog-heading">Browse parts</h1>
-      <p class="muted">Navigate by category, then narrow the current scope with relevant attributes.</p>
-    </div>
-    <label class="catalog-search">Search parts<input placeholder="Part number or description" /></label>
-  </div>
-
-  <div class="catalog-playground-frame">
-    <aside class="catalog-panel" aria-label="Catalog navigation and filters">
+<CatalogBrowser title="Browse parts" subtitle="Navigate by category, then narrow the current scope with relevant attributes.">
+  <label class="catalog-search" slot="search">Search parts<input placeholder="Part number or description" /></label>
+  <svelte:fragment slot="sidebar">
+    <div class="catalog-panel-content">
       <section class="catalog-panel-section" aria-labelledby="catalog-categories-heading">
         <p class="catalog-panel-kicker">Browse catalog</p>
         <h2 id="catalog-categories-heading">Categories</h2>
@@ -116,9 +109,10 @@
           <FilterRange unit="mm" minimum={diameterMinimum} maximum={diameterMaximum} onChange={updateDiameter} />
         </FilterWidget>
       </section>
-    </aside>
+    </div>
 
-    <main class="catalog-main" aria-label="Catalog content">
+  </svelte:fragment>
+    <div class="catalog-main">
       <div class="catalog-breadcrumbs"><span>Home</span><span aria-hidden="true">/</span><strong>Fastening &amp; Joining</strong></div>
       <div class="catalog-main-heading"><div><p class="eyebrow">Category</p><h2>Fastening &amp; Joining</h2></div><span class="catalog-result-count">67 parts</span></div>
       {#if activeFilterLabels.length > 0}
@@ -140,27 +134,20 @@
         <div class="catalog-section-heading"><h3 id="catalog-parts-heading">Parts in this category</h3><span>2 shown</span></div>
         <PartTable {parts} columns={[{ id: 'material', label: 'Material' }]} seqDef="part-number-v1" />
       </section>
-    </main>
-  </div>
-</section>
+    </div>
+</CatalogBrowser>
 
 <style>
-  .catalog-playground { min-width: 0; }
-  .catalog-masthead { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.5rem; }
-  .catalog-masthead h1 { margin-bottom: .35rem; }
-  .catalog-masthead p { margin: 0; font-size: .75rem; }
   .catalog-search { display: grid; flex: 0 1 20rem; gap: .3rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
   .catalog-search input { min-width: 0; padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
   .catalog-search input:focus { border-color: var(--accent); outline: none; }
-  .catalog-playground-frame { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; }
-  .catalog-panel { align-self: start; background: var(--surface); border: 1px solid var(--hairline); }
+  .catalog-panel-content { min-width: 0; }
   .catalog-panel-section { padding: 1rem; }
   .catalog-panel-section + .catalog-panel-section { border-top: 1px solid var(--hairline); }
   .catalog-panel-kicker { margin: 0 0 .35rem; color: var(--accent); font: 600 .65rem ui-monospace, monospace; letter-spacing: .1em; text-transform: uppercase; }
-  .catalog-panel h2 { margin: 0 0 .7rem; font: 400 1.15rem Georgia, serif; }
+  .catalog-panel-content h2 { margin: 0 0 .7rem; font: 400 1.15rem Georgia, serif; }
   .catalog-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
   .catalog-panel-heading button { padding: 0; color: var(--accent); background: none; border: 0; cursor: pointer; font: .62rem ui-monospace, monospace; }
-  .catalog-main { min-width: 0; }
   .catalog-breadcrumbs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; color: var(--muted); font-size: .7rem; }
   .catalog-main-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .catalog-main-heading h2 { margin: .2rem 0 0; font: 400 1.6rem Georgia, serif; }
@@ -173,6 +160,5 @@
   .catalog-category-section, .catalog-parts-section { margin-top: 1.75rem; }
   .catalog-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; padding-bottom: .4rem; border-bottom: 1px solid var(--hairline); }
   .catalog-section-heading h3 { margin: 0; font: 400 1.1rem Georgia, serif; }
-  @media (max-width: 900px) { .catalog-playground-frame { grid-template-columns: 13rem minmax(0, 1fr); gap: 1rem; } }
-  @media (max-width: 700px) { .catalog-masthead { align-items: stretch; flex-direction: column; } .catalog-search { max-width: none; } .catalog-playground-frame { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .catalog-search { max-width: none; } }
 </style>

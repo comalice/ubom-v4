@@ -20,18 +20,19 @@ describe('sequence definition routes', () => {
         q: '10k +',
         filters: { resistance: ['10k'], tolerance: ['1%'] },
         page: 2,
-        pageSize: 50,
         sort: 'updatedAt',
         order: 'desc',
       },
     })
-    expect(parseCatalogRouteState('?page=1&pageSize=25&sort=value&order=asc')).toEqual({})
+    expect(parseCatalogRouteState('?page=1&pageSize=50&sort=value&order=asc')).toEqual({})
+    expect(parseCatalogRouteState('?page=1&pageSize=25&sort=value&order=asc')).toEqual({ pageSize: 25 })
   })
 
   it('serializes catalog state deterministically and preserves it on a round trip', () => {
     const state = { taxonomyDef: 'components-v3', filters: { material: ['Aluminum', 'Steel'], tolerance: ['1%'], resistance: ['10k'] }, q: '10k +', page: 2, order: 'desc' as const }
     expect(serializeCatalogRouteState(state)).toBe('taxonomyDef=components-v3&q=10k+%2B&filter.material=Aluminum&filter.material=Steel&filter.resistance=10k&filter.tolerance=1%25&page=2&order=desc')
     expect(catalogPath(state)).toBe('/catalog?taxonomyDef=components-v3&q=10k+%2B&filter.material=Aluminum&filter.material=Steel&filter.resistance=10k&filter.tolerance=1%25&page=2&order=desc')
+    expect(serializeCatalogRouteState({ pageSize: 50 })).toBe('')
     expect(parseCatalogRouteState(serializeCatalogRouteState(state))).toEqual(state)
     expect(catalogPath()).toBe('/catalog')
   })
@@ -43,7 +44,7 @@ describe('sequence definition routes', () => {
       q: '10k',
       filters: { material: ['Steel'] },
       page: 3,
-      pageSize: 50,
+      pageSize: 25,
       sort: 'updatedAt',
       order: 'desc' as const,
     }

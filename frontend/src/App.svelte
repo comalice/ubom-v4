@@ -93,7 +93,7 @@
         if (!taxonomySeqDef) throw new Error('No current taxonomy is available')
         const currentTaxonomy = await getCurrentTaxonomyDef(taxonomySeqDef)
         taxonomy = await getTaxonomyNodeByPath(currentTaxonomy.id, route.segments)
-        const matching = await searchParts({ taxonomyDef: currentTaxonomy.id, taxonomyNode: taxonomy.id, pageSize: 50 })
+        const matching = await searchParts({ taxonomyDef: currentTaxonomy.id, taxonomyNode: taxonomy.id })
         taxonomy = { ...taxonomy, partNumbers: matching.items }
       }
       else if (route.kind === 'part') part = await getPart(route.id)

@@ -31,7 +31,7 @@ export type CatalogRouteState = {
 
 const catalogDefaults = {
   page: 1,
-  pageSize: 25,
+  pageSize: 50,
   sort: 'value',
   order: 'asc' as const,
 }

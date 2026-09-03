@@ -674,6 +674,22 @@ func TestPartNumberSearchPagination(t *testing.T) {
 	}
 }
 
+func TestPartNumberSearchDefaultsPageSizeToFifty(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?q=PN", nil))
+	if recording.Code != http.StatusOK {
+		t.Fatalf("search status = %d; body = %s", recording.Code, recording.Body)
+	}
+	var result app.PartSearchResult
+	if err := json.NewDecoder(recording.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Page != 1 || result.PageSize != 50 {
+		t.Fatalf("search result pagination = page %d, page size %d; want page 1, page size 50", result.Page, result.PageSize)
+	}
+}
+
 type ubomDraftResponse struct {
 	ID string `json:"id"`
 }

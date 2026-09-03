@@ -22,6 +22,7 @@
         <th scope="col">PN</th>
         <th scope="col">Description</th>
         <th scope="col">Taxonomy path</th>
+        <th scope="col">Status</th>
         {#each columns as column}
           <th scope="col">{column.label}{#if column.unit} ({column.unit}){/if}</th>
         {/each}
@@ -39,6 +40,7 @@
               <PrimitiveLink href={taxonomyPath(part.taxonomyPath.slice(0, index + 1), seqDef)}>{label}</PrimitiveLink>
             {/each}
           </td>
+          <td>{part.status ?? 'released'}</td>
           {#each columns as column}
             {@const attribute = attributeValue(part, column.id)}
             <td>{attribute?.value ?? '—'}</td>

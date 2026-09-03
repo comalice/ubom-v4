@@ -1,4 +1,5 @@
 export type Route =
+  | { kind: 'home' }
   | { kind: 'parts' }
   | { kind: 'artifacts' }
   | { kind: 'artifact'; id: string }
@@ -20,6 +21,7 @@ export function parseRoute(pathname?: string): Route {
   const currentPath = pathname ?? (typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/')
   const url = new URL(currentPath, 'http://localhost')
   const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
+  if (parts.length === 0) return { kind: 'home' }
   if (parts.length === 1 && parts[0] === 'parts') return { kind: 'parts' }
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
   if (parts.length === 1 && parts[0] === 'settings') return { kind: 'settings' }

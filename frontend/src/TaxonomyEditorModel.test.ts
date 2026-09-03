@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -22,6 +22,12 @@ describe('effectiveTaxonomyAttributes', () => {
       { ...definitions[0], required: false, source: 'Resistors', overridden: true },
       { ...definitions[1], required: true, source: 'Resistors', overridden: false },
     ])
+  })
+
+  it('resolves the root node for attribute editing', () => {
+    const root: TaxonomyDraftNode = { id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [] }
+
+    expect(findTaxonomyDraftNode(root, 'root')).toBe(root)
   })
 })
 

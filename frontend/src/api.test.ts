@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDefHistory, getTaxonomyNodeByPath, previewSeqDefCandidate, previewSeqDefRoot, type SeqDefNode } from './api'
+import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDefHistory, getTaxonomyNodeByPath, previewSeqDefCandidate, previewSeqDefRoot, searchParts, type SeqDefNode } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -76,6 +76,16 @@ describe('taxonomy node API', () => {
       '/api/taxonomies/electronics-taxonomy-v3/nodes/components',
       '/api/taxonomies/electronics-taxonomy-v3/nodes/resistors',
     ])
+  })
+})
+
+describe('part search API', () => {
+  it('encodes part-log filters and pagination', async () => {
+    const result = { items: [], total: 0, page: 2, pageSize: 25 }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }))
+
+    await expect(searchParts({ q: 'R-10', taxonomyNode: 'resistors', page: 2, pageSize: 25 })).resolves.toEqual(result)
+    expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=R-10&taxonomyNode=resistors&page=2&pageSize=25')
   })
 })
 

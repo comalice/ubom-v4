@@ -69,7 +69,8 @@
       taxonomyDraft = addTaxonomyAttribute(taxonomyDraft, attributesNodeID, { attributeDefId: available.id, required: false })
       return
     }
-    const id = `attribute-${attributeNumber++}`
+    let id = `attribute-${attributeNumber++}`
+    while (attributeDefinitions.some((definition) => definition.id === id)) id = `attribute-${attributeNumber++}`
     attributeDefinitions = [...attributeDefinitions, { id, label: 'New attribute', valueType: 'string' }]
     taxonomyDraft = addTaxonomyAttribute(taxonomyDraft, attributesNodeID, { attributeDefId: id, required: false })
   }

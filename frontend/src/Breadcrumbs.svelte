@@ -12,7 +12,7 @@
 </script>
 
 <nav class="breadcrumbs" aria-label="Breadcrumb">
-  <PrimitiveLink variant="muted" href="/parts">Home</PrimitiveLink>
+  <PrimitiveLink variant="muted" href="/">Home</PrimitiveLink>
   {#each items as item, index}
     <span class="breadcrumb-separator" aria-hidden="true">/</span>
     {#if item.href && index < items.length - 1}

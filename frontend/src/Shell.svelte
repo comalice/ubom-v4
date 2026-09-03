@@ -9,7 +9,7 @@
 
 <header class="site-header">
   <div class="header-inner">
-    <PrimitiveLink className="brand" href="/parts">UBOM</PrimitiveLink>
+    <PrimitiveLink className="brand" href="/">UBOM</PrimitiveLink>
     <span class="header-caption">Parts and bills of material</span>
     <PrimitiveLink className="header-artifacts" href="/artifacts">Artifacts</PrimitiveLink>
     <PrimitiveLink className="header-settings" href="/settings">Settings</PrimitiveLink>

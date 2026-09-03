@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { createPartDraft, getSeqDefFields, previewPartDraft, releasePartDraft, updatePartDraft, type SeqDefField, type TaxonomyNodeView } from './api'
+  import { createPartDraft, getSeqDefFields, previewPartDraft, releasePartDraft, updatePartDraft, type PartNumberDraftPreview, type SeqDefField, type TaxonomyNodeView } from './api'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import SelectInput from './SelectInput.svelte'
   import TextInput from './TextInput.svelte'
@@ -10,7 +10,7 @@
   let bindings: Record<string, string> = {}
   let attributes: Record<string, string> = {}
   let draftID = ''
-  let preview: { complete: boolean; value?: string; error?: string } | null = null
+  let preview: PartNumberDraftPreview | null = null
   let error = ''
   let saving = false
 
@@ -36,6 +36,7 @@
       }
       await updatePartDraft(draftID, bindings, Object.entries(attributes).filter(([, value]) => value !== '').map(([attributeDefId, value]) => ({ attributeDefId, value })))
       preview = await previewPartDraft(draftID)
+      if (preview.suggestedBindings) bindings = { ...bindings, ...preview.suggestedBindings }
     } catch (reason) { error = reason instanceof Error ? reason.message : 'Unable to preview draft' }
     finally { saving = false }
   }
@@ -57,20 +58,26 @@
   <h2 id="authoring-heading">Create from {taxonomy.label}</h2>
   <p class="muted">Choose the known segments. The suggested number is not reserved until release.</p>
   <form on:submit|preventDefault={saveDraft}>
-    {#each fields as field, index}
+    <details open={fields.length > 0} class="authoring-section">
+      <summary>Sequence bindings <span class="muted">{fields.length} known</span></summary>
+      {#each fields as field, index}
       {@const id = inputId('field', field.name, index)}
         {#if field.kind === 'choice'}
           <SelectInput {id} name={field.name} label={field.name} placeholder="Choose..." options={(field.options ?? []).map(option => ({ value: option, label: option }))} bind:value={bindings[field.name]} />
         {:else}
           <TextInput {id} name={field.name} label={field.name} placeholder={field.kind === 'range' ? `1-${field.max ?? ''}` : 'Enter value'} bind:value={bindings[field.name]} />
         {/if}
-    {/each}
-    {#each taxonomy.attributes as attribute, index}
+      {/each}
+    </details>
+    <details class="authoring-section" open={taxonomy.attributes.some(attribute => attribute.required)}>
+      <summary>Attributes <span class="muted">{taxonomy.attributes.length} available</span></summary>
+      {#each taxonomy.attributes as attribute, index}
       {@const id = inputId('attribute', attribute.id, index)}
         {#if attribute.valueType === 'enum'}
           <SelectInput {id} name={attribute.id} label={attribute.label} required={attribute.required} placeholder="Choose..." options={(attribute.enumValues ?? []).map(option => ({ value: option, label: option }))} bind:value={attributes[attribute.id]} />
         {:else}<TextInput {id} name={attribute.id} label={attribute.label} required={attribute.required} placeholder={attribute.unit ?? 'Enter value'} bind:value={attributes[attribute.id]} />{/if}
-    {/each}
+      {/each}
+    </details>
     <PrimitiveButton type="submit" disabled={saving}>{saving ? 'Checking...' : 'Preview draft'}</PrimitiveButton>
   </form>
   {#if preview}

@@ -4,6 +4,9 @@ import { parseRoute, taxonomyPath } from './routes'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('sequence definition routes', () => {
+  it('parses the home page', () => {
+    expect(parseRoute('/')).toEqual({ kind: 'home' })
+  })
   it('parses the list page', () => {
     expect(parseRoute('/settings/sequence-definitions')).toEqual({ kind: 'seq-def-list' })
   })

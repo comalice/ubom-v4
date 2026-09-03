@@ -18,13 +18,14 @@
   import AsyncState from './AsyncState.svelte'
   import Playground from './Playground.svelte'
   import TaxonomyCardGrid from './TaxonomyCardGrid.svelte'
-  import { getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getParts, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
+  import Home from './Home.svelte'
+  import PartLog from './PartLog.svelte'
+  import { getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, searchParts, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
   let route: Route = parseRoute()
   let taxonomy: TaxonomyNodeView | null = null
   let taxonomySeqDef = ''
-  let partsList: PartListItem[] = []
   let part: PartNumberView | null = null
   let revision: RevisionView | null = null
   let artifacts: ArtifactView[] = []
@@ -71,7 +72,6 @@
   async function load() {
     route = parseRoute()
     taxonomy = null
-    partsList = []
     part = null
     revision = null
     artifacts = []
@@ -81,7 +81,7 @@
     error = ''
     loading = true
     try {
-      if (route.kind === 'parts') partsList = await getParts()
+      if (route.kind === 'parts' || route.kind === 'home') return
       else if (route.kind === 'artifacts') [artifacts, sources] = await Promise.all([getArtifacts(), getSources()])
       else if (route.kind === 'artifact') [artifact, snapshots] = await Promise.all([getArtifact(route.id), getSnapshots(route.id)])
       else if (route.kind === 'taxonomy') {
@@ -90,6 +90,8 @@
         if (!taxonomySeqDef) throw new Error('No current taxonomy is available')
         const currentTaxonomy = await getCurrentTaxonomyDef(taxonomySeqDef)
         taxonomy = await getTaxonomyNodeByPath(currentTaxonomy.id, route.segments)
+        const matching = await searchParts({ taxonomyDef: currentTaxonomy.id, taxonomyNode: taxonomy.id, pageSize: 50 })
+        taxonomy = { ...taxonomy, partNumbers: matching.items }
       }
       else if (route.kind === 'part') part = await getPart(route.id)
       else if (route.kind === 'revision') revision = await getRevision(route.id)
@@ -121,10 +123,10 @@
     <AsyncState state="loading" message="Loading..." />
   {:else if error}
     <AsyncState state="error" message={error} />
+  {:else if route.kind === 'home'}
+    <Home />
   {:else if route.kind === 'parts'}
-    <p class="eyebrow">Parts</p>
-    <h1>All parts</h1>
-    {#if partsList.length > 0}<PartTable parts={partsList} />{:else}<p class="empty-state">No parts.</p>{/if}
+    <PartLog />
   {:else if route.kind === 'artifacts'}
     <p class="eyebrow">Artifact register</p>
     <h1>Sources and artifacts</h1>

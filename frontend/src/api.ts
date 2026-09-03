@@ -60,7 +60,10 @@ export type PartListItem = {
   taxonomyPath: string[]
   attributes: PartAttribute[]
   revisions: RevisionSummary[]
+  status?: string
 }
+
+export type PartSearchResult = { items: PartListItem[]; total: number; page: number; pageSize: number }
 
 export type TaxonomyNodeView = {
   id: string
@@ -160,6 +163,11 @@ export async function getTaxonomyNodeByPath(taxonomyID: string, segments: string
 export const getPart = (value: string) => get<PartNumberView>(`/api/parts/by-value/${encodeURIComponent(value)}`)
 
 export const getParts = () => get<PartListItem[]>('/api/parts')
+export async function searchParts(options: { q?: string; taxonomyNode?: string; taxonomyDef?: string; page?: number; pageSize?: number } = {}) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(options)) if (value) params.set(key, String(value))
+  return get<PartSearchResult>(`/api/parts?${params.toString()}`)
+}
 
 export const getRevision = (id: string) => get<RevisionView>(`/api/revisions/${encodeURIComponent(id)}`)
 

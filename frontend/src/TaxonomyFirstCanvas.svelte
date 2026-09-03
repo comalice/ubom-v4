@@ -78,8 +78,9 @@
     if (!(event.target as HTMLElement).closest('.block-shell-remove')) selectedNodeID = fallbackNodeID
   }
 
-  function selectRoot(event: MouseEvent) {
-    if (!(event.target as HTMLElement).closest('button')) selectedNodeID = taxonomyDraft.id
+  function openAttributes(event: MouseEvent, nodeID: string) {
+    event.stopPropagation()
+    onAttributes(nodeID)
   }
 </script>
 
@@ -89,7 +90,7 @@
     <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>{taxonomyDraft.label}</h3></div><span class="taxonomy-editor-count">{grammar.id} · {grammar.fields} fields</span></div>
     <p class="taxonomy-grammar-note">The taxonomy tree is the work surface. Categories expose later grammar fields as context lanes.</p>
     <div class="taxonomy-grammar-tree">
-      <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root" role="button" tabindex="0" on:click={selectRoot} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = taxonomyDraft.id)}><span class="taxonomy-grammar-kind">root scope</span><strong>{taxonomyDraft.label}</strong><small>all values matching {grammar.id}</small>{#if !readOnly}<PrimitiveButton variant="secondary" size="small" type="button" on:click={() => onAttributes(taxonomyDraft.id)}>attributes</PrimitiveButton>{/if}<div class="taxonomy-first-root-context">{#if firstField}<div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field={firstField} {readOnly} onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} /></div>{/if}</div></div>
+       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root"><span class="taxonomy-grammar-kind">root scope</span><strong>{taxonomyDraft.label}</strong><small>all values matching {grammar.id}</small>{#if !readOnly}<button class="primitive-button primitive-button-secondary button-size-small" type="button" aria-label={`View attributes for ${taxonomyDraft.label}`} on:click={(event) => openAttributes(event, taxonomyDraft.id)}>attributes</button>{/if}<div class="taxonomy-first-root-context">{#if firstField}<div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field={firstField} {readOnly} onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} /></div>{/if}</div></div>
       <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">{#each taxonomyDraft.children.filter((child) => taxonomyTargetField(grammar, child.targetId) !== firstTargetField) as child (child.id)}{#if child.placements[0]}<div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => selectCategory(event, child.id)} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}><TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} contextFields={taxonomyContextFields(grammar, child.targetId)} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} {readOnly} onContextDrop={handleFieldDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} /></div>{/if}{/each}</div>
     </div>
     {#if readOnly}<PrimitiveButton variant="secondary" size="small" type="button" on:click={() => onAttributes(taxonomyDraft.id)}>attributes</PrimitiveButton>{/if}

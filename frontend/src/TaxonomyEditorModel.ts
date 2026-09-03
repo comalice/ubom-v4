@@ -409,6 +409,7 @@ export function replaceTaxonomyDraftPlacements(node: TaxonomyDraftNode, placemen
 }
 
 export function findTaxonomyDraftNode(node: TaxonomyDraftNode, placementID: string): TaxonomyDraftNode | undefined {
+  if (node.id === placementID) return node
   if (node.placements.some((placement) => placement.id === placementID)) return node
   return node.children.map((child) => findTaxonomyDraftNode(child, placementID)).find(Boolean)
 }

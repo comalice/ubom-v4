@@ -15,6 +15,23 @@ import (
 	"ubom-v4/store"
 )
 
+func TestHealthAndReadiness(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	for path, wantStatus := range map[string]int{"/healthz": http.StatusOK, "/readyz": http.StatusOK} {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, path, nil))
+		if recording.Code != wantStatus || recording.Header().Get("Content-Type") != "application/json" {
+			t.Fatalf("GET %s = status %d, content type %q", path, recording.Code, recording.Header().Get("Content-Type"))
+		}
+	}
+	server.SetReadiness(func() error { return os.ErrNotExist })
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if recording.Code != http.StatusServiceUnavailable {
+		t.Fatalf("failed readiness status = %d, want %d", recording.Code, http.StatusServiceUnavailable)
+	}
+}
+
 func TestPartNumberView(t *testing.T) {
 	persistence := store.NewMemoryStore()
 	parent, err := app.LoadSampleData(persistence)

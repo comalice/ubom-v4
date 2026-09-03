@@ -44,11 +44,61 @@ Our first implementation is simply a file system artifact source. A periodic sca
 
 ## Local containers
 
-`docker compose up --build` starts the UBOM API and a durable Postgres instance.
-The API currently uses the mounted SQLite database because the server has not
-yet gained a Postgres store adapter; the Postgres service is intentionally
-present as the target production dependency, not a silently unused claim of
-Postgres support. The frontend still runs separately with `make -C frontend dev`.
+`docker compose up --build` starts the frontend, API, and a durable Postgres
+instance. Open `http://localhost:8080`; the frontend proxies `/api` to the API.
+The API runs embedded, versioned Postgres migrations before it starts serving.
+The API's `/healthz` endpoint reports process health, while `/readyz` verifies
+the database connection and is used by Compose startup checks.
+
+For frontend development, keep using `make -C frontend dev` in one terminal and
+`make server` (or `make dev`) in another. Vite proxies `/api` to port 8080.
+
+### Production startup
+
+The Compose defaults are suitable only for local evaluation. Set
+`POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, and optionally
+`UBOM_HTTP_PORT` through the deployment environment or a secrets manager; do
+not use the documented development password in a real deployment. Start with:
+
+```sh
+POSTGRES_PASSWORD='use-a-secret' docker compose up -d --build
+docker compose ps
+docker compose logs -f ubom
+```
+
+This first release assumes one trusted user per deployment. There is no login,
+authorization, tenant isolation, or audit actor identity. Put the deployment
+behind an authenticated network boundary before exposing it to other users.
+
+### Migrations and backups
+
+Postgres migrations are embedded in `server/store/postgres_migrations.go` and
+applied automatically, in order, at API startup. A failed migration prevents
+the API from starting. Back up before upgrades; there is no automatic rollback
+of a migration. Roll back the application only when its schema remains
+compatible, or restore the database backup into a fresh volume and deploy the
+previous application version.
+
+Create a logical backup from the running Compose database:
+
+```sh
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  --format=custom' > ubom-$(date +%Y%m%d-%H%M%S).dump
+```
+
+Restore into a stopped application and an empty database (this replaces data):
+
+```sh
+docker compose stop frontend ubom
+cat backup.dump | docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRES_USER" \
+  -d "$POSTGRES_DB" --clean --if-exists'
+docker compose start ubom frontend
+```
+
+The Postgres named volume is persistent, but it is not a backup. Artifact
+snapshot files, when configured, live outside Postgres and must be backed up
+separately. Expect data loss since the last successful backup if the volume and
+its backup are both lost.
 
 - strongly typed attributes, can be applied to any node in a taxonomy tree, to a part number, or to a bill of materials -- this allows you to do things like add resistor values to a specific branch of the taxonomy tree. It also enables things like querying parts by attribute, requirements satisfaction (maybe), and so on.
   - We now have attributes, but they aren't strongly typed yet. Soon.

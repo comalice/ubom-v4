@@ -59,17 +59,17 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleReady(w http.ResponseWriter, _ *http.Request) {
 	if s.readiness != nil {
 		if err := s.readiness(); err != nil {
-			writeError(w, http.StatusServiceUnavailable, "database is not ready")
+			writeJSONStatus(w, http.StatusServiceUnavailable, map[string]string{"status": "not ready", "error": "database is not ready"})
 			return
 		}
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, map[string]string{"status": "ready"})
 }
 
 // SetReadiness adds an optional dependency check without coupling the API to a

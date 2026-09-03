@@ -4,6 +4,7 @@
   import FilterRange from './FilterRange.svelte'
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
   import CategoryTile from './CategoryTile.svelte'
+  import CategoryTileGrid from './CategoryTileGrid.svelte'
 
   const shortOptions: FilterOption[] = [
     { label: 'Steel', count: 21, selected: true },
@@ -33,20 +34,19 @@
   ]
 
   const tileGridItems = [
-    { title: 'Bolts', description: 'Machine bolts and structural fasteners.', image: 'IMG', partCount: 48 },
-    { title: 'Screws', description: 'Thread-forming and machine screws.', image: 'IMG', partCount: 82 },
-    { title: 'Nuts', description: 'Hex, lock, wing, and specialty nuts.', image: 'IMG', partCount: 35 },
-    { title: 'Washers', description: 'Spacers, shims, and load distribution.', partCount: 26 },
-    { title: 'Threaded Rod', description: 'Continuous-thread rod and studs.', partCount: 19 },
-    { title: 'Rivets', description: 'Permanent joining hardware.', partCount: 31 },
-    { title: 'Adhesives', description: 'Structural and general-purpose bonding.', partCount: 44 },
-    { title: 'Welding', description: 'Welding, brazing, and soldering supplies.', partCount: 57 },
-    { title: 'Clamps', description: 'Clamps for holding and joining parts.', partCount: 21 },
+    { id: 'bolts', title: 'Bolts', href: '/parts/bolts', description: 'Machine bolts and structural fasteners.', image: 'IMG', partCount: 48 },
+    { id: 'screws', title: 'Screws', href: '/parts/screws', description: 'Thread-forming and machine screws.', image: 'IMG', partCount: 82 },
+    { id: 'nuts', title: 'Nuts', href: '/parts/nuts', description: 'Hex, lock, wing, and specialty nuts.', image: 'IMG', partCount: 35 },
+    { id: 'washers', title: 'Washers', href: '/parts/washers', description: 'Spacers, shims, and load distribution.', partCount: 26 },
+    { id: 'threaded-rod', title: 'Threaded Rod', href: '/parts/threaded-rod', description: 'Continuous-thread rod and studs.', partCount: 19 },
+    { id: 'rivets', title: 'Rivets', href: '/parts/rivets', description: 'Permanent joining hardware.', partCount: 31 },
+    { id: 'adhesives', title: 'Adhesives', href: '/parts/adhesives', description: 'Structural and general-purpose bonding.', partCount: 44 },
+    { id: 'welding', title: 'Welding', href: '/parts/welding', description: 'Welding, brazing, and soldering supplies.', partCount: 57 },
+    { id: 'clamps', title: 'Clamps', href: '/parts/clamps', description: 'Clamps for holding and joining parts.', partCount: 21 },
   ]
 
   let tileCount = 6
   $: visibleTileItems = tileGridItems.slice(0, tileCount)
-  $: gridTileSize = tileCount <= 3 ? 'feature' : tileCount <= 6 ? 'standard' : 'compact'
 
 </script>
 
@@ -143,17 +143,17 @@
       <article class="catalog-component-card">
         <p class="mock-section-label">Compact</p>
         <h4>Small tile</h4>
-        <CategoryTile title="Bolts" size="compact" partCount={48} />
+        <CategoryTile title="Bolts" href="/playground/catalog" size="compact" partCount={48} />
       </article>
       <article class="catalog-component-card">
         <p class="mock-section-label">Standard</p>
         <h4>Standard tile</h4>
-        <CategoryTile title="Threaded fasteners" description="Machine screws, studs, and related hardware." size="standard" image="IMG" partCount={126} />
+        <CategoryTile title="Threaded fasteners" href="/playground/catalog" description="Machine screws, studs, and related hardware." size="standard" image="IMG" partCount={126} />
       </article>
       <article class="catalog-component-card catalog-component-card-wide">
         <p class="mock-section-label">Feature</p>
         <h4>Large tile</h4>
-        <CategoryTile title="Measuring & Inspecting" description="Tools and instruments for checking dimensions, surfaces, and material properties." size="feature" image="IMG" partCount={314} />
+        <CategoryTile title="Measuring & Inspecting" href="/playground/catalog" description="Tools and instruments for checking dimensions, surfaces, and material properties." size="feature" image="IMG" partCount={314} />
       </article>
     </div>
   </section>
@@ -167,11 +167,7 @@
       </div>
       <label>Tiles in grid<select bind:value={tileCount}><option value={3}>3</option><option value={6}>6</option><option value={9}>9</option></select></label>
     </div>
-    <div class={`category-tile-grid category-tile-grid-${gridTileSize}`}>
-      {#each visibleTileItems as tile}
-        <CategoryTile title={tile.title} description={tile.description} image={tile.image} partCount={tile.partCount} size={gridTileSize} />
-      {/each}
-    </div>
+    <CategoryTileGrid tiles={visibleTileItems} />
   </section>
 </section>
 
@@ -187,13 +183,9 @@
   .catalog-component-card { min-width: 0; padding: 1rem; background: var(--surface); border: 1px solid var(--hairline); border-radius: .3rem; }
   .catalog-component-card-wide { grid-column: 1 / -1; }
   .catalog-component-card > .muted { margin: 0 0 1rem; font-size: .7rem; }
-  .category-tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-  .category-tile-grid-compact .catalog-component-card-wide { grid-column: 1 / -1; }
   .catalog-tile-grid-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
   .catalog-tile-grid-heading label { display: grid; flex: none; gap: .3rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
   .catalog-tile-grid-heading select { min-width: 6rem; padding: .45rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .7rem ui-monospace, monospace; }
-  .category-tile-grid-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .category-tile-grid-feature { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (max-width: 700px) { .catalog-component-layout { grid-template-columns: 1fr; } .catalog-component-card-wide { grid-column: auto; } }
-  @media (max-width: 700px) { .catalog-tile-grid-heading { align-items: start; flex-direction: column; } .category-tile-grid-compact, .category-tile-grid-feature { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .catalog-tile-grid-heading { align-items: start; flex-direction: column; } }
 </style>

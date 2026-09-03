@@ -1,6 +1,6 @@
 <script lang="ts">
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
-  import CategoryTile from './CategoryTile.svelte'
+  import CategoryTileGrid from './CategoryTileGrid.svelte'
   import FilterOptionList, { type FilterOption } from './FilterOptionList.svelte'
   import FilterRange from './FilterRange.svelte'
   import FilterWidget from './FilterWidget.svelte'
@@ -61,24 +61,24 @@
   }
 
   const fasteningTiles = [
-    { title: 'Bolts', description: 'Machine bolts and structural fasteners.', image: 'IMG', partCount: 48 },
-    { title: 'Screws', description: 'Thread-forming and machine screws.', image: 'IMG', partCount: 82 },
-    { title: 'Nuts', description: 'Hex, lock, wing, and specialty nuts.', image: 'IMG', partCount: 35 },
-    { title: 'Washers', description: 'Spacers, shims, and load distribution.', partCount: 26 },
-    { title: 'Threaded Rod', description: 'Continuous-thread rod and studs.', partCount: 19 },
-    { title: 'Rivets', description: 'Permanent joining hardware.', partCount: 31 },
+    { id: 'bolts', title: 'Bolts', href: '/parts/bolts', description: 'Machine bolts and structural fasteners.', image: 'IMG', partCount: 48 },
+    { id: 'screws', title: 'Screws', href: '/parts/screws', description: 'Thread-forming and machine screws.', image: 'IMG', partCount: 82 },
+    { id: 'nuts', title: 'Nuts', href: '/parts/nuts', description: 'Hex, lock, wing, and specialty nuts.', image: 'IMG', partCount: 35 },
+    { id: 'washers', title: 'Washers', href: '/parts/washers', description: 'Spacers, shims, and load distribution.', partCount: 26 },
+    { id: 'threaded-rod', title: 'Threaded Rod', href: '/parts/threaded-rod', description: 'Continuous-thread rod and studs.', partCount: 19 },
+    { id: 'rivets', title: 'Rivets', href: '/parts/rivets', description: 'Permanent joining hardware.', partCount: 31 },
   ]
 
   const adhesiveTiles = [
-    { title: 'Adhesives', description: 'Structural and general-purpose bonding.', image: 'IMG', partCount: 44 },
-    { title: 'Adhesive Tape', description: 'Double-sided, transfer, and mounting tape.', image: 'IMG', partCount: 29 },
-    { title: 'Threadlockers', description: 'Threadlocking compounds and sealants.', partCount: 17 },
+    { id: 'adhesives', title: 'Adhesives', href: '/parts/adhesives', description: 'Structural and general-purpose bonding.', image: 'IMG', partCount: 44 },
+    { id: 'adhesive-tape', title: 'Adhesive Tape', href: '/parts/adhesive-tape', description: 'Double-sided, transfer, and mounting tape.', image: 'IMG', partCount: 29 },
+    { id: 'threadlockers', title: 'Threadlockers', href: '/parts/threadlockers', description: 'Threadlocking compounds and sealants.', partCount: 17 },
   ]
 
   const weldingTiles = [
-    { title: 'Welding', description: 'Welding equipment and consumables.', image: 'IMG', partCount: 57 },
-    { title: 'Brazing', description: 'Brazing rods, alloys, and fluxes.', partCount: 22 },
-    { title: 'Soldering', description: 'Solder, tools, and accessories.', partCount: 38 },
+    { id: 'welding', title: 'Welding', href: '/parts/welding', description: 'Welding equipment and consumables.', image: 'IMG', partCount: 57 },
+    { id: 'brazing', title: 'Brazing', href: '/parts/brazing', description: 'Brazing rods, alloys, and fluxes.', partCount: 22 },
+    { id: 'soldering', title: 'Soldering', href: '/parts/soldering', description: 'Solder, tools, and accessories.', partCount: 38 },
   ]
 
   const parts: PartListItem[] = [
@@ -126,15 +126,15 @@
       {/if}
       <section class="catalog-category-section" aria-labelledby="fastening-heading">
         <div class="catalog-section-heading"><h3 id="fastening-heading">Fasteners</h3><span>6 categories</span></div>
-        <div class="catalog-tile-grid">{#each fasteningTiles as tile}<CategoryTile {...tile} size="standard" />{/each}</div>
+        <CategoryTileGrid tiles={fasteningTiles} />
       </section>
       <section class="catalog-category-section" aria-labelledby="adhesive-heading">
         <div class="catalog-section-heading"><h3 id="adhesive-heading">Adhesives &amp; Tape</h3><span>3 categories</span></div>
-        <div class="catalog-tile-grid catalog-tile-grid-small">{#each adhesiveTiles as tile}<CategoryTile {...tile} size="compact" />{/each}</div>
+        <CategoryTileGrid tiles={adhesiveTiles} />
       </section>
       <section class="catalog-category-section" aria-labelledby="welding-heading">
         <div class="catalog-section-heading"><h3 id="welding-heading">Welding, Brazing &amp; Soldering</h3><span>3 categories</span></div>
-        <div class="catalog-tile-grid catalog-tile-grid-small">{#each weldingTiles as tile}<CategoryTile {...tile} size="compact" />{/each}</div>
+        <CategoryTileGrid tiles={weldingTiles} />
       </section>
       <section class="catalog-parts-section" aria-labelledby="catalog-parts-heading">
         <div class="catalog-section-heading"><h3 id="catalog-parts-heading">Parts in this category</h3><span>2 shown</span></div>
@@ -173,8 +173,6 @@
   .catalog-category-section, .catalog-parts-section { margin-top: 1.75rem; }
   .catalog-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; padding-bottom: .4rem; border-bottom: 1px solid var(--hairline); }
   .catalog-section-heading h3 { margin: 0; font: 400 1.1rem Georgia, serif; }
-  .catalog-tile-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
-  .catalog-tile-grid-small { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 900px) { .catalog-playground-frame { grid-template-columns: 13rem minmax(0, 1fr); gap: 1rem; } .catalog-tile-grid, .catalog-tile-grid-small { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 700px) { .catalog-masthead { align-items: stretch; flex-direction: column; } .catalog-search { max-width: none; } .catalog-playground-frame { grid-template-columns: 1fr; } .catalog-tile-grid, .catalog-tile-grid-small { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .catalog-playground-frame { grid-template-columns: 13rem minmax(0, 1fr); gap: 1rem; } }
+  @media (max-width: 700px) { .catalog-masthead { align-items: stretch; flex-direction: column; } .catalog-search { max-width: none; } .catalog-playground-frame { grid-template-columns: 1fr; } }
 </style>

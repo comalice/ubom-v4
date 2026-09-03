@@ -2,13 +2,14 @@
   export type CategoryTileSize = 'compact' | 'standard' | 'feature'
 
   export let title: string
+  export let href: string
   export let size: CategoryTileSize = 'standard'
   export let description = ''
   export let partCount: number | undefined = undefined
   export let image = ''
 </script>
 
-<a class:category-tile-compact={size === 'compact'} class:category-tile-feature={size === 'feature'} class="category-tile" href="/playground/catalog">
+<a class:category-tile-compact={size === 'compact'} class:category-tile-feature={size === 'feature'} class="category-tile" {href}>
   {#if image}<span class="category-tile-image" aria-hidden="true">{image}</span>{/if}
   <span class="category-tile-content">
     <strong>{title}</strong>

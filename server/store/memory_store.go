@@ -433,7 +433,7 @@ func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	schema := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{})
+	schema := ubom.NewSchema(seqDef, taxonomy, ubom.SchemaPolicy{RequireClassification: true})
 	interpreted, err := schema.Generate(draft.Bindings)
 	if err != nil {
 		return ubom.PartNumber{}, err
@@ -442,7 +442,7 @@ func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	if !taxonomyNodeIsAtOrBelow(taxonomy.Taxonomy.Root, draft.ContextNodeID, part.TaxonomyNodeID) {
+	if !taxonomyNodeIsAtOrBelow(taxonomy.Taxonomy.Root, draft.ContextNodeID, part.TaxonomyNodeID) || !taxonomyNodeIsLeaf(taxonomy.Taxonomy.Root, part.TaxonomyNodeID) {
 		return ubom.PartNumber{}, ubom.NewDomainError(ubom.ErrorCategoryClassification, "part number does not match draft taxonomy context")
 	}
 	created, err := s.createPartNumber(part)
@@ -453,6 +453,18 @@ func (s *MemoryStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	draft.ReleasedPartNumberID = created.ID
 	s.partDrafts[id] = clonePartNumberDraft(draft)
 	return created, nil
+}
+
+func taxonomyNodeIsLeaf(root ubom.TaxonomyNode, id ubom.TaxonomyNodeID) bool {
+	if root.ID == id {
+		return len(root.Children) == 0
+	}
+	for _, child := range root.Children {
+		if taxonomyNodeIsLeaf(child, id) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *MemoryStore) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {

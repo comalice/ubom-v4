@@ -571,11 +571,17 @@ func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
 		return recording.Body.String()
 	}
 	post("/api/seq-defs", `{"id":"draft-pn-v1","root":{"kind":"concat","children":[{"kind":"literal","text":"PN-"},{"kind":"bind","name":"category","child":{"kind":"places","alphabets":["AB"]}},{"kind":"range","min":1,"max":9,"width":1}]}}`, http.StatusCreated)
-	post("/api/taxonomy-defs", `{"seqDef":"draft-pn-v1","root":{"id":"components","label":"Components"}}`, http.StatusCreated)
+	post("/api/taxonomy-defs", `{"seqDef":"draft-pn-v1","root":{"id":"components","label":"Components","children":[{"id":"category-a","label":"Category A","predicates":[{"field":"category","kind":"exact","value":"A"}]}]}}`, http.StatusCreated)
 	body := post("/api/part-drafts", `{"seqDef":"draft-pn-v1","taxonomyDef":"draft-pn-v1-taxonomy-v1","contextNodeId":"components"}`, http.StatusCreated)
 	var draft ubomDraftResponse
 	if err := json.Unmarshal([]byte(body), &draft); err != nil || draft.ID == "" {
 		t.Fatalf("draft response = %s", body)
+	}
+	partsBeforeRelease := httptest.NewRecorder()
+	server.Handler().ServeHTTP(partsBeforeRelease, httptest.NewRequest(http.MethodGet, "/api/parts", nil))
+	var beforeRelease []app.PartNumberListItem
+	if err := json.NewDecoder(partsBeforeRelease.Body).Decode(&beforeRelease); err != nil || len(beforeRelease) != 0 {
+		t.Fatalf("draft allocated a part number: %s", partsBeforeRelease.Body)
 	}
 	preview := post("/api/part-drafts/"+draft.ID+"/preview", `{}`, http.StatusOK)
 	if !strings.Contains(preview, `"complete":false`) {
@@ -587,6 +593,31 @@ func TestPartNumberDraftPreviewAndRelease(t *testing.T) {
 		t.Fatalf("PATCH draft status = %d; body = %s", patch.Code, patch.Body)
 	}
 	post("/api/part-drafts/"+draft.ID+"/release", `{}`, http.StatusCreated)
+	releasedAgain := httptest.NewRecorder()
+	server.Handler().ServeHTTP(releasedAgain, httptest.NewRequest(http.MethodPost, "/api/part-drafts/"+draft.ID+"/release", strings.NewReader(`{}`)))
+	if releasedAgain.Code == http.StatusCreated {
+		t.Fatal("released draft was released twice")
+	}
+}
+
+func TestPartNumberSearchPagination(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?q=PN&page=2&pageSize=1", nil))
+	if recording.Code != http.StatusOK {
+		t.Fatalf("search status = %d; body = %s", recording.Code, recording.Body)
+	}
+	var result app.PartSearchResult
+	if err := json.NewDecoder(recording.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 2 || result.Page != 2 || result.PageSize != 1 || len(result.Items) != 1 || result.Items[0].Value != "PN-B" {
+		t.Fatalf("search result = %#v", result)
+	}
 }
 
 type ubomDraftResponse struct {

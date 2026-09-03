@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	ubom "ubom-v4"
@@ -195,15 +196,55 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	views, err := s.service.ListPartNumberViews()
+	query := app.PartSearchQuery{
+		Q:            r.URL.Query().Get("q"),
+		TaxonomyDef:  ubom.TaxonomyDefID(firstQueryValue(r, "taxonomyDef", "taxonomy")),
+		TaxonomyNode: ubom.TaxonomyNodeID(r.URL.Query().Get("taxonomyNode")),
+		Attributes:   map[ubom.AttributeDefID]string{},
+		Sort:         r.URL.Query().Get("sort"),
+		Descending:   r.URL.Query().Get("order") == "desc" || r.URL.Query().Get("direction") == "desc",
+	}
+	if value, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil {
+		query.Page = value
+	}
+	if value, err := strconv.Atoi(r.URL.Query().Get("pageSize")); err == nil {
+		query.PageSize = value
+	}
+	for _, raw := range r.URL.Query()["attribute"] {
+		key, value, ok := strings.Cut(raw, "=")
+		if !ok || key == "" {
+			writeError(w, http.StatusBadRequest, "invalid attribute filter")
+			return
+		}
+		query.Attributes[ubom.AttributeDefID(key)] = value
+	}
+	for key, values := range r.URL.Query() {
+		if !strings.HasPrefix(key, "attribute.") || len(values) == 0 {
+			continue
+		}
+		query.Attributes[ubom.AttributeDefID(strings.TrimPrefix(key, "attribute."))] = values[0]
+	}
+	result, err := s.service.SearchPartNumberViews(query)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not load part numbers")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(views); err != nil {
+	// Keep the original unpaginated list response for existing callers. Query
+	// parameters opt into the part-log envelope and pagination metadata.
+	if r.URL.RawQuery == "" {
+		writeJSON(w, result.Items)
 		return
 	}
+	writeJSON(w, result)
+}
+
+func firstQueryValue(r *http.Request, keys ...string) string {
+	for _, key := range keys {
+		if value := r.URL.Query().Get(key); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func (s *Server) handlePartNumberByValue(w http.ResponseWriter, r *http.Request) {

@@ -37,6 +37,74 @@ func Populate(s store.Store, options Options) (Result, error) {
 	if err := s.CreateSeqDef(seqDef); err != nil {
 		return Result{}, err
 	}
+	gtdPNSeqDef := ubom.NewSeqDef(ubom.Choice(
+		ubom.Concat(
+			ubom.Bind("family", ubom.Range(100, 999).Width(3)),
+			ubom.Literal("-"),
+			ubom.Bind("group", ubom.Range(0, 99999).Width(5)),
+			ubom.Literal("-"),
+			ubom.Bind("uid", ubom.Range(0, 999).Width(3)),
+		),
+		ubom.Concat(
+			ubom.Bind("family", ubom.Range(0, 99).Width(3)),
+			ubom.Literal("-"),
+			ubom.Bind("uid", ubom.Range(0, 99999).Width(5)),
+		),
+	)).WithID("gtd-pn-v1")
+	if err := s.CreateSeqDef(gtdPNSeqDef); err != nil {
+		return Result{}, err
+	}
+	gtdPNTaxonomyDef := ubom.TaxonomyDef{
+		ID:     "gtd-pn-taxonomy-v1",
+		SeqDef: gtdPNSeqDef.ID,
+		Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+			ID:    "gtd-part-numbers",
+			Label: "Part Numbers",
+			Children: []ubom.TaxonomyNode{
+				{ID: "raw-material", Label: "Raw Material", Predicates: []ubom.TaxonomyPredicate{ubom.NumericRangePredicate("family", 0, 99)}},
+				{
+					ID: "family-100-199", Label: "100-199", Predicates: []ubom.TaxonomyPredicate{ubom.NumericRangePredicate("family", 100, 199)},
+					Children: []ubom.TaxonomyNode{
+						{ID: "family-100", Label: "100", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "100")}},
+						{ID: "family-105", Label: "105", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "105")}},
+						{ID: "family-150", Label: "150", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "150")}},
+						{ID: "family-151", Label: "151", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "151")}},
+						{ID: "family-155", Label: "155", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "155")}},
+						{ID: "family-199", Label: "199", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "199")}},
+					},
+				},
+				{ID: "family-200", Label: "200", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "200")}},
+				{
+					ID: "family-300-399", Label: "300-399", Predicates: []ubom.TaxonomyPredicate{ubom.NumericRangePredicate("family", 300, 399)},
+					Children: []ubom.TaxonomyNode{
+						{ID: "family-310", Label: "310", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "310")}},
+						{ID: "family-320", Label: "320", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "320")}},
+						{ID: "family-330", Label: "330", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "330")}},
+					},
+				},
+				{ID: "family-400", Label: "400", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "400")}},
+				{
+					ID: "family-500-599", Label: "500-599", Predicates: []ubom.TaxonomyPredicate{ubom.NumericRangePredicate("family", 500, 599)},
+					Children: []ubom.TaxonomyNode{
+						{ID: "family-500", Label: "500", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "500")}},
+						{ID: "family-505", Label: "505", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "505")}},
+					},
+				},
+				{ID: "family-600", Label: "600", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "600")}},
+				{ID: "family-700", Label: "700", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "700")}},
+				{ID: "family-800", Label: "800", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "800")}},
+				{ID: "family-900", Label: "900", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "900")}},
+				{ID: "family-910", Label: "910", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "910")}},
+				{ID: "family-911", Label: "911", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "911")}},
+				{ID: "family-912", Label: "912", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "912")}},
+				{ID: "family-950", Label: "950", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "950")}},
+				{ID: "family-990", Label: "990", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("family", "990")}},
+			},
+		}},
+	}
+	if err := s.CreateTaxonomyDef(gtdPNTaxonomyDef); err != nil {
+		return Result{}, err
+	}
 	revisionSeqDef := ubom.NewSeqDef(ubom.Range(1, 9999).Width(4)).WithID("sample-revision-v1")
 	if err := s.CreateSeqDef(revisionSeqDef); err != nil {
 		return Result{}, err

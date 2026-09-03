@@ -3,6 +3,8 @@ package app
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	ubom "ubom-v4"
 	"ubom-v4/artifact"
@@ -489,6 +491,118 @@ type PartNumberListItem struct {
 	Attributes   []PartAttributeView   `json:"attributes"`
 	Revisions    []RevisionSummary     `json:"revisions"`
 	Status       ubom.PartNumberStatus `json:"status"`
+}
+
+// PartSearchQuery is deliberately store-independent for the initial part log.
+// Stores remain responsible for durable writes; search can use the same domain
+// view for SQLite, memory, and Postgres deployments.
+type PartSearchQuery struct {
+	Q            string
+	TaxonomyDef  ubom.TaxonomyDefID
+	TaxonomyNode ubom.TaxonomyNodeID
+	Attributes   map[ubom.AttributeDefID]string
+	Page         int
+	PageSize     int
+	Sort         string
+	Descending   bool
+}
+
+type PartSearchResult struct {
+	Items    []PartNumberListItem `json:"items"`
+	Total    int                  `json:"total"`
+	Page     int                  `json:"page"`
+	PageSize int                  `json:"pageSize"`
+}
+
+func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult, error) {
+	parts, err := s.store.ListPartNumbers()
+	if err != nil {
+		return PartSearchResult{}, err
+	}
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 {
+		query.PageSize = 50
+	}
+	if query.PageSize > 200 {
+		query.PageSize = 200
+	}
+	q := strings.ToLower(strings.TrimSpace(query.Q))
+	filtered := make([]ubom.PartNumber, 0, len(parts))
+	for _, part := range parts {
+		if q != "" && !strings.Contains(strings.ToLower(part.Value), q) {
+			continue
+		}
+		if query.TaxonomyDef != "" && part.TaxonomyDefID != query.TaxonomyDef {
+			continue
+		}
+		if query.TaxonomyNode != "" {
+			taxonomy, taxonomyErr := s.store.GetTaxonomyDef(part.TaxonomyDefID)
+			if taxonomyErr != nil {
+				return PartSearchResult{}, taxonomyErr
+			}
+			path, ok := findTaxonomyPath(taxonomy.Taxonomy.Root, part.TaxonomyNodeID)
+			found := false
+			for _, item := range path {
+				if item.ID == query.TaxonomyNode {
+					found = ok
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		matched := true
+		for id, value := range query.Attributes {
+			attributeMatched := false
+			for _, attribute := range part.Attributes {
+				if attribute.AttributeDefID == id && attribute.Value == value {
+					attributeMatched = true
+					break
+				}
+			}
+			if !attributeMatched {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			filtered = append(filtered, part)
+		}
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		left, right := filtered[i], filtered[j]
+		if query.Sort == "id" {
+			if query.Descending {
+				return left.ID > right.ID
+			}
+			return left.ID < right.ID
+		}
+		if query.Descending {
+			return left.Value > right.Value
+		}
+		return left.Value < right.Value
+	})
+	total := len(filtered)
+	start := (query.Page - 1) * query.PageSize
+	if start > total {
+		start = total
+	}
+	end := start + query.PageSize
+	if end > total {
+		end = total
+	}
+	items := make([]PartNumberListItem, 0, end-start)
+	for _, part := range filtered[start:end] {
+		item, itemErr := s.partNumberListItem(part)
+		if itemErr != nil {
+			return PartSearchResult{}, itemErr
+		}
+		items = append(items, item)
+	}
+	return PartSearchResult{Items: items, Total: total, Page: query.Page, PageSize: query.PageSize}, nil
 }
 
 type RevisionDetailView struct {

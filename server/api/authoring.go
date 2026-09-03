@@ -542,5 +542,10 @@ func writeCreateError(w http.ResponseWriter, err error) {
 	if ubom.IsCategory(err, ubom.ErrorCategoryOrdering) {
 		status = http.StatusUnprocessableEntity
 	}
+	var domainErr *ubom.DomainError
+	if errors.As(err, &domainErr) {
+		writeJSONStatus(w, status, map[string]any{"error": err.Error(), "category": domainErr.Category})
+		return
+	}
 	writeError(w, status, err.Error())
 }

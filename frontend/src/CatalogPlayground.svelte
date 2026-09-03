@@ -8,12 +8,12 @@
   import type { PartListItem } from './api'
 
   const categories: CategoryListItem[] = [
-    { label: 'Electrical & Lighting', count: 42 },
-    { label: 'Fastening & Joining', count: 67, selected: true },
-    { label: 'Measuring & Inspecting', count: 31 },
-    { label: 'Mechanical Components', count: 54 },
-    { label: 'Raw Materials', count: 14 },
-    { label: 'Safety Supplies', count: 28 },
+    { id: 'electrical-lighting', label: 'Electrical & Lighting', href: '/parts/electrical-and-lighting', count: 42 },
+    { id: 'fastening-joining', label: 'Fastening & Joining', href: '/parts/fastening-and-joining', count: 67, selected: true },
+    { id: 'measuring-inspecting', label: 'Measuring & Inspecting', href: '/parts/measuring-and-inspecting', count: 31 },
+    { id: 'mechanical-components', label: 'Mechanical Components', href: '/parts/mechanical-components', count: 54 },
+    { id: 'raw-materials', label: 'Raw Materials', href: '/parts/raw-materials', count: 14 },
+    { id: 'safety-supplies', label: 'Safety Supplies', href: '/parts/safety-supplies', count: 28 },
   ]
 
   const materials: FilterOption[] = [

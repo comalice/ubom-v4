@@ -24,12 +24,12 @@
   ]
 
   const categories: CategoryListItem[] = [
-    { label: 'Abrading & Polishing', count: 24 },
-    { label: 'Electrical & Lighting', count: 42 },
-    { label: 'Fastening & Joining', count: 67, selected: true },
-    { label: 'Measuring & Inspecting', count: 31 },
-    { label: 'Pipe, Tubing, Hose & Fittings', count: 19 },
-    { label: 'Raw Materials', count: 14 },
+    { id: 'abrading-polishing', label: 'Abrading & Polishing', href: '/parts/abrading-and-polishing', count: 24 },
+    { id: 'electrical-lighting', label: 'Electrical & Lighting', href: '/parts/electrical-and-lighting', count: 42 },
+    { id: 'fastening-joining', label: 'Fastening & Joining', href: '/parts/fastening-and-joining', count: 67, selected: true },
+    { id: 'measuring-inspecting', label: 'Measuring & Inspecting', href: '/parts/measuring-and-inspecting', count: 31 },
+    { id: 'pipe-tubing-hose-fittings', label: 'Pipe, Tubing, Hose & Fittings', href: '/parts/pipe-tubing-hose-and-fittings', count: 19 },
+    { id: 'raw-materials', label: 'Raw Materials', href: '/parts/raw-materials', count: 14 },
   ]
 
   const tileGridItems = [

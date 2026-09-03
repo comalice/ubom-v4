@@ -200,7 +200,7 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		Q:            r.URL.Query().Get("q"),
 		TaxonomyDef:  ubom.TaxonomyDefID(firstQueryValue(r, "taxonomyDef", "taxonomy")),
 		TaxonomyNode: ubom.TaxonomyNodeID(r.URL.Query().Get("taxonomyNode")),
-		Attributes:   map[ubom.AttributeDefID]string{},
+		Attributes:   map[ubom.AttributeDefID][]string{},
 		Sort:         r.URL.Query().Get("sort"),
 		Descending:   r.URL.Query().Get("order") == "desc" || r.URL.Query().Get("direction") == "desc",
 	}
@@ -212,17 +212,28 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, raw := range r.URL.Query()["attribute"] {
 		key, value, ok := strings.Cut(raw, "=")
-		if !ok || key == "" {
+		if !ok || key == "" || value == "" {
 			writeError(w, http.StatusBadRequest, "invalid attribute filter")
 			return
 		}
-		query.Attributes[ubom.AttributeDefID(key)] = value
+		query.Attributes[ubom.AttributeDefID(key)] = append(query.Attributes[ubom.AttributeDefID(key)], value)
 	}
 	for key, values := range r.URL.Query() {
-		if !strings.HasPrefix(key, "attribute.") || len(values) == 0 {
+		if !strings.HasPrefix(key, "attribute.") {
 			continue
 		}
-		query.Attributes[ubom.AttributeDefID(strings.TrimPrefix(key, "attribute."))] = values[0]
+		attributeID := strings.TrimPrefix(key, "attribute.")
+		if attributeID == "" || len(values) == 0 {
+			writeError(w, http.StatusBadRequest, "invalid attribute filter")
+			return
+		}
+		for _, value := range values {
+			if value == "" {
+				writeError(w, http.StatusBadRequest, "invalid attribute filter")
+				return
+			}
+			query.Attributes[ubom.AttributeDefID(attributeID)] = append(query.Attributes[ubom.AttributeDefID(attributeID)], value)
+		}
 	}
 	result, err := s.service.SearchPartNumberViews(query)
 	if err != nil {

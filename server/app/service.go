@@ -494,13 +494,14 @@ type PartNumberListItem struct {
 }
 
 // PartSearchQuery is deliberately store-independent for the initial part log.
+// Attribute values are ORed within an attribute and attribute IDs are ANDed.
 // Stores remain responsible for durable writes; search can use the same domain
 // view for SQLite, memory, and Postgres deployments.
 type PartSearchQuery struct {
 	Q            string
 	TaxonomyDef  ubom.TaxonomyDefID
 	TaxonomyNode ubom.TaxonomyNodeID
-	Attributes   map[ubom.AttributeDefID]string
+	Attributes   map[ubom.AttributeDefID][]string
 	Page         int
 	PageSize     int
 	Sort         string
@@ -555,11 +556,19 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 			}
 		}
 		matched := true
-		for id, value := range query.Attributes {
+		for id, values := range query.Attributes {
 			attributeMatched := false
 			for _, attribute := range part.Attributes {
-				if attribute.AttributeDefID == id && attribute.Value == value {
-					attributeMatched = true
+				if attribute.AttributeDefID != id {
+					continue
+				}
+				for _, value := range values {
+					if attribute.Value == value {
+						attributeMatched = true
+						break
+					}
+				}
+				if attributeMatched {
 					break
 				}
 			}

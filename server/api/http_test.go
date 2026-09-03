@@ -141,6 +141,43 @@ func TestPartNumberList(t *testing.T) {
 	}
 }
 
+func TestPartNumberListSupportsRepeatedAttributeFilters(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+	server := NewServer(app.NewService(persistence))
+
+	for _, query := range []string{
+		"attribute=footprint=0805&attribute=footprint=0603&attribute=resistance=999&attribute=resistance=10000",
+		"attribute.footprint=0805&attribute.footprint=0603&attribute.resistance=999&attribute.resistance=10000",
+	} {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?"+query, nil))
+		if recording.Code != http.StatusOK {
+			t.Fatalf("query %q status = %d; body = %s", query, recording.Code, recording.Body)
+		}
+		var result app.PartSearchResult
+		if err := json.NewDecoder(recording.Body).Decode(&result); err != nil {
+			t.Fatalf("query %q decode response: %v", query, err)
+		}
+		if result.Total != 1 || len(result.Items) != 1 || result.Items[0].Value != "PN-A" {
+			t.Fatalf("query %q result = %#v, want only PN-A", query, result)
+		}
+	}
+}
+
+func TestPartNumberListRejectsMalformedAttributeFilters(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	for _, query := range []string{"attribute=footprint", "attribute==0603", "attribute.=0603", "attribute.footprint="} {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?"+query, nil))
+		if recording.Code != http.StatusBadRequest {
+			t.Errorf("query %q status = %d, want %d", query, recording.Code, http.StatusBadRequest)
+		}
+	}
+}
+
 func TestPartNumberViewNotFound(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()

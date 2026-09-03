@@ -56,6 +56,26 @@ func TestPartNumberViewUsesTypedClassificationAndEffectiveAttributes(t *testing.
 	}
 }
 
+func TestSearchPartNumberViewsMatchesAnyValueWithinEachAttribute(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := LoadSampleData(persistence); err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+
+	result, err := NewService(persistence).SearchPartNumberViews(PartSearchQuery{
+		Attributes: map[ubom.AttributeDefID][]string{
+			"footprint":  {"0805", "0603"},
+			"resistance": {"999", "10000"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("SearchPartNumberViews() error = %v", err)
+	}
+	if result.Total != 1 || len(result.Items) != 1 || result.Items[0].Value != "PN-A" {
+		t.Fatalf("result = %#v, want only PN-A matching one value from each filter group", result)
+	}
+}
+
 func TestGetSeqDefDefinitionViewSerializesAuthoringRoot(t *testing.T) {
 	metadata := store.NewMemoryStore()
 	definition := ubom.NewSeqDef(ubom.Concat(ubom.Literal("PN-"), ubom.Range(0, 9).Width(2, ' '))).WithID("authoring-view")

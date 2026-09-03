@@ -17,7 +17,7 @@
   ]
 
   const materials: FilterOption[] = [
-    { label: 'Steel', count: 21, selected: true },
+    { label: 'Steel', count: 21 },
     { label: 'Aluminum', count: 8 },
     { label: 'Plastic', count: 4 },
   ]
@@ -28,6 +28,37 @@
     { label: 'Air plug gauges', count: 4, disabled: true },
     { label: 'Taper plug gauges', count: 7 },
   ]
+
+  let selectedMaterials = ['Steel']
+  let selectedGaugeTypes: string[] = []
+  let diameterMinimum = ''
+  let diameterMaximum = ''
+
+  $: activeFilterLabels = [
+    ...selectedMaterials.map(value => `Material: ${value}`),
+    ...selectedGaugeTypes.map(value => `Gauge type: ${value}`),
+    ...(diameterMinimum ? [`Diameter from ${diameterMinimum} mm`] : []),
+    ...(diameterMaximum ? [`Diameter to ${diameterMaximum} mm`] : []),
+  ]
+
+  function clearFilters() {
+    selectedMaterials = []
+    selectedGaugeTypes = []
+    diameterMinimum = ''
+    diameterMaximum = ''
+  }
+
+  function updateDiameter(range: { minimum: string; maximum: string }) {
+    diameterMinimum = range.minimum
+    diameterMaximum = range.maximum
+  }
+
+  function removeFilter(filter: string) {
+    if (filter.startsWith('Material: ')) selectedMaterials = selectedMaterials.filter(value => `Material: ${value}` !== filter)
+    else if (filter.startsWith('Gauge type: ')) selectedGaugeTypes = selectedGaugeTypes.filter(value => `Gauge type: ${value}` !== filter)
+    else if (filter.startsWith('Diameter from ')) diameterMinimum = ''
+    else if (filter.startsWith('Diameter to ')) diameterMaximum = ''
+  }
 
   const fasteningTiles = [
     { title: 'Bolts', description: 'Machine bolts and structural fasteners.', image: 'IMG', partCount: 48 },
@@ -74,15 +105,15 @@
         <CategoryList categories={categories} />
       </section>
       <section class="catalog-panel-section" aria-labelledby="catalog-filters-heading">
-        <div class="catalog-panel-heading"><h2 id="catalog-filters-heading">Filter by</h2><button type="button">Clear</button></div>
+        <div class="catalog-panel-heading"><h2 id="catalog-filters-heading">Filter by</h2><button type="button" on:click={clearFilters}>Clear</button></div>
         <FilterWidget title="Material" description="">
-          <FilterOptionList options={materials} />
+          <FilterOptionList options={materials} selectedValues={selectedMaterials} onChange={values => selectedMaterials = values} />
         </FilterWidget>
         <FilterWidget title="Gauge type" description="">
-          <FilterOptionList options={gaugeTypes} columns={2} />
+          <FilterOptionList options={gaugeTypes} columns={2} selectedValues={selectedGaugeTypes} onChange={values => selectedGaugeTypes = values} />
         </FilterWidget>
         <FilterWidget title="Diameter" description="">
-          <FilterRange unit="mm" />
+          <FilterRange unit="mm" minimum={diameterMinimum} maximum={diameterMaximum} onChange={updateDiameter} />
         </FilterWidget>
       </section>
     </aside>
@@ -90,6 +121,9 @@
     <main class="catalog-main" aria-label="Catalog content">
       <div class="catalog-breadcrumbs"><span>Home</span><span aria-hidden="true">/</span><strong>Fastening &amp; Joining</strong></div>
       <div class="catalog-main-heading"><div><p class="eyebrow">Category</p><h2>Fastening &amp; Joining</h2></div><span class="catalog-result-count">67 parts</span></div>
+      {#if activeFilterLabels.length > 0}
+        <div class="catalog-active-filters" aria-label="Active filters"><span class="catalog-active-filters-label">Active filters</span>{#each activeFilterLabels as filter}<span class="catalog-filter-chip">{filter}<button type="button" aria-label={`Remove ${filter}`} on:click={() => removeFilter(filter)}>x</button></span>{/each}</div>
+      {/if}
       <section class="catalog-category-section" aria-labelledby="fastening-heading">
         <div class="catalog-section-heading"><h3 id="fastening-heading">Fasteners</h3><span>6 categories</span></div>
         <div class="catalog-tile-grid">{#each fasteningTiles as tile}<CategoryTile {...tile} size="standard" />{/each}</div>
@@ -131,6 +165,11 @@
   .catalog-main-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .catalog-main-heading h2 { margin: .2rem 0 0; font: 400 1.6rem Georgia, serif; }
   .catalog-result-count, .catalog-section-heading span { color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .catalog-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: 1rem; }
+  .catalog-active-filters-label { color: var(--muted); font: .62rem ui-monospace, monospace; }
+  .catalog-filter-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .35rem .25rem .5rem; color: var(--ink); background: var(--accent-light); border: 1px solid var(--hairline); border-radius: 1rem; font-size: .68rem; }
+  .catalog-filter-chip button { display: grid; width: .9rem; height: .9rem; place-items: center; padding: 0; color: var(--muted); background: transparent; border: 0; border-radius: 50%; cursor: pointer; font: .65rem ui-monospace, monospace; }
+  .catalog-filter-chip button:hover { color: var(--ink); background: var(--surface); }
   .catalog-category-section, .catalog-parts-section { margin-top: 1.75rem; }
   .catalog-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; padding-bottom: .4rem; border-bottom: 1px solid var(--hairline); }
   .catalog-section-heading h3 { margin: 0; font: 400 1.1rem Georgia, serif; }

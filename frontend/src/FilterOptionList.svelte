@@ -10,22 +10,28 @@
   export let options: FilterOption[] = []
   export let columns: 1 | 2 = 1
   export let scrollable = false
+  export let selectedValues: string[] | undefined = undefined
+  export let onChange: (values: string[]) => void = () => {}
 
-  let selectedValues = options.filter(option => option.selected).map(option => option.value ?? option.label)
+  let localSelectedValues = options.filter(option => option.selected).map(option => option.value ?? option.label)
+
+  $: activeSelectedValues = selectedValues ?? localSelectedValues
 
   function toggle(option: FilterOption) {
     const value = option.value ?? option.label
-    selectedValues = selectedValues.includes(value)
-      ? selectedValues.filter(selected => selected !== value)
-      : [...selectedValues, value]
+    const nextValues = activeSelectedValues.includes(value)
+      ? activeSelectedValues.filter(selected => selected !== value)
+      : [...activeSelectedValues, value]
+    if (selectedValues === undefined) localSelectedValues = nextValues
+    onChange(nextValues)
   }
 </script>
 
 <div class:filter-options-two-column={columns === 2} class:filter-options-scroll={scrollable} class="filter-option-list">
   {#each options as option}
     {@const value = option.value ?? option.label}
-    <label class:selected={selectedValues.includes(value)} class:disabled={option.disabled}>
-      <input type="checkbox" checked={selectedValues.includes(value)} disabled={option.disabled} on:change={() => toggle(option)} />
+    <label class:selected={activeSelectedValues.includes(value)} class:disabled={option.disabled}>
+      <input type="checkbox" checked={activeSelectedValues.includes(value)} disabled={option.disabled} on:change={() => toggle(option)} />
       <span>{option.label}</span>
       {#if option.count !== undefined}<small>{option.count}</small>{/if}
     </label>

@@ -15,11 +15,18 @@ A sequence is a user generated grammar definition for arbitrary string sequences
 
 A sequence definition can parse a value OR generate a new value, something like `mySeq.Parse("a123")` or `mySeq.Next('a123') -> "a124"`.
 
+Saved sequence definitions are immutable revisions; changes are recorded as a
+new revision rather than modifying the definition used by existing parts.
+
 ## Taxonomy
 
 A taxonomy tree applies labels to a sequence, so we can give some degree of meaning to each segment of a sequence.
 
 This all builds up to `PartNumber`, which possesses a part number literal, and the accompanying taxonomy tree so you can see what categories a given part number occupies.
+
+Part number values are globally unique canonical values across the application.
+Taxonomy definitions are also immutable revisions, and a part number retains
+the exact sequence and taxonomy revisions used to generate and classify it.
 
 From `PartNumber`, we jump to the recursive DAG that is a BOM: `PartNumber + Revision -> BOM -> []LineItem(PartNumber, Revision)`, and the cycle continues.
 
@@ -34,6 +41,14 @@ An artifact is the engineering record that lives behind a part number + revision
 Our first implementation is simply a file system artifact source. A periodic scan kicks off, changes are ingested, and a new artifact snapshot is recorded internally.
 
 # Roadmap
+
+## Local containers
+
+`docker compose up --build` starts the UBOM API and a durable Postgres instance.
+The API currently uses the mounted SQLite database because the server has not
+yet gained a Postgres store adapter; the Postgres service is intentionally
+present as the target production dependency, not a silently unused claim of
+Postgres support. The frontend still runs separately with `make -C frontend dev`.
 
 - strongly typed attributes, can be applied to any node in a taxonomy tree, to a part number, or to a bill of materials -- this allows you to do things like add resistor values to a specific branch of the taxonomy tree. It also enables things like querying parts by attribute, requirements satisfaction (maybe), and so on.
   - We now have attributes, but they aren't strongly typed yet. Soon.

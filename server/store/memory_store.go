@@ -316,6 +316,22 @@ func (s *MemoryStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	return clonePartNumber(part), nil
 }
 
+func (s *MemoryStore) ArchivePartNumber(id ubom.PartNumberID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for value, part := range s.partNumbers {
+		if part.ID == id {
+			if part.EffectiveStatus() == ubom.PartNumberStatusArchived {
+				return ErrAlreadyExists
+			}
+			part.Status = ubom.PartNumberStatusArchived
+			s.partNumbers[value] = part
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
 func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, error) {
 	part, ok := s.partNumbersByID(id)
 	if !ok {

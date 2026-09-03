@@ -200,3 +200,33 @@ func TestSQLiteStoreMigratesLegacyTaxonomyNodes(t *testing.T) {
 		t.Fatalf("legacy sequence metadata = %#v, error = %v", legacySeq, err)
 	}
 }
+
+func TestSQLiteStoreTaxonomyHistoryClosesIDQueryBeforeLoadingDefinitions(t *testing.T) {
+	store, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenSQLiteStore() error = %v", err)
+	}
+	defer store.Close()
+
+	seqDef := ubom.NewSeqDef(ubom.Literal("PN")).WithID("history-seq")
+	if err := store.CreateSeqDef(seqDef); err != nil {
+		t.Fatalf("CreateSeqDef() error = %v", err)
+	}
+	root := ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Label: "Parts"}}
+	for _, definition := range []ubom.TaxonomyDef{
+		{ID: "history-tax-v1", DefinitionID: "history-tax", Version: 1, SeqDef: seqDef.ID, Taxonomy: root},
+		{ID: "history-tax-v2", DefinitionID: "history-tax", Version: 2, ParentID: "history-tax-v1", SeqDef: seqDef.ID, Taxonomy: root},
+	} {
+		if err := store.CreateTaxonomyDef(definition); err != nil {
+			t.Fatalf("CreateTaxonomyDef(%s) error = %v", definition.ID, err)
+		}
+	}
+
+	history, err := store.ListTaxonomyDefHistory("history-tax")
+	if err != nil {
+		t.Fatalf("ListTaxonomyDefHistory() error = %v", err)
+	}
+	if len(history) != 2 || history[0].ID != "history-tax-v1" || history[1].ID != "history-tax-v2" {
+		t.Fatalf("history = %#v", history)
+	}
+}

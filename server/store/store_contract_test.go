@@ -306,6 +306,19 @@ func runStoreContract(t *testing.T, store Store) {
 	if _, err := store.GetPartNumber("missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing value lookup error = %v, want ErrNotFound", err)
 	}
+	if err := store.ArchivePartNumber(part.ID); err != nil {
+		t.Fatalf("ArchivePartNumber() error = %v", err)
+	}
+	archived, err := store.GetPartNumber(part.Value)
+	if err != nil || archived.EffectiveStatus() != ubom.PartNumberStatusArchived {
+		t.Fatalf("archived part = %#v, error = %v", archived, err)
+	}
+	if err := store.ArchivePartNumber(part.ID); !errors.Is(err, ErrAlreadyExists) {
+		t.Fatalf("second ArchivePartNumber() error = %v, want ErrAlreadyExists", err)
+	}
+	if _, err := store.CreatePartNumber(ubom.PartNumber{Value: part.Value, SeqDefID: seqDef.ID, TaxonomyDefID: taxonomyDef.ID, TaxonomyNodeID: "root", Attributes: part.Attributes}); !errors.Is(err, ErrAlreadyExists) {
+		t.Fatalf("archived value reuse error = %v, want ErrAlreadyExists", err)
+	}
 	if _, err := store.GetPartNumberByID("missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing ID lookup error = %v, want ErrNotFound", err)
 	}

@@ -211,11 +211,25 @@ func (s *Server) handlePartNumberByValue(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handlePartNumber(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/parts/")
+	if strings.HasSuffix(path, "/archive") {
+		id := strings.TrimSuffix(path, "/archive")
+		if r.Method != http.MethodPost || id == "" || strings.Contains(id, "/") {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		if err := s.service.ArchivePartNumber(ubom.PartNumberID(id)); err != nil {
+			writeCreateError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/api/parts/")
+	id := path
 	if id == "" || strings.Contains(id, "/") {
 		writeError(w, http.StatusBadRequest, "invalid part number ID")
 		return

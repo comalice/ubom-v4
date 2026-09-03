@@ -11,6 +11,13 @@ type Part struct {
 // PartNumberID identifies a durable part number record.
 type PartNumberID string
 
+type PartNumberStatus string
+
+const (
+	PartNumberStatusActive   PartNumberStatus = "active"
+	PartNumberStatusArchived PartNumberStatus = "archived"
+)
+
 // PartRevisionID identifies a revision owned by a part number.
 type PartRevisionID string
 
@@ -111,6 +118,14 @@ type PartNumber struct {
 	TaxonomyDefID  TaxonomyDefID         `json:"taxonomyDef"`     // Taxonomy applied to this part number.
 	TaxonomyNodeID TaxonomyNodeID        `json:"taxonomyNodeId"`  // Taxonomy node containing this part number.
 	Attributes     []PartNumberAttribute `json:"attributes"`
+	Status         PartNumberStatus      `json:"status,omitempty"`
+}
+
+func (p PartNumber) EffectiveStatus() PartNumberStatus {
+	if p.Status == "" {
+		return PartNumberStatusActive
+	}
+	return p.Status
 }
 
 // Validate checks the fields required to persist a part number.
@@ -127,6 +142,9 @@ func (p PartNumber) Validate() error {
 	}
 	if p.TaxonomyNodeID == "" {
 		return fmt.Errorf("part number has no taxonomy node ID")
+	}
+	if p.Status != "" && p.Status != PartNumberStatusActive && p.Status != PartNumberStatusArchived {
+		return fmt.Errorf("invalid part number status %q", p.Status)
 	}
 	return nil
 }

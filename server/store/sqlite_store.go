@@ -113,6 +113,7 @@ func (s *SQLiteStore) init() error {
 			taxonomy_def_id TEXT NOT NULL,
 			taxonomy_node_id TEXT NOT NULL,
 			attributes TEXT NOT NULL DEFAULT '[]',
+			status TEXT NOT NULL DEFAULT '',
 			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id),
 			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id),
 			FOREIGN KEY (taxonomy_def_id, taxonomy_node_id)
@@ -206,6 +207,31 @@ func (s *SQLiteStore) init() error {
 			if _, err := s.db.Exec("ALTER TABLE taxonomy_defs ADD COLUMN " + column); err != nil {
 				return err
 			}
+		}
+	}
+	var hasPartStatus bool
+	rows, err = s.db.Query("PRAGMA table_info(part_numbers)")
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var cid, notNull, pk int
+		var name, columnType string
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		if name == "status" {
+			hasPartStatus = true
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if !hasPartStatus {
+		if _, err := s.db.Exec("ALTER TABLE part_numbers ADD COLUMN status TEXT NOT NULL DEFAULT ''"); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -613,20 +639,31 @@ func (s *SQLiteStore) ListTaxonomyDefHistory(definitionID string) ([]ubom.Taxono
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	result := []ubom.TaxonomyDef{}
+	ids := []ubom.TaxonomyDefID{}
 	for rows.Next() {
 		var id ubom.TaxonomyDefID
 		if err := rows.Scan(&id); err != nil {
+			rows.Close()
 			return nil, err
 		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	result := []ubom.TaxonomyDef{}
+	for _, id := range ids {
 		def, err := s.GetTaxonomyDef(id)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, def)
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *string, node ubom.TaxonomyNode, position int) error {
@@ -771,8 +808,8 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 		return ubom.PartNumber{}, err
 	}
 	result, err := s.db.Exec(`INSERT INTO part_numbers
-		(value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes)
-		VALUES (?, ?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID, attributeData)
+		(value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status)
+		VALUES (?, ?, ?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID, attributeData, part.Status)
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
@@ -784,13 +821,37 @@ func (s *SQLiteStore) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, e
 	return part, nil
 }
 
+func (s *SQLiteStore) ArchivePartNumber(id ubom.PartNumberID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	partID, err := strconv.ParseInt(string(id), 10, 64)
+	if err != nil {
+		return ErrNotFound
+	}
+	result, err := s.db.Exec("UPDATE part_numbers SET status = ? WHERE id = ? AND status != ?", ubom.PartNumberStatusArchived, partID, ubom.PartNumberStatusArchived)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		if _, err := s.getPartNumberByID(partID); err != nil {
+			return err
+		}
+		return ErrAlreadyExists
+	}
+	return nil
+}
+
 func (s *SQLiteStore) GetPartNumber(value string) (ubom.PartNumber, error) {
 	var part ubom.PartNumber
 	var id int64
 	var attributeData []byte
-	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes
+	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status
 		FROM part_numbers WHERE value = ?`, value).Scan(
-		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData); err != nil {
+		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData, &part.Status); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartNumber{}, ErrNotFound
 		}
@@ -1051,7 +1112,7 @@ func (s *SQLiteStore) ReleasePartNumberDraft(id ubom.PartNumberDraftID) (ubom.Pa
 	if err != nil {
 		return ubom.PartNumber{}, err
 	}
-	result, err := tx.Exec(`INSERT INTO part_numbers (value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes) VALUES (?, ?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID, attributeData)
+	result, err := tx.Exec(`INSERT INTO part_numbers (value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status) VALUES (?, ?, ?, ?, ?, ?)`, part.Value, part.SeqDefID, part.TaxonomyDefID, part.TaxonomyNodeID, attributeData, part.Status)
 	if err != nil {
 		tx.Rollback()
 		if isSQLiteConstraint(err) {
@@ -1197,9 +1258,9 @@ func (s *SQLiteStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision
 func (s *SQLiteStore) getPartNumberByID(id int64) (ubom.PartNumber, error) {
 	var part ubom.PartNumber
 	var attributeData []byte
-	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes
+	if err := s.db.QueryRow(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status
 		FROM part_numbers WHERE id = ?`, id).Scan(
-		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData); err != nil {
+		&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData, &part.Status); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ubom.PartNumber{}, ErrNotFound
 		}

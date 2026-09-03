@@ -265,6 +265,21 @@ func TestPartNumberValidate(t *testing.T) {
 	}
 }
 
+func TestPartNumberStatus(t *testing.T) {
+	part := PartNumber{Value: "PN-1", SeqDefID: "pn-v1", TaxonomyDefID: "taxonomy-v1", TaxonomyNodeID: "root"}
+	if part.EffectiveStatus() != PartNumberStatusActive {
+		t.Fatalf("zero status = %q, want active", part.EffectiveStatus())
+	}
+	part.Status = PartNumberStatusArchived
+	if err := part.Validate(); err != nil {
+		t.Fatalf("archived part validation error = %v", err)
+	}
+	part.Status = "retired"
+	if err := part.Validate(); err == nil {
+		t.Fatal("invalid part status accepted")
+	}
+}
+
 func TestLineItemValidate(t *testing.T) {
 	valid := LineItem{PartNumberID: "part-1", PartRevisionID: "revision-1"}
 	if err := valid.Validate(); err != nil {

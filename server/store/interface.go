@@ -27,6 +27,7 @@ type Store interface {
 	ListTaxonomyDefHistory(string) ([]ubom.TaxonomyDef, error)
 
 	CreatePartNumber(ubom.PartNumber) (ubom.PartNumber, error)
+	ArchivePartNumber(ubom.PartNumberID) error
 	GetPartNumber(string) (ubom.PartNumber, error)
 	GetPartNumberByID(ubom.PartNumberID) (ubom.PartNumber, error)
 	ListPartNumbers() ([]ubom.PartNumber, error)

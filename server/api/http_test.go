@@ -135,6 +135,25 @@ func TestPartNumberViewNotFound(t *testing.T) {
 	}
 }
 
+func TestPartNumberArchiveAPI(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	part, err := app.LoadSampleData(persistence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := NewServer(app.NewService(persistence))
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/parts/"+string(part.ID)+"/archive", nil))
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("archive status = %d; body = %s", response.Code, response.Body)
+	}
+	viewResponse := httptest.NewRecorder()
+	server.Handler().ServeHTTP(viewResponse, httptest.NewRequest(http.MethodGet, "/api/parts/"+string(part.ID), nil))
+	if viewResponse.Code != http.StatusOK || !strings.Contains(viewResponse.Body.String(), `"status":"archived"`) {
+		t.Fatalf("archived detail status = %d; body = %s", viewResponse.Code, viewResponse.Body)
+	}
+}
+
 func TestSeqDefDefinitionEndpoint(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	created := httptest.NewRecorder()

@@ -146,6 +146,9 @@ func (s *Service) CreateTaxonomyRevision(seqDef ubom.SeqDefID, parent ubom.Taxon
 func (s *Service) CreatePartNumber(part ubom.PartNumber) (ubom.PartNumber, error) {
 	return s.store.CreatePartNumber(part)
 }
+func (s *Service) ArchivePartNumber(id ubom.PartNumberID) error {
+	return s.store.ArchivePartNumber(id)
+}
 func (s *Service) CreatePartRevision(revision ubom.PartRevision) (ubom.PartRevision, error) {
 	return s.store.CreatePartRevision(revision)
 }
@@ -412,11 +415,12 @@ func (s *Service) ListTaxonomyDefSummaries() ([]TaxonomyDefSummary, error) {
 }
 
 type PartNumberView struct {
-	ID           ubom.PartNumberID   `json:"id"`
-	Value        string              `json:"value"`
-	TaxonomyPath []string            `json:"taxonomyPath"`
-	Attributes   []PartAttributeView `json:"attributes"`
-	Revisions    []RevisionView      `json:"revisions"`
+	ID           ubom.PartNumberID     `json:"id"`
+	Value        string                `json:"value"`
+	TaxonomyPath []string              `json:"taxonomyPath"`
+	Attributes   []PartAttributeView   `json:"attributes"`
+	Revisions    []RevisionView        `json:"revisions"`
+	Status       ubom.PartNumberStatus `json:"status"`
 }
 
 type PartAttributeView struct {
@@ -479,11 +483,12 @@ type RevisionSummary struct {
 }
 
 type PartNumberListItem struct {
-	ID           ubom.PartNumberID   `json:"id"`
-	Value        string              `json:"value"`
-	TaxonomyPath []string            `json:"taxonomyPath"`
-	Attributes   []PartAttributeView `json:"attributes"`
-	Revisions    []RevisionSummary   `json:"revisions"`
+	ID           ubom.PartNumberID     `json:"id"`
+	Value        string                `json:"value"`
+	TaxonomyPath []string              `json:"taxonomyPath"`
+	Attributes   []PartAttributeView   `json:"attributes"`
+	Revisions    []RevisionSummary     `json:"revisions"`
+	Status       ubom.PartNumberStatus `json:"status"`
 }
 
 type RevisionDetailView struct {
@@ -594,6 +599,7 @@ func (s *Service) GetPartNumberView(id ubom.PartNumberID) (PartNumberView, error
 		TaxonomyPath: interpreted.Classification.Labels,
 		Attributes:   attributes,
 		Revisions:    make([]RevisionView, 0, len(part.PartRevisionID)),
+		Status:       part.EffectiveStatus(),
 	}
 	for _, revisionID := range part.PartRevisionID {
 		revision, err := s.store.GetPartRevision(revisionID)
@@ -745,6 +751,7 @@ func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, 
 		TaxonomyPath: taxonomyPath,
 		Attributes:   []PartAttributeView{},
 		Revisions:    make([]RevisionSummary, 0, len(part.PartRevisionID)),
+		Status:       part.EffectiveStatus(),
 	}
 	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
 	if err != nil {

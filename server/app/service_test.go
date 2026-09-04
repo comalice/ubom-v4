@@ -92,6 +92,33 @@ func TestSearchPartNumberViewsMatchesDecimalRangesExactly(t *testing.T) {
 	}
 }
 
+func TestSearchPartNumberViewsFiltersArchivedOnlyWhenRequested(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	part, err := LoadSampleData(persistence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.ArchivePartNumber(part.ID); err != nil {
+		t.Fatal(err)
+	}
+	service := NewService(persistence)
+	activeOnly := false
+	includeArchived := true
+
+	legacy, err := service.SearchPartNumberViews(PartSearchQuery{})
+	if err != nil || legacy.Total != 2 {
+		t.Fatalf("legacy result = %#v, error = %v; want both statuses", legacy, err)
+	}
+	active, err := service.SearchPartNumberViews(PartSearchQuery{IncludeArchived: &activeOnly})
+	if err != nil || active.Total != 1 || active.Items[0].Value != "PN-B" {
+		t.Fatalf("active result = %#v, error = %v; want only PN-B", active, err)
+	}
+	included, err := service.SearchPartNumberViews(PartSearchQuery{IncludeArchived: &includeArchived})
+	if err != nil || included.Total != 2 {
+		t.Fatalf("included result = %#v, error = %v; want both statuses", included, err)
+	}
+}
+
 func TestGetSeqDefDefinitionViewSerializesAuthoringRoot(t *testing.T) {
 	metadata := store.NewMemoryStore()
 	definition := ubom.NewSeqDef(ubom.Concat(ubom.Literal("PN-"), ubom.Range(0, 9).Width(2, ' '))).WithID("authoring-view")

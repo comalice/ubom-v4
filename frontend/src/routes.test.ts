@@ -19,12 +19,13 @@ describe('sequence definition routes', () => {
   })
 
   it('parses shareable catalog query state and omits defaults', () => {
-    expect(parseRoute('/catalog?taxonomyDef=components-v3&node=resistors&q=10k%20%2B&filter.resistance=10k&filter.tolerance=1%25&page=2&pageSize=50&sort=id&order=desc')).toEqual({
+    expect(parseRoute('/catalog?taxonomyDef=components-v3&node=resistors&q=10k%20%2B&includeArchived=true&filter.resistance=10k&filter.tolerance=1%25&page=2&pageSize=50&sort=id&order=desc')).toEqual({
       kind: 'catalog',
       state: {
         taxonomyDef: 'components-v3',
         node: 'resistors',
         q: '10k +',
+        includeArchived: true,
         filters: { resistance: ['10k'], tolerance: ['1%'] },
         page: 2,
         sort: 'id',
@@ -58,6 +59,12 @@ describe('sequence definition routes', () => {
     expect(parseCatalogRouteState(serializeCatalogRouteState(state))).toEqual(state)
     expect(catalogPath()).toBe('/catalog')
     expect(catalogPath({ path: ['components', 'fasteners'], taxonomyDef: 'components-v3', q: 'bolt' })).toBe('/catalog/components/fasteners?taxonomyDef=components-v3&q=bolt')
+  })
+
+  it('only serializes archived inclusion when explicitly enabled', () => {
+    expect(serializeCatalogRouteState({ includeArchived: false })).toBe('')
+    expect(serializeCatalogRouteState({ includeArchived: true })).toBe('includeArchived=true')
+    expect(parseCatalogRouteState('?includeArchived=false')).toEqual({})
   })
 
   it('serializes every catalog interaction state, including pagination and sorting', () => {

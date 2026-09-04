@@ -209,6 +209,14 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		Sort:         r.URL.Query().Get("sort"),
 		Descending:   r.URL.Query().Get("order") == "desc" || r.URL.Query().Get("direction") == "desc",
 	}
+	if raw, ok := r.URL.Query()["includeArchived"]; ok {
+		if len(raw) != 1 || (raw[0] != "true" && raw[0] != "false") {
+			writeError(w, http.StatusBadRequest, "invalid includeArchived value")
+			return
+		}
+		includeArchived := raw[0] == "true"
+		query.IncludeArchived = &includeArchived
+	}
 	if value, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil {
 		query.Page = value
 	}

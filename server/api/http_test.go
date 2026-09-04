@@ -187,9 +187,35 @@ func TestPartNumberListSupportsNumericRangeFilters(t *testing.T) {
 	}
 }
 
+func TestPartNumberListStatusFilter(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	part, err := app.LoadSampleData(persistence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.ArchivePartNumber(part.ID); err != nil {
+		t.Fatal(err)
+	}
+	server := NewServer(app.NewService(persistence))
+	for _, test := range []struct {
+		query string
+		total int
+	}{
+		{query: "includeArchived=false", total: 1},
+		{query: "includeArchived=true", total: 2},
+	} {
+		recording := httptest.NewRecorder()
+		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?"+test.query, nil))
+		var result app.PartSearchResult
+		if recording.Code != http.StatusOK || json.NewDecoder(recording.Body).Decode(&result) != nil || result.Total != test.total {
+			t.Errorf("query %q status = %d result = %#v; want total %d", test.query, recording.Code, result, test.total)
+		}
+	}
+}
+
 func TestPartNumberListRejectsMalformedAttributeFilters(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
-	for _, query := range []string{"attribute=footprint", "attribute==0603", "attribute.=0603", "attribute.footprint=", "attributeMin.resistance=not-a-number", "attributeMax.resistance=", "attributeMin.resistance=100&attributeMax.resistance=10", "attributeMin.resistance=1%2F2"} {
+	for _, query := range []string{"attribute=footprint", "attribute==0603", "attribute.=0603", "attribute.footprint=", "attributeMin.resistance=not-a-number", "attributeMax.resistance=", "attributeMin.resistance=100&attributeMax.resistance=10", "attributeMin.resistance=1%2F2", "includeArchived=maybe", "includeArchived=true&includeArchived=false"} {
 		recording := httptest.NewRecorder()
 		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?"+query, nil))
 		if recording.Code != http.StatusBadRequest {

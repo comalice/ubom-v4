@@ -508,12 +508,14 @@ type PartSearchQuery struct {
 	Q            string
 	TaxonomyDef  ubom.TaxonomyDefID
 	TaxonomyNode ubom.TaxonomyNodeID
-	Attributes   map[ubom.AttributeDefID][]string
-	Ranges       map[ubom.AttributeDefID]PartSearchRange
-	Page         int
-	PageSize     int
-	Sort         string
-	Descending   bool
+	// IncludeArchived is nil for legacy callers; false applies the catalog's active-only policy.
+	IncludeArchived *bool
+	Attributes      map[ubom.AttributeDefID][]string
+	Ranges          map[ubom.AttributeDefID]PartSearchRange
+	Page            int
+	PageSize        int
+	Sort            string
+	Descending      bool
 }
 
 type PartSearchRange struct {
@@ -545,6 +547,9 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 	q := strings.ToLower(strings.TrimSpace(query.Q))
 	filtered := make([]ubom.PartNumber, 0, len(parts))
 	for _, part := range parts {
+		if query.IncludeArchived != nil && !*query.IncludeArchived && part.EffectiveStatus() == ubom.PartNumberStatusArchived {
+			continue
+		}
 		if q != "" && !strings.Contains(strings.ToLower(part.Value), q) {
 			continue
 		}

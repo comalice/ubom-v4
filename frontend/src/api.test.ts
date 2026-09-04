@@ -148,6 +148,19 @@ describe('part search API', () => {
     })).resolves.toEqual(result)
     expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=10k+%2B&taxonomyNode=resistors&taxonomyDef=components%2Fv3&attribute=footprint%3D0603&attribute=tolerance%3D1%25&attribute=tolerance%3D5%25&attributeMin.resistance=100&attributeMax.resistance=10000&page=3&pageSize=50&sort=id&order=desc')
   })
+
+  it('sends explicit archived inclusion state when requested', async () => {
+    const result = { items: [], total: 0, page: 1, pageSize: 50 }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify(result), { status: 200 }))
+
+    await searchParts({ includeArchived: false })
+    await searchParts({ includeArchived: true })
+
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/parts?includeArchived=false',
+      '/api/parts?includeArchived=true',
+    ])
+  })
 })
 
 describe('sequence definition version API', () => {

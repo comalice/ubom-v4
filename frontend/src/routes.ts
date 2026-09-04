@@ -24,6 +24,7 @@ export type CatalogRouteState = {
   path?: string[]
   node?: string
   q?: string
+  includeArchived?: boolean
   filters?: Record<string, string[]>
   ranges?: Record<string, CatalogRange>
   page?: number
@@ -85,6 +86,7 @@ export function parseCatalogRouteState(search: string | URLSearchParams): Catalo
     ...(params.get('taxonomyDef') ? { taxonomyDef: params.get('taxonomyDef')! } : {}),
     ...(params.get('node') ? { node: params.get('node')! } : {}),
     ...(params.get('q') ? { q: params.get('q')! } : {}),
+    ...(params.get('includeArchived') === 'true' ? { includeArchived: true } : {}),
     ...(Object.keys(filters).length ? { filters } : {}),
     ...(Object.keys(ranges).length ? { ranges } : {}),
     ...(page !== catalogDefaults.page ? { page } : {}),
@@ -99,6 +101,7 @@ export function serializeCatalogRouteState(state: CatalogRouteState = {}): strin
   if (state.taxonomyDef) params.set('taxonomyDef', state.taxonomyDef)
   if (state.node) params.set('node', state.node)
   if (state.q) params.set('q', state.q)
+  if (state.includeArchived === true) params.set('includeArchived', 'true')
   for (const key of Object.keys(state.filters ?? {}).sort()) {
     if (!key) continue
     for (const value of [...new Set(state.filters?.[key] ?? [])].filter(Boolean).sort()) params.append(`filter.${key}`, value)

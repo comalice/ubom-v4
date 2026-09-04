@@ -200,6 +200,7 @@ export async function searchParts(options: PartSearchOptions = {}) {
   const taxonomyNode = options.taxonomyNode ?? options.node
   if (taxonomyNode) params.set('taxonomyNode', taxonomyNode)
   if (options.taxonomyDef) params.set('taxonomyDef', options.taxonomyDef)
+  if (options.includeArchived !== undefined) params.set('includeArchived', String(options.includeArchived))
   for (const attributeID of Object.keys(options.filters ?? {}).sort()) {
     for (const value of options.filters?.[attributeID] ?? []) {
       if (value) params.append('attribute', `${attributeID}=${value}`)

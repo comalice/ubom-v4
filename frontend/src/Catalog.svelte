@@ -65,7 +65,7 @@
       const effectiveRanges = Object.fromEntries(Object.entries(routeState.ranges ?? {})
         .filter(([attribute, range]) => effectiveRangeAttributeIDs.has(attribute) && (range.min || range.max)))
       const effectiveState = { ...routeState, taxonomyDef: taxonomy.id, node: nodeID, filters: effectiveFilters, ranges: effectiveRanges }
-      const result = await searchParts(effectiveState)
+      const result = await searchParts({ ...effectiveState, includeArchived: routeState.includeArchived ?? false })
       if (requestID !== request) return
       definition = taxonomy
       node = resolvedNode
@@ -184,6 +184,11 @@
     navigate(catalogPath(scopedState({ node: node?.id, pageSize, page: undefined })))
   }
 
+  function updateArchived(event: Event) {
+    const includeArchived = (event.currentTarget as HTMLInputElement).checked
+    navigate(catalogPath(scopedState({ node: node?.id, includeArchived, page: undefined })))
+  }
+
   function updateSort(event: Event) {
     const sort = (event.currentTarget as HTMLSelectElement).value
     navigate(catalogPath(scopedState({ node: node?.id, sort, page: undefined })))
@@ -218,6 +223,10 @@
         </section>
         <section class="catalog-panel-section" aria-labelledby="catalog-filters-heading">
           <div class="catalog-panel-heading"><h2 id="catalog-filters-heading">Filter by</h2><button type="button" on:click={clearFilters}>Clear</button></div>
+          <label class="catalog-archived-toggle">
+            <input type="checkbox" checked={state?.includeArchived === true} on:change={updateArchived} />
+            Include archived parts
+          </label>
           {#each enumFilters() as filter}
             <FilterWidget title={node.attributes.find(attribute => attribute.id === filter.attribute)?.label ?? filter.attribute}>
               <FilterOptionList options={filter.options} selectedValues={filters[filter.attribute] ?? []} onChange={values => updateFilter(filter.attribute, values)} />

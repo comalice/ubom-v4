@@ -107,8 +107,8 @@
     }
   }
 
-  function navigate(path: string) {
-    history.pushState({}, '', path)
+  function navigate(path: string, replace = false) {
+    history[replace ? 'replaceState' : 'pushState']({}, '', path)
     load()
   }
 

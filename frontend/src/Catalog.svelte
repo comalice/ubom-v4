@@ -8,10 +8,10 @@
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
   import { getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
-  import { catalogPath, taxonomySlug, type CatalogRouteState } from './routes'
+  import { catalogPageSizeOptions, catalogPath, catalogServerMaxPageSize, taxonomySlug, type CatalogRouteState } from './routes'
 
   export let state: CatalogRouteState | undefined = undefined
-  export let navigate: (path: string) => void
+  export let navigate: (path: string, replace?: boolean) => void
 
   let definition: TaxonomyDefinitionView | null = null
   let node: TaxonomyNodeView | null = null
@@ -25,7 +25,7 @@
   let currentPageSize = 50
   let request = 0
 
-  const pageSizeOptions = [25, 50, 100]
+  const pageSizeOptions = [...catalogPageSizeOptions, catalogServerMaxPageSize]
   const sortOptions = [
     { value: 'value', label: 'Part number' },
     { value: 'id', label: 'ID' },
@@ -51,10 +51,14 @@
       const resolvedPath = routeState.path ? resolveTaxonomyPath(taxonomy.root, routeState.path) : undefined
       if (routeState.path && !resolvedPath) throw new Error('404 Not Found')
       const nodeID = resolvedPath?.at(-1) ?? routeState.node ?? taxonomy.root.id
-      const [resolvedNode, result] = await Promise.all([
-        getTaxonomyNode(taxonomy.id, nodeID),
-        searchParts({ ...routeState, taxonomyDef: taxonomy.id, node: nodeID }),
-      ])
+      const resolvedNode = await getTaxonomyNode(taxonomy.id, nodeID)
+      const effectiveAttributeIDs = new Set(resolvedNode.attributes
+        .filter(attribute => attribute.valueType === 'enum' && (attribute.enumValues?.length ?? 0) > 0)
+        .map(attribute => attribute.id))
+      const effectiveFilters = Object.fromEntries(Object.entries(routeState.filters ?? {})
+        .filter(([attribute]) => effectiveAttributeIDs.has(attribute)))
+      const effectiveState = { ...routeState, taxonomyDef: taxonomy.id, node: nodeID, filters: effectiveFilters }
+      const result = await searchParts(effectiveState)
       if (requestID !== request) return
       definition = taxonomy
       node = resolvedNode
@@ -62,6 +66,11 @@
       total = result.total
       currentPage = result.page
       currentPageSize = result.pageSize
+      const canonicalPage = Math.min(Math.max(1, result.page), Math.max(1, Math.ceil(result.total / result.pageSize)))
+      const canonicalState = { ...routeState, filters: effectiveFilters, page: canonicalPage === 1 ? undefined : canonicalPage }
+      const canonicalPath = catalogPath(canonicalState)
+      const currentPath = `${window.location.pathname}${window.location.search}`
+      if (canonicalPath !== currentPath) navigate(canonicalPath, true)
     } catch (reason) {
       if (requestID !== request) return
       definition = null

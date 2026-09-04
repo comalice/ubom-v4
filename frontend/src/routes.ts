@@ -27,21 +27,32 @@ export type CatalogRouteState = {
   filters?: Record<string, string[]>
   page?: number
   pageSize?: number
-  sort?: string
+  sort?: 'value' | 'id'
   order?: 'asc' | 'desc'
 }
 
 const catalogDefaults = {
   page: 1,
   pageSize: 50,
-  sort: 'value',
+  sort: 'value' as const,
   order: 'asc' as const,
 }
+
+export const catalogPageSizeOptions = [25, 50, 100] as const
+export const catalogServerMaxPageSize = 200
+const catalogSortValues = ['value', 'id'] as const
 
 const positiveInteger = (value: string | null, fallback: number) => {
   if (!value || !/^\d+$/.test(value)) return fallback
   const parsed = Number(value)
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
+const validPageSize = (value: string | null) => {
+  const parsed = positiveInteger(value, catalogDefaults.pageSize)
+  return catalogPageSizeOptions.includes(parsed as (typeof catalogPageSizeOptions)[number]) || parsed === catalogServerMaxPageSize
+    ? parsed
+    : catalogDefaults.pageSize
 }
 
 export function parseCatalogRouteState(search: string | URLSearchParams): CatalogRouteState {
@@ -55,9 +66,10 @@ export function parseCatalogRouteState(search: string | URLSearchParams): Catalo
   }
 
   const page = positiveInteger(params.get('page'), catalogDefaults.page)
-  const pageSize = positiveInteger(params.get('pageSize'), catalogDefaults.pageSize)
+  const pageSize = validPageSize(params.get('pageSize'))
   const order = params.get('order') === 'desc' ? 'desc' : catalogDefaults.order
-  const sort = params.get('sort') || catalogDefaults.sort
+  const sortParam = params.get('sort')
+  const sort: CatalogRouteState['sort'] = sortParam === 'value' || sortParam === 'id' ? sortParam : catalogDefaults.sort
   return {
     ...(params.get('taxonomyDef') ? { taxonomyDef: params.get('taxonomyDef')! } : {}),
     ...(params.get('node') ? { node: params.get('node')! } : {}),
@@ -79,10 +91,10 @@ export function serializeCatalogRouteState(state: CatalogRouteState = {}): strin
     if (!key) continue
     for (const value of [...new Set(state.filters?.[key] ?? [])].filter(Boolean).sort()) params.append(`filter.${key}`, value)
   }
-  if (state.page && state.page !== catalogDefaults.page) params.set('page', String(state.page))
-  if (state.pageSize && state.pageSize !== catalogDefaults.pageSize) params.set('pageSize', String(state.pageSize))
-  if (state.sort && state.sort !== catalogDefaults.sort) params.set('sort', state.sort)
-  if (state.order && state.order !== catalogDefaults.order) params.set('order', state.order)
+  if (Number.isSafeInteger(state.page) && state.page! > 0 && state.page !== catalogDefaults.page) params.set('page', String(state.page))
+  if (Number.isSafeInteger(state.pageSize) && state.pageSize! > 0 && (catalogPageSizeOptions.includes(state.pageSize as (typeof catalogPageSizeOptions)[number]) || state.pageSize === catalogServerMaxPageSize) && state.pageSize !== catalogDefaults.pageSize) params.set('pageSize', String(state.pageSize))
+  if (state.sort && catalogSortValues.includes(state.sort) && state.sort !== catalogDefaults.sort) params.set('sort', state.sort)
+  if ((state.order === 'asc' || state.order === 'desc') && state.order !== catalogDefaults.order) params.set('order', state.order)
   return params.toString()
 }
 

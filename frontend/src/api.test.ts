@@ -143,9 +143,9 @@ describe('part search API', () => {
     await expect(searchParts({
       taxonomyDef: 'components/v3', node: 'resistors', q: '10k +',
       filters: { tolerance: ['1%', '5%'], footprint: ['0603'] },
-      page: 3, pageSize: 50, sort: 'updatedAt', order: 'desc',
+      page: 3, pageSize: 50, sort: 'id', order: 'desc',
     })).resolves.toEqual(result)
-    expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=10k+%2B&taxonomyNode=resistors&taxonomyDef=components%2Fv3&attribute=footprint%3D0603&attribute=tolerance%3D1%25&attribute=tolerance%3D5%25&page=3&pageSize=50&sort=updatedAt&order=desc')
+    expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=10k+%2B&taxonomyNode=resistors&taxonomyDef=components%2Fv3&attribute=footprint%3D0603&attribute=tolerance%3D1%25&attribute=tolerance%3D5%25&page=3&pageSize=50&sort=id&order=desc')
   })
 })
 

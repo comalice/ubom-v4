@@ -19,7 +19,7 @@ describe('sequence definition routes', () => {
   })
 
   it('parses shareable catalog query state and omits defaults', () => {
-    expect(parseRoute('/catalog?taxonomyDef=components-v3&node=resistors&q=10k%20%2B&filter.resistance=10k&filter.tolerance=1%25&page=2&pageSize=50&sort=updatedAt&order=desc')).toEqual({
+    expect(parseRoute('/catalog?taxonomyDef=components-v3&node=resistors&q=10k%20%2B&filter.resistance=10k&filter.tolerance=1%25&page=2&pageSize=50&sort=id&order=desc')).toEqual({
       kind: 'catalog',
       state: {
         taxonomyDef: 'components-v3',
@@ -27,12 +27,17 @@ describe('sequence definition routes', () => {
         q: '10k +',
         filters: { resistance: ['10k'], tolerance: ['1%'] },
         page: 2,
-        sort: 'updatedAt',
+        sort: 'id',
         order: 'desc',
       },
     })
     expect(parseCatalogRouteState('?page=1&pageSize=50&sort=value&order=asc')).toEqual({})
     expect(parseCatalogRouteState('?page=1&pageSize=25&sort=value&order=asc')).toEqual({ pageSize: 25 })
+  })
+
+  it('falls back for unsupported sorting and pagination values', () => {
+    expect(parseCatalogRouteState('?sort=updatedAt&order=sideways&page=0&pageSize=26')).toEqual({})
+    expect(parseCatalogRouteState('?sort=id&order=desc&page=4&pageSize=200')).toEqual({ sort: 'id', order: 'desc', page: 4, pageSize: 200 })
   })
 
   it('serializes catalog state deterministically and preserves it on a round trip', () => {
@@ -53,7 +58,7 @@ describe('sequence definition routes', () => {
       filters: { material: ['Steel'] },
       page: 3,
       pageSize: 25,
-      sort: 'updatedAt',
+      sort: 'id' as const,
       order: 'desc' as const,
     }
     expect(parseCatalogRouteState(new URL(catalogPath(state), 'http://localhost').search)).toEqual(state)

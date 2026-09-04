@@ -17,7 +17,9 @@ seed:
 
 dev:
 	$(MAKE) seed
-	trap 'kill $(server_pid) $(frontend_pid) 2>/dev/null || true' INT TERM EXIT; \
-	$(MAKE) -C server run DB=$(DB) & server_pid=$$!; \
-	$(MAKE) frontend & frontend_pid=$$!; \
-	wait $(server_pid) $(frontend_pid)
+	stop_group() { pgid=$$1; test -n "$$pgid" || return; kill -TERM -- "-$$pgid" 2>/dev/null || true; for attempt in 1 2 3 4 5 6 7 8 9 10; do kill -0 -- "-$$pgid" 2>/dev/null || return; sleep 0.1; done; kill -KILL -- "-$$pgid" 2>/dev/null || true; }; \
+	cleanup() { status=$$1; trap - INT TERM EXIT; stop_group "$$server_pgid"; stop_group "$$frontend_pgid"; wait "$$server_pid" "$$frontend_pid" 2>/dev/null || true; exit "$$status"; }; \
+	trap 'cleanup $$?' INT TERM EXIT; \
+	setsid --wait $(MAKE) -C server run DB=$(DB) & server_pid=$$!; server_pgid=$$(ps -o pgid= -p "$$server_pid" | tr -d ' '); \
+	setsid --wait $(MAKE) frontend & frontend_pid=$$!; frontend_pgid=$$(ps -o pgid= -p "$$frontend_pid" | tr -d ' '); \
+	wait "$$server_pid" "$$frontend_pid"

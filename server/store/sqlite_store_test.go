@@ -283,6 +283,29 @@ func TestSQLiteStoreRoundTripsTypedTaxonomyPredicates(t *testing.T) {
 	}
 }
 
+func TestSQLiteStoreRoundTripsBranchCondition(t *testing.T) {
+	store, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	seq := ubom.NewSeqDef(ubom.Choice(ubom.Literal("A"), ubom.Literal("B"))).WithID("branch-seq")
+	tax := ubom.TaxonomyDef{ID: "branch-tax", SeqDef: seq.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Children: []ubom.TaxonomyNode{{ID: "b", Branch: &ubom.TaxonomyBranchCondition{Path: []string{"root/choice[1]"}}}}}}}
+	if err := store.CreateSeqDef(seq); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.CreateTaxonomyDef(tax); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.GetTaxonomyDef(tax.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, tax) {
+		t.Fatalf("branch round trip = %#v, want %#v", got, tax)
+	}
+}
+
 func TestSQLiteStoreMigratesLegacyTaxonomyNodes(t *testing.T) {
 	// A legacy exact-match database is upgraded in place and keeps Matches.
 	// This is deliberately tested separately from typed predicate persistence.

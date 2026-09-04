@@ -594,6 +594,9 @@ func cloneTaxonomyNode(node ubom.TaxonomyNode) ubom.TaxonomyNode {
 		}
 	}
 	clone.Predicates = append([]ubom.TaxonomyPredicate(nil), node.Predicates...)
+	if node.Branch != nil {
+		clone.Branch = &ubom.TaxonomyBranchCondition{Path: append([]string(nil), node.Branch.Path...)}
+	}
 	clone.Attributes = append([]ubom.AttributeAssignment(nil), node.Attributes...)
 	if node.Children != nil {
 		clone.Children = make([]ubom.TaxonomyNode, len(node.Children))

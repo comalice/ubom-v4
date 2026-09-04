@@ -102,6 +102,7 @@ func (s *SQLiteStore) init() error {
 			image_reference TEXT NOT NULL DEFAULT '',
 			matches TEXT NOT NULL,
 			predicates TEXT NOT NULL DEFAULT '[]',
+			branch TEXT,
 			attributes TEXT NOT NULL DEFAULT '[]',
 			position INTEGER NOT NULL,
 			PRIMARY KEY (taxonomy_def_id, id),
@@ -185,6 +186,31 @@ func (s *SQLiteStore) init() error {
 	}
 	if !hasPredicates {
 		if _, err = s.db.Exec("ALTER TABLE taxonomy_nodes ADD COLUMN predicates TEXT NOT NULL DEFAULT '[]'"); err != nil {
+			return err
+		}
+	}
+	var hasBranch bool
+	rows, err = s.db.Query("PRAGMA table_info(taxonomy_nodes)")
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var cid, notNull, pk int
+		var name, typ string
+		var def any
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &def, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		if name == "branch" {
+			hasBranch = true
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if !hasBranch {
+		if _, err := s.db.Exec("ALTER TABLE taxonomy_nodes ADD COLUMN branch TEXT"); err != nil {
 			return err
 		}
 	}
@@ -716,9 +742,13 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 	if err != nil {
 		return err
 	}
+	branch, err := json.Marshal(node.Branch)
+	if err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`INSERT INTO taxonomy_nodes
-		(taxonomy_def_id, id, parent_id, label, description, image, image_reference, matches, predicates, attributes, position)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, node.Description, node.Image, node.ImageReference, matches, predicates, attributes, position); err != nil {
+		(taxonomy_def_id, id, parent_id, label, description, image, image_reference, matches, predicates, branch, attributes, position)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, node.Description, node.Image, node.ImageReference, matches, predicates, branch, attributes, position); err != nil {
 		return err
 	}
 	parent := string(node.ID)
@@ -731,7 +761,7 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 }
 
 func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error) {
-	rows, err := s.db.Query(`SELECT id, parent_id, label, description, image, image_reference, matches, predicates, attributes, position
+	rows, err := s.db.Query(`SELECT id, parent_id, label, description, image, image_reference, matches, predicates, branch, attributes, position
 		FROM taxonomy_nodes WHERE taxonomy_def_id = ?`, id)
 	if err != nil {
 		return ubom.Taxonomy{}, err
@@ -754,9 +784,10 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		var imageReference string
 		var data []byte
 		var predicateData []byte
+		var branchData []byte
 		var attributeData []byte
 		var position int
-		if err := rows.Scan(&id, &parent, &label, &description, &image, &imageReference, &data, &predicateData, &attributeData, &position); err != nil {
+		if err := rows.Scan(&id, &parent, &label, &description, &image, &imageReference, &data, &predicateData, &branchData, &attributeData, &position); err != nil {
 			return ubom.Taxonomy{}, err
 		}
 		matches := map[string]string{}
@@ -771,7 +802,13 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		if err := json.Unmarshal(attributeData, &attributes); err != nil {
 			return ubom.Taxonomy{}, err
 		}
-		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Description: description, Image: image, ImageReference: imageReference, Matches: matches, Predicates: predicates, Attributes: attributes}
+		var branch *ubom.TaxonomyBranchCondition
+		if len(branchData) > 0 {
+			if err := json.Unmarshal(branchData, &branch); err != nil {
+				return ubom.Taxonomy{}, err
+			}
+		}
+		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Description: description, Image: image, ImageReference: imageReference, Matches: matches, Predicates: predicates, Branch: branch, Attributes: attributes}
 		nodes[node.ID] = node
 		relations = append(relations, relation{id: node.ID, parent: parent, position: position})
 	}

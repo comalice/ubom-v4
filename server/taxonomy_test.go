@@ -77,6 +77,64 @@ func TestTaxonomyClassifyUsesStructuredCapturesAndEffectiveMeaning(t *testing.T)
 	}
 }
 
+func TestTaxonomyBranchConditionClassifiesLiteralAlternativeAndField(t *testing.T) {
+	seq := NewSeqDef(Concat(Choice(Literal("A"), Concat(Literal("B"), Bind("code", Range(0, 9).Width(3, '0')))))).WithID("branch-seq")
+	tax := TaxonomyDef{ID: "branch-tax", SeqDef: seq.ID, Taxonomy: Taxonomy{Root: TaxonomyNode{ID: "root", Children: []TaxonomyNode{
+		{ID: "literal", Branch: &TaxonomyBranchCondition{Path: []string{"root/0/choice[0]"}}},
+		{ID: "bound", Branch: &TaxonomyBranchCondition{Path: []string{"root/0/choice[1]"}}, Predicates: []TaxonomyPredicate{ExactPredicate("code", "001")}},
+	}}}}
+	if err := tax.ValidateAgainst(seq); err != nil {
+		t.Fatalf("ValidateAgainst() error = %v", err)
+	}
+	literal, _ := seq.ParseValues("A")
+	got, err := tax.Classify(literal)
+	if err != nil || got.NodeID != "literal" {
+		t.Fatalf("literal classification = %#v, %v", got, err)
+	}
+	bound, _ := seq.ParseValues("B001")
+	got, err = tax.Classify(bound)
+	if err != nil || got.NodeID != "bound" {
+		t.Fatalf("bound classification = %#v, %v", got, err)
+	}
+}
+
+func TestTaxonomyBranchConditionRejectsStalePath(t *testing.T) {
+	seq := NewSeqDef(Choice(Literal("A"), Literal("B"))).WithID("branch-seq")
+	tax := TaxonomyDef{ID: "branch-tax", SeqDef: seq.ID, Taxonomy: Taxonomy{Root: TaxonomyNode{ID: "root", Branch: &TaxonomyBranchCondition{Path: []string{"root/choice[9]"}}}}}
+	if err := tax.ValidateAgainst(seq); err == nil {
+		t.Fatal("ValidateAgainst() accepted stale branch path")
+	}
+}
+
+func TestTaxonomyBranchConditionRejectsContradictoryDescendant(t *testing.T) {
+	seq := NewSeqDef(Choice(Literal("A"), Literal("B"))).WithID("branch-seq")
+	tax := TaxonomyDef{ID: "branch-tax", SeqDef: seq.ID, Taxonomy: Taxonomy{Root: TaxonomyNode{ID: "root", Branch: &TaxonomyBranchCondition{Path: []string{"root/choice[0]"}}, Children: []TaxonomyNode{{ID: "child", Branch: &TaxonomyBranchCondition{Path: []string{"root/choice[1]"}}}}}}}
+	if err := tax.ValidateAgainst(seq); err == nil {
+		t.Fatal("ValidateAgainst() accepted contradictory descendant branch")
+	}
+}
+
+func TestBranchesCompatibleChecksOuterNestedChoiceSelections(t *testing.T) {
+	if branchesCompatible(
+		&TaxonomyBranchCondition{Path: []string{"root/choice[0]"}},
+		&TaxonomyBranchCondition{Path: []string{"root/choice[1]/0/choice[0]"}},
+	) {
+		t.Fatal("branchesCompatible() treated conflicting outer choices as compatible")
+	}
+	if !branchesCompatible(
+		&TaxonomyBranchCondition{Path: []string{"root/choice[0]"}},
+		&TaxonomyBranchCondition{Path: []string{"root/choice[0]/0/choice[1]"}},
+	) {
+		t.Fatal("branchesCompatible() rejected a valid ancestor/descendant path")
+	}
+	if !branchesCompatible(
+		&TaxonomyBranchCondition{Path: []string{"root/0/choice[0]"}},
+		&TaxonomyBranchCondition{Path: []string{"root/1/choice[1]"}},
+	) {
+		t.Fatal("branchesCompatible() rejected unrelated choices")
+	}
+}
+
 func TestTaxonomyClassifyIsCumulativeAndPolicyAware(t *testing.T) {
 	taxonomy := Taxonomy{Root: TaxonomyNode{ID: "root", Label: "component", Children: []TaxonomyNode{{
 		ID: "resistor", Predicates: []TaxonomyPredicate{ExactPredicate("category", "RES")}, Children: []TaxonomyNode{{

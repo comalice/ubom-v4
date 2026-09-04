@@ -62,6 +62,12 @@ type TaxonomyPredicate struct {
 	Max   int64         `json:"max"`
 }
 
+// TaxonomyBranchCondition targets canonical choice paths in the exact
+// immutable sequence definition referenced by the taxonomy.
+type TaxonomyBranchCondition struct {
+	Path []string `json:"path"`
+}
+
 func ExactPredicate(field FieldName, value string) TaxonomyPredicate {
 	return TaxonomyPredicate{Field: field, Kind: PredicateExact, Value: value}
 }
@@ -82,10 +88,11 @@ type TaxonomyNode struct {
 	Image          string         `json:"image,omitempty"`
 	ImageReference string         `json:"imageReference,omitempty"`
 	// Deprecated: use Predicates. Retained for persisted/API compatibility.
-	Matches    map[string]string     `json:"matches,omitempty"`
-	Predicates []TaxonomyPredicate   `json:"predicates,omitempty"`
-	Attributes []AttributeAssignment `json:"attributes,omitempty"`
-	Children   []TaxonomyNode        `json:"children,omitempty"`
+	Matches    map[string]string        `json:"matches,omitempty"`
+	Predicates []TaxonomyPredicate      `json:"predicates,omitempty"`
+	Branch     *TaxonomyBranchCondition `json:"branch,omitempty"`
+	Attributes []AttributeAssignment    `json:"attributes,omitempty"`
+	Children   []TaxonomyNode           `json:"children,omitempty"`
 }
 
 // ClassificationPolicy controls whether the generic taxonomy root is an
@@ -133,7 +140,7 @@ func (d TaxonomyDef) Validate() error {
 		}
 		attributeDefs[attribute.ID] = true
 	}
-	if err := validateTaxonomyNode(d.Taxonomy.Root, seen, attributeDefs, nil); err != nil {
+	if err := validateTaxonomyNode(d.Taxonomy.Root, seen, attributeDefs, nil, nil); err != nil {
 		return err
 	}
 	return nil
@@ -155,7 +162,10 @@ func (d TaxonomyDef) ValidateAgainst(seqDef SeqDef) error {
 	for _, field := range seqDef.BindableFields() {
 		fields[field.Name] = field.Node
 	}
-	return validateTaxonomyFields(d.Taxonomy.Root, fields)
+	if err := validateTaxonomyFields(d.Taxonomy.Root, fields); err != nil {
+		return err
+	}
+	return validateTaxonomyBranches(d.Taxonomy.Root, seqDefBranchPaths(seqDef.Root()))
 }
 
 // ValidateWithSeqDef is a descriptive alias for ValidateAgainst.
@@ -196,7 +206,53 @@ func validateTaxonomyFields(node TaxonomyNode, fields map[string]SeqDefNode) err
 	return nil
 }
 
-func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attributeDefs map[AttributeDefID]bool, ancestors []TaxonomyPredicate) error {
+func seqDefBranchPaths(root SeqDefNode) map[string]bool {
+	paths := map[string]bool{}
+	var visit func(SeqDefNode, string)
+	visit = func(node SeqDefNode, path string) {
+		switch n := node.(type) {
+		case ChoiceNode:
+			for i, child := range n.Children {
+				branch := fmt.Sprintf("%s/choice[%d]", path, i)
+				paths[branch] = true
+				visit(child, branch)
+			}
+		case BindNode:
+			visit(n.Child, path+"/bind")
+		case ConcatNode:
+			for i, child := range n.Children {
+				visit(child, fmt.Sprintf("%s/%d", path, i))
+			}
+		case RangeRadixNode:
+			for i, child := range n.Children {
+				visit(child, fmt.Sprintf("%s/%d", path, i))
+			}
+		}
+	}
+	visit(root, "root")
+	return paths
+}
+
+func validateTaxonomyBranches(node TaxonomyNode, valid map[string]bool) error {
+	if node.Branch != nil {
+		if len(node.Branch.Path) == 0 {
+			return taxonomyValidation("taxonomy node %q has an empty branch path", node.ID)
+		}
+		for _, path := range node.Branch.Path {
+			if !valid[path] {
+				return taxonomyValidation("taxonomy node %q references invalid branch path %q", node.ID, path)
+			}
+		}
+	}
+	for _, child := range node.Children {
+		if err := validateTaxonomyBranches(child, valid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attributeDefs map[AttributeDefID]bool, ancestors []TaxonomyPredicate, ancestorBranches []*TaxonomyBranchCondition) error {
 	if err := validateTaxonomyID(string(node.ID), "taxonomy node"); err != nil {
 		return err
 	}
@@ -215,6 +271,11 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 			}
 		}
 	}
+	for _, ancestorBranch := range ancestorBranches {
+		if !branchesCompatible(ancestorBranch, node.Branch) {
+			return taxonomyValidation("taxonomy node %q is unreachable because its branch conflicts with an ancestor", node.ID)
+		}
+	}
 	assignments := map[AttributeDefID]bool{}
 	for _, assignment := range node.Attributes {
 		if assignment.AttributeDefID == "" {
@@ -231,11 +292,15 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 	for i, child := range node.Children {
 		for j := i + 1; j < len(node.Children); j++ {
 			left, right := taxonomyPredicates(child), taxonomyPredicates(node.Children[j])
-			if predicatesOverlap(left, right) {
+			if predicatesOverlap(left, right) && branchesCompatible(child.Branch, node.Children[j].Branch) {
 				return taxonomyValidation("taxonomy node %q has ambiguous overlapping siblings %q and %q", node.ID, child.ID, node.Children[j].ID)
 			}
 		}
-		if err := validateTaxonomyNode(child, seen, attributeDefs, append(append([]TaxonomyPredicate{}, ancestors...), predicates...)); err != nil {
+		branches := append([]*TaxonomyBranchCondition{}, ancestorBranches...)
+		if node.Branch != nil {
+			branches = append(branches, node.Branch)
+		}
+		if err := validateTaxonomyNode(child, seen, attributeDefs, append(append([]TaxonomyPredicate{}, ancestors...), predicates...), branches); err != nil {
 			return err
 		}
 	}
@@ -245,6 +310,53 @@ func validateTaxonomyNode(node TaxonomyNode, seen map[TaxonomyNodeID]bool, attri
 func taxonomyPredicates(node TaxonomyNode) []TaxonomyPredicate {
 	result, _ := typedTaxonomyPredicates(node)
 	return result
+}
+
+func branchesCompatible(a, b *TaxonomyBranchCondition) bool {
+	if a == nil || b == nil {
+		return true
+	}
+	for _, left := range a.Path {
+		for _, right := range b.Path {
+			leftChoices, leftOK := canonicalChoiceSelections(left)
+			rightChoices, rightOK := canonicalChoiceSelections(right)
+			if !leftOK || !rightOK {
+				continue
+			}
+			for choicePath, leftIndex := range leftChoices {
+				if rightIndex, exists := rightChoices[choicePath]; exists && leftIndex != rightIndex {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// canonicalChoiceSelections extracts every choice decision from a canonical
+// branch path. The choice-node path, rather than only the final alternative,
+// is the identity needed to detect conflicts across nested alternatives.
+func canonicalChoiceSelections(path string) (map[string]int, bool) {
+	result := map[string]int{}
+	for offset := 0; offset < len(path); {
+		relative := strings.Index(path[offset:], "/choice[")
+		if relative < 0 {
+			break
+		}
+		start := offset + relative
+		end := strings.IndexByte(path[start+len("/choice["):], ']')
+		if end < 0 {
+			return nil, false
+		}
+		end += start + len("/choice[")
+		index, err := strconv.Atoi(path[start+len("/choice[") : end])
+		if err != nil || index < 0 {
+			return nil, false
+		}
+		result[path[:start]] = index
+		offset = end + 1
+	}
+	return result, true
 }
 
 func typedTaxonomyPredicates(node TaxonomyNode) ([]TaxonomyPredicate, error) {
@@ -444,6 +556,17 @@ func (d TaxonomyDef) ClassifyWithPolicy(parsed ParsedSequence, policy Classifica
 }
 
 func taxonomyNodePredicatesMatch(node TaxonomyNode, parsed ParsedSequence) bool {
+	if node.Branch != nil {
+		selected := map[string]bool{}
+		for _, path := range parsed.Branches {
+			selected[path] = true
+		}
+		for _, path := range node.Branch.Path {
+			if !selected[path] {
+				return false
+			}
+		}
+	}
 	for _, predicate := range taxonomyPredicates(node) {
 		if !predicate.matchesParsed(parsed) {
 			return false

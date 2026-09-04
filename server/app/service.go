@@ -294,6 +294,7 @@ type SeqDefCandidatePreview struct {
 	Value    string                 `json:"value"`
 	Bindings map[string]string      `json:"bindings"`
 	Fields   []SeqDefCandidateField `json:"fields"`
+	Branches []string               `json:"branches"`
 }
 
 func (s *Service) PreviewSeqDef(id ubom.SeqDefID, bindings map[string]string) (SeqDefPreview, error) {
@@ -323,7 +324,7 @@ func (s *Service) PreviewSeqDefCandidate(root ubom.SeqDefNode, value string) (Se
 			Name: field.Name, Source: field.Source, Normalized: field.Normalized,
 		})
 	}
-	return SeqDefCandidatePreview{Value: parsed.Value, Bindings: parsed.Bindings, Fields: fields}, nil
+	return SeqDefCandidatePreview{Value: parsed.Value, Bindings: parsed.Bindings, Fields: fields, Branches: parsed.Branches}, nil
 }
 
 func previewSeqDef(def ubom.SeqDef, id ubom.SeqDefID, bindings map[string]string) (SeqDefPreview, error) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -118,7 +118,7 @@ describe('taxonomy persisted-definition adapters', () => {
     const alternatives = taxonomyGrammarAlternatives(grammar)
     expect(alternatives.map((alternative) => alternative.label)).toEqual(['alternative A', 'alternative B', 'alternative C'])
     expect(alternatives[0]).toMatchObject({ alternativeSummary: '"A-" + code = 1..9 / width 1', capturedFields: ['code'], literalOnly: false })
-    expect(alternatives[2]).toMatchObject({ literalOnly: true, targetable: false, capturedFields: [] })
+    expect(alternatives[2]).toMatchObject({ literalOnly: true, targetable: true, branchPath: 'root/choice[2]', capturedFields: [] })
     const bindings = alternatives.flatMap((alternative) => alternative.children.flatMap((node) => node.children))
     expect(bindings.filter((node) => node.blockType === 'binding').map((node) => node.numericDomain)).toEqual([{ min: 1, max: 9 }, { min: 10, max: 99 }])
   })
@@ -129,8 +129,37 @@ describe('taxonomy persisted-definition adapters', () => {
     ] } })
     const alternatives = taxonomyGrammarAlternatives(grammar)
     expect(alternatives.map((alternative) => alternative.label)).toEqual(['alternative A', 'alternative A', 'alternative B'])
-    expect(alternatives[1].choiceAncestry).toEqual([{ path: 'grammar-root', label: 'choice', summary: 'inner = "X" | "Y"' }])
+    expect(alternatives[1].choiceAncestry).toEqual([{ path: 'root/choice[0]', label: 'choice', summary: 'inner = "X" | "Y"' }])
     expect(alternatives[2].literalOnly).toBe(true)
+  })
+
+  it('uses backend canonical paths for root, concat, bind, and nested alternatives', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'canonical', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
+      { kind: 'literal', text: 'P-' },
+      { kind: 'bind', name: 'code', child: { kind: 'choice', children: [{ kind: 'literal', text: 'A' }, { kind: 'choice', children: [{ kind: 'literal', text: 'B' }, { kind: 'literal', text: 'C' }] }] } },
+    ] } })
+    const alternatives = taxonomyGrammarAlternatives(grammar)
+    expect(alternatives.map((alternative) => alternative.branchPath)).toEqual(['root/1/bind/choice[0]', 'root/1/bind/choice[1]', 'root/1/bind/choice[1]/choice[0]', 'root/1/bind/choice[1]/choice[1]'])
+    expect(taxonomyBranchPath(grammar, 'grammar-1-child-alternative-1-alternative-0')).toBe('root/1/bind/choice[1]/choice[0]')
+  })
+
+  it('round-trips a literal-only nested branch with field rules', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'branch-authoring', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [{ kind: 'literal', text: 'A' }, { kind: 'concat', children: [{ kind: 'literal', text: 'B' }, { kind: 'bind', name: 'code', child: { kind: 'range', min: 0, max: 9, width: 1 } }] }] } })
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
+      id: 'literal', label: 'Literal', targetId: 'root/choice[0]', branch: { path: ['root/choice[0]'] },
+      placements: [{ id: 'literal', targetId: 'root/choice[0]', type: 'category', title: 'Literal', summary: 'Branch root/choice[0]', label: 'Literal', nodeId: 'literal' }], rules: [], children: [],
+    }] }
+    const encoded = taxonomyDefinitionInputFromDraft('branch-authoring', undefined, [], draft)
+    expect(encoded.root.children?.[0]).toEqual({ id: 'literal', label: 'Literal', branch: { path: ['root/choice[0]'] } })
+    const reloaded = taxonomyDraftFromDefinition({ id: 'tax', definitionId: 'tax', version: 1, seqDef: 'branch-authoring', attributeDefs: [], root: encoded.root }, grammar)
+    expect(reloaded.children[0]).toMatchObject({ targetId: 'root/choice[0]', branch: { path: ['root/choice[0]'] } })
+  })
+
+  it('serializes a branch condition together with a captured-field predicate', () => {
+    const draft: TaxonomyDraftNode = { id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
+      id: 'bound', label: 'Bound', targetId: 'root/choice[1]', branch: { path: ['root/choice[1]'] }, placements: [{ id: 'bound', targetId: 'root/choice[1]', type: 'category', title: 'Bound', summary: 'Branch', label: 'Bound', nodeId: 'bound' }], rules: [{ id: 'rule', targetId: 'bound', type: 'rule', title: 'code = 001', summary: 'code = 001', predicateData: { kind: 'exact', field: 'code', value: '001' } }], children: [],
+    }] }
+    expect(taxonomyDefinitionInputFromDraft('seq', undefined, [], draft).root.children?.[0]).toEqual({ id: 'bound', label: 'Bound', branch: { path: ['root/choice[1]'] }, predicates: [{ field: 'code', kind: 'exact', value: '001' }] })
   })
 
   it('surfaces an ambiguous persisted field target instead of moving it to root', () => {

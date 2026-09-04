@@ -2,6 +2,7 @@ package ubom
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -398,6 +399,20 @@ func TestSeqDefStructuredCapturesPreserveOrderAndNormalization(t *testing.T) {
 	}
 	if result.Bindings["number"] != "07" {
 		t.Errorf("compatibility binding number = %q, want 07", result.Bindings["number"])
+	}
+}
+
+func TestSeqDefParseRetainsNestedChoiceBranches(t *testing.T) {
+	def := NewSeqDef(Concat(
+		Choice(Literal("A"), Concat(Literal("B"), Choice(Literal("X"), Literal("Y")))),
+	)).WithID("branches")
+	parsed, err := def.ParseValues("BY")
+	if err != nil {
+		t.Fatalf("ParseValues() error = %v", err)
+	}
+	want := []string{"root/0/choice[1]", "root/0/choice[1]/1/choice[1]"}
+	if fmt.Sprint(parsed.Branches) != fmt.Sprint(want) {
+		t.Fatalf("branches = %#v, want %#v", parsed.Branches, want)
 	}
 }
 

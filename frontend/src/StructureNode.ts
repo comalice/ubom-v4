@@ -5,6 +5,8 @@ export type StructureNode = {
   summary?: string
   /** Frontend-only grammar metadata; never serialized in taxonomy API input. */
   path?: string
+  /** Canonical backend path for a choice alternative, when applicable. */
+  branchPath?: string
   choiceAncestry?: { path: string; label: string; summary: string }[]
   alternativeLabel?: string
   alternativeSummary?: string

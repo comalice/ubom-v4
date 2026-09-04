@@ -472,6 +472,9 @@ type ParseResult struct {
 	// Bindings is a compatibility adapter for callers predating structured
 	// captures. It is derived from Fields; duplicate names are rejected.
 	Bindings map[string]string
+	// Branches contains the canonical choice-alternative paths selected while
+	// parsing. Paths are relative to this immutable SeqDef and are not field names.
+	Branches []string
 }
 
 // ParsedSequence is the structured value consumed by taxonomy classification.
@@ -479,8 +482,9 @@ type ParseResult struct {
 type ParsedSequence = ParseResult
 
 type captureState struct {
-	fields []CapturedField
-	names  map[string]bool
+	fields   []CapturedField
+	names    map[string]bool
+	branches []string
 }
 
 func newCaptureState() *captureState { return &captureState{names: map[string]bool{}} }
@@ -491,12 +495,14 @@ func (s *captureState) clone() *captureState {
 	for name := range s.names {
 		copyState.names[name] = true
 	}
+	copyState.branches = append(copyState.branches, s.branches...)
 	return copyState
 }
 
 func (s *captureState) commit(from *captureState) {
 	s.fields = append(s.fields[:0], from.fields...)
 	s.names = from.names
+	s.branches = append(s.branches[:0], from.branches...)
 }
 
 func (d SeqDef) ParseValues(input string) (ParseResult, error) {
@@ -504,7 +510,7 @@ func (d SeqDef) ParseValues(input string) (ParseResult, error) {
 		return ParseResult{}, WrapDomainError(ErrorCategorySyntax, "sequence definition has no root", nil)
 	}
 	state := newCaptureState()
-	value, next, err := parseCapturedNode(d.root, input, 0, state)
+	value, next, err := parseCapturedNodePath(d.root, input, 0, state, "root")
 	if err != nil {
 		return ParseResult{}, WrapDomainError(ErrorCategorySyntax, "sequence input is invalid", err)
 	}
@@ -515,24 +521,30 @@ func (d SeqDef) ParseValues(input string) (ParseResult, error) {
 	for _, field := range state.fields {
 		bindings[field.Name] = field.Source
 	}
-	return ParseResult{Value: value, Fields: state.fields, Bindings: bindings}, nil
+	return ParseResult{Value: value, Fields: state.fields, Bindings: bindings, Branches: append([]string(nil), state.branches...)}, nil
 }
 
 // parseCapturedNode keeps the existing node interface intact for package-local
 // structural nodes, while built-in nodes collect transactional captures.
 func parseCapturedNode(node SeqDefNode, input string, offset int, state *captureState) (string, int, error) {
+	return parseCapturedNodePath(node, input, offset, state, "root")
+}
+
+func parseCapturedNodePath(node SeqDefNode, input string, offset int, state *captureState, path string) (string, int, error) {
 	switch n := node.(type) {
 	case LiteralNode:
 		return n.parseAt(input, offset, nil)
 	case ConcatNode:
-		return parseCapturedConcat(n.Children, input, offset, state)
+		return parseCapturedConcatPath(n.Children, input, offset, state, path)
 	case RangeRadixNode:
-		return parseCapturedConcat(n.Children, input, offset, state)
+		return parseCapturedConcatPath(n.Children, input, offset, state, path)
 	case ChoiceNode:
 		var lastErr error
-		for _, child := range n.Children {
+		for index, child := range n.Children {
 			trial := state.clone()
-			value, next, err := parseCapturedNode(child, input, offset, trial)
+			branchPath := fmt.Sprintf("%s/choice[%d]", path, index)
+			trial.branches = append(trial.branches, branchPath)
+			value, next, err := parseCapturedNodePath(child, input, offset, trial, branchPath)
 			if err == nil {
 				state.commit(trial)
 				return value, next, nil
@@ -551,7 +563,7 @@ func parseCapturedNode(node SeqDefNode, input string, offset int, state *capture
 		state.names[n.Name] = true
 		state.fields = append(state.fields, CapturedField{Name: n.Name})
 		index := len(state.fields) - 1
-		value, next, err := parseCapturedNode(n.Child, input, offset, state)
+		value, next, err := parseCapturedNodePath(n.Child, input, offset, state, path+"/bind")
 		if err != nil {
 			return "", start, err
 		}
@@ -571,9 +583,13 @@ func parseCapturedNode(node SeqDefNode, input string, offset int, state *capture
 }
 
 func parseCapturedConcat(nodes []SeqDefNode, input string, offset int, state *captureState) (string, int, error) {
+	return parseCapturedConcatPath(nodes, input, offset, state, "root")
+}
+
+func parseCapturedConcatPath(nodes []SeqDefNode, input string, offset int, state *captureState, path string) (string, int, error) {
 	value := ""
-	for _, child := range nodes {
-		part, next, err := parseCapturedNode(child, input, offset, state)
+	for i, child := range nodes {
+		part, next, err := parseCapturedNodePath(child, input, offset, state, fmt.Sprintf("%s/%d", path, i))
 		if err != nil {
 			return "", offset, err
 		}

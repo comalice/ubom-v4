@@ -15,7 +15,7 @@ export type SeqDefNode = {
 export type SeqDefDefinition = { id: string; definitionId: string; version: number; parentId?: string; root: SeqDefNode }
 export type SeqDefPreview = { id: string; bindings: Record<string, string>; value?: string; error?: string }
 export type SeqDefCandidateField = { name: string; source: string; normalized: unknown }
-export type SeqDefCandidatePreview = { value: string; bindings: Record<string, string>; fields: SeqDefCandidateField[] }
+export type SeqDefCandidatePreview = { value: string; bindings: Record<string, string>; fields: SeqDefCandidateField[]; branches: string[] }
 export type TaxonomyPredicate = {
   field: string
   kind: 'exact' | 'numeric-range'
@@ -23,6 +23,7 @@ export type TaxonomyPredicate = {
   min?: number
   max?: number
 }
+export type TaxonomyBranchCondition = { path: string[] }
 export type TaxonomyNodeInput = {
   id: string
   label: string
@@ -30,6 +31,7 @@ export type TaxonomyNodeInput = {
   image?: string
   imageReference?: string
   predicates?: TaxonomyPredicate[]
+  branch?: TaxonomyBranchCondition
   attributes?: { attributeDefId: string; required: boolean }[]
   children?: TaxonomyNodeInput[]
 }

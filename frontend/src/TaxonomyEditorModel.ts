@@ -43,6 +43,16 @@ export function taxonomyTargetField(grammar: TaxonomyGrammar, targetId: string):
   return field
 }
 
+export function taxonomyBranchPath(grammar: TaxonomyGrammar, targetId: string): string | undefined {
+  let result: string | undefined
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (!result && (String(node.id) === targetId || node.branchPath === targetId) && node.branchPath) result = node.branchPath
+    visit(node.children)
+  })
+  visit(grammar.nodes)
+  return result
+}
+
 /**
  * Finds the fields available below a taxonomy target. Root targets expose the
  * first field; unresolved targets expose all fields as a useful recovery path.
@@ -52,7 +62,7 @@ export function taxonomyContextFields(grammar: TaxonomyGrammar, targetId: string
   if (!fields.length) return []
   const targets: StructureNode[] = []
   const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
-    if (String(node.id) === targetId || node.label === targetId) targets.push(node)
+    if (String(node.id) === targetId || node.label === targetId || node.branchPath === targetId || node.path === targetId) targets.push(node)
     visit(node.children)
   })
   visit(grammar.nodes)
@@ -61,6 +71,8 @@ export function taxonomyContextFields(grammar: TaxonomyGrammar, targetId: string
     const index = fields.indexOf(target.label)
     return index < 0 ? [] : fields.slice(index + 1)
   }
+  const branch = targets.find((node) => node.branchPath === targetId)
+  if (branch) return branch.capturedFields ?? []
   const root = targets.find((node) => node.id === 'grammar-root' || node.blockType === 'sequence')
   return root || targetId === 'grammar-root' ? fields.slice(0, 1) : fields
 }
@@ -74,24 +86,25 @@ function sequenceSummary(node: SeqDefNode): string {
   return (node.children ?? []).map(sequenceSummary).join(' + ') || 'empty'
 }
 
-function sequenceStructureNode(node: SeqDefNode, path: string, choiceAncestry: StructureNode['choiceAncestry'] = []): StructureNode {
+function sequenceStructureNode(node: SeqDefNode, path: string, choiceAncestry: StructureNode['choiceAncestry'] = [], displayPath = path): StructureNode {
   const children = node.kind === 'bind'
-    ? (node.child ? [sequenceStructureNode(node.child, `${path}-child`, choiceAncestry)] : [])
+    ? (node.child ? [sequenceStructureNode(node.child, `${path}/bind`, choiceAncestry, `${displayPath}-child`)] : [])
     : node.kind === 'choice'
       ? (node.children ?? []).map((child, index) => {
-        const alternativePath = `${path}-alternative-${index}`
+        const alternativePath = `${displayPath}-alternative-${index}`
+        const canonicalBranchPath = `${path}/choice[${index}]`
         const alternativeLabel = `alternative ${String.fromCharCode(65 + index)}`
         const alternativeSummary = sequenceSummary(child)
-        const ancestry = [...choiceAncestry, { path, label: 'choice', summary: sequenceSummary(node) }]
-        return { id: alternativePath, label: alternativeLabel, blockType: 'row', summary: alternativeSummary, path: alternativePath, choiceAncestry, alternativeLabel, alternativeSummary, targetable: false, literalOnly: !containsBinding(child), capturedFields: bindingNames(child), children: [sequenceStructureNode(child, alternativePath, ancestry)] }
+        const ancestry = [...choiceAncestry, { path: canonicalBranchPath, label: 'choice', summary: sequenceSummary(node) }]
+        return { id: alternativePath, label: alternativeLabel, blockType: 'row', summary: alternativeSummary, path: alternativePath, branchPath: canonicalBranchPath, choiceAncestry, alternativeLabel, alternativeSummary, targetable: true, literalOnly: !containsBinding(child), capturedFields: bindingNames(child), children: [sequenceStructureNode(child, canonicalBranchPath, ancestry, alternativePath)] }
       })
-      : (node.children ?? []).map((child, index) => sequenceStructureNode(child, `${path}-${index}`, choiceAncestry))
+      : (node.children ?? []).map((child, index) => sequenceStructureNode(child, `${path}/${index}`, choiceAncestry, `${displayPath}-${index}`))
   return {
-    id: path,
+    id: displayPath,
     label: node.kind === 'bind' ? (node.name ?? 'unnamed') : node.kind,
     blockType: node.kind === 'bind' ? 'binding' : node.kind,
     summary: sequenceSummary(node),
-    path,
+    path: displayPath,
     choiceAncestry,
     targetable: node.kind === 'bind',
     literalOnly: node.kind !== 'bind' && !containsBinding(node),
@@ -129,8 +142,8 @@ function sequenceFieldCount(node: SeqDefNode, names = new Set<string>()): number
 
 export function taxonomyGrammarFromSeqDef(definition: SeqDefDefinition): TaxonomyGrammar {
   const root = definition.root.kind === 'concat'
-    ? (definition.root.children ?? []).map((child, index) => sequenceStructureNode(child, `grammar-${index}`))
-    : [sequenceStructureNode(definition.root, 'grammar-root')]
+    ? (definition.root.children ?? []).map((child, index) => sequenceStructureNode(child, `root/${index}`, [], `grammar-${index}`))
+    : [sequenceStructureNode(definition.root, 'root', [], 'grammar-root')]
   return { id: definition.id, label: definition.id, fields: sequenceFieldCount(definition.root), nodes: [{ id: 'grammar-root', label: 'Part number', blockType: 'sequence', summary: definition.id, children: root }] }
 }
 
@@ -144,12 +157,24 @@ export function taxonomyGrammarAlternatives(grammar: TaxonomyGrammar): Structure
   return alternatives
 }
 
+export function taxonomyGrammarNode(grammar: TaxonomyGrammar, targetId: string): StructureNode | undefined {
+  let result: StructureNode | undefined
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (!result && (String(node.id) === targetId || node.branchPath === targetId || node.path === targetId)) result = node
+    visit(node.children)
+  })
+  visit(grammar.nodes)
+  return result
+}
+
 function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predicates']>[number]): string {
   return predicate.kind === 'numeric-range' ? `${predicate.field} = ${predicate.min}..${predicate.max}` : `${predicate.field} = ${predicate.value ?? ''}`
 }
 
 export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, grammar: TaxonomyGrammar): TaxonomyDraftNode {
-  const targetFor = (predicates: TaxonomyDefinition['root']['predicates']): { targetId: string; resolution?: TaxonomyTargetResolution } => {
+  const targetFor = (node: TaxonomyDefinition['root']): { targetId: string; resolution?: TaxonomyTargetResolution } => {
+    if (node.branch?.path?.length) return { targetId: node.branch.path[node.branch.path.length - 1] }
+    const predicates = node.predicates
     const predicate = predicates?.[0]
     const field = predicate?.field
     if (!field) return { targetId: 'grammar-root' }
@@ -186,7 +211,7 @@ export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, gram
   }
   const toNode = (node: TaxonomyDefinition['root'], isRoot = false): TaxonomyDraftNode => {
     const predicates = node.predicates ?? []
-    const target = targetFor(predicates)
+    const target = targetFor(node)
     const targetId = target.targetId
     const categoryID = String(node.id)
     const rules = predicates.slice(isRoot ? 0 : 1).map((predicate, index) => ({
@@ -204,6 +229,7 @@ export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, gram
       id: categoryID,
       label: node.label,
       targetId,
+      ...(node.branch ? { branch: { path: [...node.branch.path] } } : {}),
       ...(target.resolution ? { targetResolution: target.resolution } : {}),
       placements: isRoot ? [] : [{ id: categoryID, targetId, type: 'category', title: node.label, summary: predicates[0] ? predicateText(predicates[0]) : 'Category', label: node.label, nodeId: categoryID, predicate: predicates[0] ? predicateText(predicates[0]) : '' }],
       rules,
@@ -256,6 +282,7 @@ export function taxonomyDefinitionInputFromDraft(
     return {
       id: node.id,
       label: node.label,
+      ...(node.branch ? { branch: { path: [...node.branch.path] } } : {}),
       ...(predicates.length ? { predicates } : {}),
       ...(node.attributes?.length ? { attributes: node.attributes.map((assignment) => ({ ...assignment })) } : {}),
       ...(node.children.length ? { children: node.children.map(toNode) } : {}),
@@ -343,6 +370,7 @@ export type TaxonomyDraftNode = {
   label: string
   targetId: string
   targetResolution?: TaxonomyTargetResolution
+  branch?: { path: string[] }
   placements: TaxonomyPlacement[]
   rules: TaxonomyPlacement[]
   attributes?: TaxonomyAttributeAssignment[]

@@ -43,6 +43,15 @@
     selectedNodeID = placement.id
   }
 
+  function addBranchCategory(state: DragDropState<TaxonomyDragPayload>, branchPath: string) {
+    const item = state.draggedItem
+    if (item?.kind !== 'palette' || item.taxonomyType !== 'category') return
+    const id = `taxonomy-category-${placementNumber++}`
+    const placement: TaxonomyPlacement = { id, targetId: branchPath, type: 'category', title: 'New category', summary: `Branch ${branchPath}`, label: 'New category', nodeId: id }
+    change(addTaxonomyDraftChild(taxonomyDraft, taxonomyDraft.id, { id, label: 'New category', targetId: branchPath, branch: { path: [branchPath] }, placements: [placement], rules: [], children: [] }))
+    selectedNodeID = id
+  }
+
   function handleFieldDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex?: number) {
     const item = state.draggedItem
     if (item?.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, field, targetIndex)
@@ -91,7 +100,7 @@
   <main class="taxonomy-editor-canvas">
     <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>{taxonomyDraft.label}</h3></div><span class="taxonomy-editor-count">{grammar.id} · {grammar.fields} fields</span></div>
     <p class="taxonomy-grammar-note">The taxonomy tree is the work surface. Categories expose later grammar fields as context lanes.</p>
-    <TaxonomyChoiceBranches {grammar} />
+     <TaxonomyChoiceBranches {grammar} {readOnly} onBranchDrop={addBranchCategory} />
     <div class="taxonomy-grammar-tree">
        <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root"><span class="taxonomy-grammar-kind">root scope</span><strong>{taxonomyDraft.label}</strong><small>all values matching {grammar.id}</small>{#if !readOnly}<button class="primitive-button primitive-button-secondary button-size-small" type="button" aria-label={`View attributes for ${taxonomyDraft.label}`} on:click={(event) => openAttributes(event, taxonomyDraft.id)}>attributes</button>{/if}<div class="taxonomy-first-root-context">{#if firstField}<div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field={firstField} {readOnly} onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} /></div>{/if}</div></div>
       <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">{#each taxonomyDraft.children.filter((child) => taxonomyTargetField(grammar, child.targetId) !== firstTargetField) as child (child.id)}{#if child.placements[0]}<div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => selectCategory(event, child.id)} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}><TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} contextFields={taxonomyContextFields(grammar, child.targetId)} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} {readOnly} onContextDrop={handleFieldDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} /></div>{/if}{/each}</div>

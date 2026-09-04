@@ -5,7 +5,7 @@
   import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
   import DropZone from './DropZone.svelte'
   import TaxonomyChoiceBranches from './TaxonomyChoiceBranches.svelte'
-  import { acceptsTaxonomyRuleDrop, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyRuleDrop, taxonomyGrammarNode, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let placement: TaxonomyPlacement
   export let draftNode: TaxonomyDraftNode | undefined
@@ -34,6 +34,9 @@
     : draftNode?.targetResolution?.status === 'unresolved'
       ? `No grammar occurrence found for ${draftNode.targetResolution.field}`
       : ''
+  $: progressiveContextFields = draftNode?.branch && placement.predicateData?.field
+    ? (taxonomyGrammarNode(grammar, draftNode.targetId)?.capturedFields ?? []).slice(Math.max(0, (taxonomyGrammarNode(grammar, draftNode.targetId)?.capturedFields ?? []).indexOf(placement.predicateData.field) + 1))
+    : contextFields
 </script>
 
 <TaxonomyCategoryBlock
@@ -61,13 +64,13 @@
   {#if targetMessage}<p class="taxonomy-target-warning" role="status">{targetMessage}</p>{/if}
   <svelte:fragment slot="context">
     {#if draftNode}
-      <TaxonomyChoiceBranches {grammar} targetId={draftNode.targetId} parentId={draftNode.id} {readOnly} onBranchDrop={(state, branchPath) => onBranchDrop(state, draftNode!.id, branchPath)} onBranchFieldDrop={(state, branchPath, field) => onBranchFieldDrop(state, draftNode!.id, branchPath, field)} />
+      <TaxonomyChoiceBranches {grammar} targetId={draftNode.targetId} {readOnly} onBranchDrop={(state, branchPath) => onBranchDrop(state, draftNode!.id, branchPath)} onBranchFieldDrop={(state, branchPath, field) => onBranchFieldDrop(state, draftNode!.id, branchPath, field)} />
     {/if}
-    {#if draftNode && contextFields.length}
+    {#if draftNode && progressiveContextFields.length}
       <div class="taxonomy-category-context">
         <span class="taxonomy-category-context-label">Grammar context</span>
         <div class="taxonomy-category-context-lanes">
-          {#each contextFields as field}
+          {#each progressiveContextFields as field}
             <div class="taxonomy-category-context-lane">
               <TaxonomyCategoryChildren parent={draftNode} field={field} {readOnly} onDrop={onChildDrop} onContextDrop={onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {contextFieldsForNode} {targetFieldForNode} {grammar} {onBranchDrop} {onBranchFieldDrop} />
             </div>

@@ -181,6 +181,21 @@ export function taxonomyGrammarChoices(grammar: TaxonomyGrammar, targetId: strin
   return choices
 }
 
+/** Returns the first captured binding in a choice alternative's grammar order. */
+export function taxonomyGrammarFirstBinding(nodes: StructureNode[]): StructureNode | undefined {
+  for (const node of nodes) {
+    if (node.blockType === 'binding') return node
+    const binding = taxonomyGrammarFirstBinding(node.children)
+    if (binding) return binding
+  }
+  return undefined
+}
+
+export function taxonomyGrammarChoiceDropLabel(alternative: StructureNode, field?: string): string {
+  const label = alternative.alternativeLabel?.replace(/^alternative\s+/i, '') ?? alternative.label
+  return field ? `${field} - ${label}` : `branch - ${label}`
+}
+
 function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predicates']>[number]): string {
   return predicate.kind === 'numeric-range' ? `${predicate.field} = ${predicate.min}..${predicate.max}` : `${predicate.field} = ${predicate.value ?? ''}`
 }

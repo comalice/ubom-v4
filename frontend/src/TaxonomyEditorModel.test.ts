@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoices, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -121,6 +121,18 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(alternatives[2]).toMatchObject({ literalOnly: true, targetable: true, branchPath: 'root/choice[2]', capturedFields: [] })
     const bindings = alternatives.flatMap((alternative) => alternative.children.flatMap((node) => node.children))
     expect(bindings.filter((node) => node.blockType === 'binding').map((node) => node.numericDomain)).toEqual([{ min: 1, max: 9 }, { min: 10, max: 99 }])
+  })
+
+  it('discovers only the first captured field in each alternative', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'progressive-fields', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [
+      { kind: 'concat', children: [{ kind: 'bind', name: 'family', child: { kind: 'literal', text: 'A' } }, { kind: 'bind', name: 'group', child: { kind: 'literal', text: '1' } }] },
+      { kind: 'bind', name: 'family', child: { kind: 'literal', text: 'B' } },
+      { kind: 'literal', text: 'C' },
+    ] } })
+    const alternatives = taxonomyGrammarAlternatives(grammar)
+    expect(alternatives.map((alternative) => taxonomyGrammarFirstBinding(alternative.children)?.label)).toEqual(['family', 'family', undefined])
+    expect(taxonomyGrammarChoiceDropLabel(alternatives[0], 'family')).toBe('family - A')
+    expect(taxonomyGrammarChoiceDropLabel(alternatives[2])).toBe('branch - C')
   })
 
   it('retains nested choice ancestry without flattening branch metadata', () => {

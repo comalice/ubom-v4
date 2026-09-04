@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchContainer, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftBranchPath, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyBranchDrop, acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchContainer, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftBranchPath, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -374,6 +374,12 @@ describe('taxonomyDefinitionInputFromDraft', () => {
 })
 
 describe('taxonomy draft editing', () => {
+  it('accepts only new category payloads in branch slots', () => {
+    expect(acceptsTaxonomyBranchDrop({ kind: 'palette', taxonomyType: 'category' })).toBe(true)
+    expect(acceptsTaxonomyBranchDrop({ kind: 'taxonomy', taxonomyType: 'category', placementId: 'category', sourceNodeId: 'source' })).toBe(false)
+    expect(acceptsTaxonomyBranchDrop({ kind: 'palette', taxonomyType: 'rule' })).toBe(false)
+  })
+
   it('keeps edited category input in the draft used to remount collapsed blocks', () => {
     const draft: TaxonomyDraftNode = {
       id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{

@@ -364,6 +364,11 @@ export function acceptsTaxonomyCategoryChildDrop(payload: TaxonomyDragPayload | 
   return payload?.kind === 'taxonomy' && payload.taxonomyType === 'category' && Boolean(payload.sourceNodeId?.trim() && destinationNodeID?.trim() && payload.sourceNodeId !== destinationNodeID)
 }
 
+/** Branch slots create new scoped categories; existing categories stay in the normal tree. */
+export function acceptsTaxonomyBranchDrop(payload: TaxonomyDragPayload | undefined): boolean {
+  return payload?.kind === 'palette' && payload.taxonomyType === 'category'
+}
+
 export type TaxonomyAttributeDefinition = {
   id: string
   label: string

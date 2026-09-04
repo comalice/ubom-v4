@@ -705,6 +705,7 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-grammar-kind { margin-right: .45rem; color: var(--muted); font: .6rem ui-monospace, monospace; text-transform: uppercase; }
 .taxonomy-kind-field { color: #7655a8; }
 .taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; text-align: center; font: .62rem ui-monospace, monospace; }
+.taxonomy-branch-drop-zone { min-height: 3.1rem; padding: .5rem; }
 .taxonomy-overlay-card { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .55rem; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: .2rem; }
 .taxonomy-overlay-card strong { color: var(--accent); font-size: .75rem; font-weight: 500; }
 .taxonomy-inspector-rule { display: grid; gap: .3rem; margin-top: 1rem; padding: .7rem; background: var(--accent-light); border: 1px solid var(--hairline); border-radius: .25rem; }

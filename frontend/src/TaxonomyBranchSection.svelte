@@ -2,10 +2,11 @@
   import { type DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
-  import { acceptsTaxonomyBranchDrop, taxonomyBranchContainer, taxonomyDraftBranchPath, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyBranchDrop, taxonomyBranchContainer, taxonomyDraftBranchPath, taxonomyGrammarAlternatives, taxonomyGrammarBranchLabel, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let parent: TaxonomyDraftNode
   export let path: string
+  export let branchLabel = ''
   export let readOnly = false
   export let grammar: TaxonomyGrammar
   export let contextFieldsForNode: (targetId: string) => string[] = () => []
@@ -25,19 +26,20 @@
 
   $: categories = parent.children.filter((child) => taxonomyDraftBranchPath(child) === path)
   $: container = taxonomyBranchContainer(path)
+  $: displayBranchLabel = branchLabel || taxonomyGrammarBranchLabel(taxonomyGrammarAlternatives(grammar).find((alternative) => alternative.branchPath === path) ?? { id: path, label: path, blockType: 'row', children: [] })
 
   function drop(index: number) {
     return (state: DragDropState<TaxonomyDragPayload>) => onDrop(state, parent.id, path, index)
   }
 </script>
 
-<section class="taxonomy-branch-section" aria-label={`Branch ${path}`}>
+<section class="taxonomy-branch-section" aria-label={displayBranchLabel}>
   <div class="taxonomy-branch-heading">
-    <span class="taxonomy-branch-eyebrow">Branch</span>
-    <span class="taxonomy-branch-label">{path}</span>
+    <span class="taxonomy-branch-eyebrow">Branch -</span>
+    <span class="taxonomy-branch-label">{displayBranchLabel.replace(/^Branch\s*-?\s*/i, '')}</span>
   </div>
   <div class="taxonomy-branch-rail">
-    {#if !readOnly}<DropZone variant="gap" mode="inactive" className="taxonomy-branch-gap" {container} accepts={(state) => acceptsTaxonomyBranchDrop(state.draggedItem)} onDrop={drop(0)} ariaLabel={`Insert category at the start of branch ${path}`} />{/if}
+    {#if !readOnly}<DropZone variant="gap" mode="inactive" className="taxonomy-branch-gap" {container} accepts={(state) => acceptsTaxonomyBranchDrop(state.draggedItem)} onDrop={drop(0)} ariaLabel={`Insert category at the start of ${displayBranchLabel}`} />{/if}
     {#each categories as child, index (child.id)}
       {#if child.placements[0]}
         <TaxonomyGrammarCategory
@@ -62,7 +64,7 @@
           {onBranchFieldDrop}
         />
       {/if}
-      {#if !readOnly}<DropZone variant="gap" mode="inactive" className="taxonomy-branch-gap" {container} accepts={(state) => acceptsTaxonomyBranchDrop(state.draggedItem)} onDrop={drop(index + 1)} ariaLabel={`Insert category after ${child.label} in branch ${path}`} />{/if}
+      {#if !readOnly}<DropZone variant="gap" mode="inactive" className="taxonomy-branch-gap" {container} accepts={(state) => acceptsTaxonomyBranchDrop(state.draggedItem)} onDrop={drop(index + 1)} ariaLabel={`Insert category after ${child.label} in ${displayBranchLabel}`} />{/if}
     {/each}
   </div>
 </section>

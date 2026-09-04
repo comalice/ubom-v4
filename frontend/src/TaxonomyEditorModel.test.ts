@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyBranchDrop, acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchContainer, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftBranchPath, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyBranchDrop, acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchContainer, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftBranchPath, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarBranchLabel, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -133,6 +133,8 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(alternatives.map((alternative) => taxonomyGrammarFirstBinding(alternative.children)?.label)).toEqual(['family', 'family', undefined])
     expect(taxonomyGrammarChoiceDropLabel(alternatives[0], 'family')).toBe('family - A')
     expect(taxonomyGrammarChoiceDropLabel(alternatives[2])).toBe('branch - C')
+    expect(taxonomyGrammarBranchLabel(alternatives[0])).toBe('Branch - family - A')
+    expect(taxonomyGrammarBranchLabel(alternatives[2])).toBe('Branch - C')
   })
 
   it('detects when the root field is covered by choice alternatives', () => {

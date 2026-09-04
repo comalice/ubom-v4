@@ -205,6 +205,12 @@ export function taxonomyGrammarChoiceDropLabel(alternative: StructureNode, field
   return field ? `${field} - ${label}` : `branch - ${label}`
 }
 
+export function taxonomyGrammarBranchLabel(alternative: StructureNode): string {
+  const field = taxonomyGrammarFirstBinding(alternative.children)?.label
+  const label = alternative.alternativeLabel?.replace(/^alternative\s+/i, '') ?? alternative.label
+  return field ? `Branch - ${field} - ${label}` : `Branch - ${label}`
+}
+
 function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predicates']>[number]): string {
   return predicate.kind === 'numeric-range' ? `${predicate.field} = ${predicate.min}..${predicate.max}` : `${predicate.field} = ${predicate.value ?? ''}`
 }

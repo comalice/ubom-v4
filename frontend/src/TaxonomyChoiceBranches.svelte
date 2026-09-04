@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { taxonomyGrammarChoices, type TaxonomyGrammar } from './TaxonomyEditorModel'
+  import { taxonomyGrammarBranchLabel, taxonomyGrammarChoices, type TaxonomyGrammar } from './TaxonomyEditorModel'
   import type { StructureNode } from './StructureNode'
 
   export let grammar: TaxonomyGrammar
@@ -17,7 +17,8 @@
   {#each choices as choice (choice.id)}
     {#each choice.children as alternative (alternative.id)}
       {@const path = branchPath(alternative)}
-      <div class="taxonomy-branch-context"><slot name="branch" path={path} /></div>
+      {@const branchLabel = taxonomyGrammarBranchLabel(alternative)}
+      <div class="taxonomy-branch-context"><slot name="branch" path={path} branchLabel={branchLabel} /></div>
     {/each}
   {/each}
 {/if}

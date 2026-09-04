@@ -724,33 +724,30 @@ func (s *PostgresStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber
 }
 
 func (s *PostgresStore) ListPartNumbers() ([]ubom.PartNumber, error) {
-	rows, err := s.query("SELECT value FROM part_numbers ORDER BY value")
+	rows, err := s.query(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status
+		FROM part_numbers ORDER BY value`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	values := []string{}
-	for rows.Next() {
-		var value string
-		if err := rows.Scan(&value); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		values = append(values, value)
+	parts, partsByID, err := scanPartNumberRows(rows)
+	if closeErr := rows.Close(); err != nil {
+		return nil, err
+	} else if closeErr != nil {
+		return nil, closeErr
 	}
-	if err := rows.Err(); err != nil {
+
+	revisionRows, err := s.query(`SELECT r.part_number_id, r.id, r.revision
+		FROM part_revisions r
+		JOIN part_numbers p ON p.id = r.part_number_id
+		ORDER BY p.value, r.id`)
+	if err != nil {
 		return nil, err
 	}
-	if err := rows.Close(); err != nil {
+	_, err = scanPartRevisionRows(revisionRows, parts, partsByID)
+	if closeErr := revisionRows.Close(); err != nil {
 		return nil, err
-	}
-	parts := make([]ubom.PartNumber, 0, len(values))
-	for _, value := range values {
-		part, err := s.GetPartNumber(value)
-		if err != nil {
-			return nil, err
-		}
-		parts = append(parts, part)
+	} else if closeErr != nil {
+		return nil, closeErr
 	}
 	return parts, nil
 }
@@ -781,23 +778,8 @@ func (s *PostgresStore) ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxon
 		return TaxonomyNodePartNumbers{}, err
 	}
 	defer rows.Close()
-	parts := []ubom.PartNumber{}
-	partsByID := map[int64]int{}
-	for rows.Next() {
-		var part ubom.PartNumber
-		var id int64
-		var attributeData []byte
-		if err := rows.Scan(&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData, &part.Status); err != nil {
-			return TaxonomyNodePartNumbers{}, err
-		}
-		part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
-		if err := json.Unmarshal(attributeData, &part.Attributes); err != nil {
-			return TaxonomyNodePartNumbers{}, err
-		}
-		parts = append(parts, part)
-		partsByID[id] = len(parts) - 1
-	}
-	if err := rows.Err(); err != nil {
+	parts, partsByID, err := scanPartNumberRows(rows)
+	if err != nil {
 		return TaxonomyNodePartNumbers{}, err
 	}
 	if err := rows.Close(); err != nil {
@@ -813,21 +795,8 @@ func (s *PostgresStore) ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxon
 		return TaxonomyNodePartNumbers{}, err
 	}
 	defer revisionRows.Close()
-	revisionSummaries := map[ubom.PartRevisionID]string{}
-	for revisionRows.Next() {
-		var partID, id int64
-		var revision string
-		if err := revisionRows.Scan(&partID, &id, &revision); err != nil {
-			return TaxonomyNodePartNumbers{}, err
-		}
-		partIndex, ok := partsByID[partID]
-		if !ok {
-			return TaxonomyNodePartNumbers{}, errors.New("revision references a part outside the taxonomy node")
-		}
-		parts[partIndex].PartRevisionID = append(parts[partIndex].PartRevisionID, ubom.PartRevisionID(strconv.FormatInt(id, 10)))
-		revisionSummaries[ubom.PartRevisionID(strconv.FormatInt(id, 10))] = revision
-	}
-	if err := revisionRows.Err(); err != nil {
+	revisionSummaries, err := scanPartRevisionRows(revisionRows, parts, partsByID)
+	if err != nil {
 		return TaxonomyNodePartNumbers{}, err
 	}
 	return TaxonomyNodePartNumbers{Parts: parts, RevisionSummaries: revisionSummaries}, nil

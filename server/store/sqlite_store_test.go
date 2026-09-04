@@ -137,6 +137,23 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	if len(bulk.Parts) != 1 || !reflect.DeepEqual(bulk.Parts[0], wantBulkPart) || bulk.RevisionSummaries[revision.ID] != "1" || bulk.RevisionSummaries[parent.ID] != "2" {
 		t.Fatalf("bulk node result = %#v, summaries = %#v", bulk.Parts, bulk.RevisionSummaries)
 	}
+	second, err := store.CreatePartNumber(ubom.PartNumber{
+		Value:          "001-01",
+		SeqDefID:       seqDef.ID,
+		TaxonomyDefID:  taxonomyDef.ID,
+		TaxonomyNodeID: "resistors",
+	})
+	if err != nil {
+		t.Fatalf("CreatePartNumber(second) error = %v", err)
+	}
+	listed, err := store.ListPartNumbers()
+	if err != nil {
+		t.Fatalf("ListPartNumbers() error = %v", err)
+	}
+	wantListed := []ubom.PartNumber{second, wantBulkPart}
+	if !reflect.DeepEqual(listed, wantListed) {
+		t.Fatalf("ListPartNumbers() = %#v, want %#v", listed, wantListed)
+	}
 }
 
 func TestSQLiteStoreCreatesTaxonomyNodeLookupIndexes(t *testing.T) {

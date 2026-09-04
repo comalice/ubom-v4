@@ -1,14 +1,17 @@
 <script lang="ts">
-  import { taxonomyGrammarAlternatives, type TaxonomyDragPayload, type TaxonomyGrammar } from './TaxonomyEditorModel'
+  import { taxonomyGrammarChoices, type TaxonomyDragPayload, type TaxonomyGrammar } from './TaxonomyEditorModel'
   import type { StructureNode } from './StructureNode'
   import type { DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
 
   export let grammar: TaxonomyGrammar
+  export let targetId = ''
+  export let parentId = ''
   export let readOnly = false
   export let onBranchDrop: (state: DragDropState<TaxonomyDragPayload>, branchPath: string) => void = () => {}
+  export let onBranchFieldDrop: (state: DragDropState<TaxonomyDragPayload>, branchPath: string, field: string) => void = () => {}
 
-  $: alternatives = taxonomyGrammarAlternatives(grammar)
+  $: choices = taxonomyGrammarChoices(grammar, targetId)
 
   function bindings(nodes: StructureNode[]): StructureNode[] {
     return nodes.flatMap((node) => [
@@ -22,15 +25,17 @@
   }
 </script>
 
-{#if alternatives.length}
+{#if choices.length}
   <section class="taxonomy-choice-branches" aria-label="Sequence definition choices">
     <div class="taxonomy-choice-branches-heading">
-      <span class="mock-section-label">Sequence choices</span>
-      <small>Branch paths are persisted branch conditions; captured-field predicates remain field-based.</small>
+      <span class="mock-section-label">Branches</span>
+      <small>Drop a category into an alternative to scope it to that branch. Field predicates remain field-based.</small>
     </div>
-    {#each alternatives as alternative (alternative.id)}
+    {#each choices as choice (choice.id)}
+      <div class="taxonomy-choice-context">
+        {#each choice.children as alternative (alternative.id)}
       {@const occurrences = bindings(alternative.children)}
-     <article class="taxonomy-choice-branch" class:taxonomy-choice-literal-only={alternative.literalOnly}>
+      <article class="taxonomy-choice-branch" class:taxonomy-choice-literal-only={alternative.literalOnly}>
         <header>
           <strong>{alternative.label}</strong>
           <span>{alternative.summary}</span>
@@ -40,22 +45,30 @@
           <small class="taxonomy-choice-ancestry">ancestry: {alternative.choiceAncestry.map((choice) => `${choice.path} (${choice.summary})`).join(' -> ')}</small>
         {/if}
         {#if occurrences.length}
-          <div class="taxonomy-choice-bindings" aria-label={`Captured bindings for ${alternative.label}`}>
-            {#each occurrences as occurrence (occurrence.path ?? occurrence.id)}
-              <span class="taxonomy-choice-binding">
-                <b>{occurrence.label}</b>
-                <small>{occurrence.path}</small>
-                {#if occurrence.numericDomain}<small>domain {occurrence.numericDomain.min}..{occurrence.numericDomain.max}</small>{/if}
-              </span>
-            {/each}
-          </div>
+           <div class="taxonomy-choice-bindings" aria-label={`Captured bindings for ${alternative.label}`}>
+             {#each occurrences as occurrence (occurrence.path ?? occurrence.id)}
+               <span class="taxonomy-choice-binding">
+                 <b>{occurrence.label}</b>
+                 <small>{occurrence.path}</small>
+                 {#if occurrence.numericDomain}<small>domain {occurrence.numericDomain.min}..{occurrence.numericDomain.max}</small>{/if}
+                 {#if !readOnly}
+                   <DropZone variant="slot" mode="inactive" container={`taxonomy-editor:branch:${alternative.branchPath}:field:${occurrence.label}`} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchFieldDrop(state, alternative.branchPath!, occurrence.label)} ariaLabel={`Add a category for ${occurrence.label} in ${alternative.label}`} />
+                 {/if}
+               </span>
+             {/each}
+           </div>
         {:else}
            <small class="taxonomy-choice-nontargetable">literal-only branch - no captured field target</small>
          {/if}
-         {#if !readOnly && alternative.branchPath}
-           <DropZone variant="slot" mode="inactive" container={`taxonomy-editor:branch:${alternative.branchPath}`} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchDrop(state, alternative.branchPath!)} ariaLabel={`Add a category for ${alternative.label}`} />
-         {/if}
-       </article>
+          {#if !readOnly && alternative.branchPath}
+            <DropZone variant="slot" mode="inactive" container={`taxonomy-editor:branch:${alternative.branchPath}`} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchDrop(state, alternative.branchPath!)} ariaLabel={`Add a category under ${parentId} for ${alternative.label}`} />
+          {/if}
+          {#if alternative.branchPath}
+            <svelte:self {grammar} targetId={alternative.branchPath} {parentId} {readOnly} {onBranchDrop} {onBranchFieldDrop} />
+          {/if}
+        </article>
+        {/each}
+      </div>
     {/each}
   </section>
 {/if}

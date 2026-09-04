@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoices, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -141,6 +141,36 @@ describe('taxonomy persisted-definition adapters', () => {
     const alternatives = taxonomyGrammarAlternatives(grammar)
     expect(alternatives.map((alternative) => alternative.branchPath)).toEqual(['root/1/bind/choice[0]', 'root/1/bind/choice[1]', 'root/1/bind/choice[1]/choice[0]', 'root/1/bind/choice[1]/choice[1]'])
     expect(taxonomyBranchPath(grammar, 'grammar-1-child-alternative-1-alternative-0')).toBe('root/1/bind/choice[1]/choice[0]')
+  })
+
+  it('discovers only the choices owned by a target and then nested choices by canonical branch path', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'progressive', definitionId: 'seq', version: 1, root: { kind: 'bind', name: 'family', child: { kind: 'choice', children: [
+      { kind: 'literal', text: 'A' },
+      { kind: 'choice', children: [{ kind: 'literal', text: 'B' }, { kind: 'bind', name: 'code', child: { kind: 'literal', text: 'C' } }] },
+    ] } } })
+    expect(taxonomyGrammarChoices(grammar, 'family')).toHaveLength(1)
+    const outer = taxonomyGrammarAlternatives(grammar).find((alternative) => alternative.branchPath === 'root/bind/choice[1]')!
+    expect(taxonomyGrammarChoices(grammar, outer.branchPath!)[0].children.map((alternative) => alternative.branchPath)).toEqual([
+      'root/bind/choice[1]/choice[0]', 'root/bind/choice[1]/choice[1]',
+    ])
+  })
+
+  it('inserts a branch draft under the active parent without leaking editor metadata', () => {
+    const root: TaxonomyDraftNode = { id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{ id: 'active', label: 'Active', targetId: 'family', placements: [], rules: [], children: [] }] }
+    const draft = addTaxonomyDraftBranchChild(root, 'active', 'branch-child', 'root/choice[0]')
+    expect(draft.children[0].children[0]).toMatchObject({ id: 'branch-child', branch: { path: ['root/choice[0]'] } })
+    expect(taxonomyDefinitionInputFromDraft('seq', undefined, [], draft).root.children?.[0].children?.[0]).toEqual({ id: 'branch-child', label: 'New category', branch: { path: ['root/choice[0]'] } })
+  })
+
+  it('supports root branch authoring and branch-plus-field serialization', () => {
+    const root: TaxonomyDraftNode = { id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [] }
+    const branch = addTaxonomyDraftBranchChild(root, 'root', 'literal-branch', 'root/choice[0]')
+    expect(branch.children[0]).toMatchObject({ targetId: 'root/choice[0]', branch: { path: ['root/choice[0]'] } })
+
+    const withField = addTaxonomyDraftBranchFieldChild(root, 'root', 'numeric-branch', 'root/choice[1]', 'family')
+    expect(taxonomyDefinitionInputFromDraft('seq', undefined, [], withField).root.children?.[0]).toEqual({
+      id: 'numeric-branch', label: 'New category', branch: { path: ['root/choice[1]'] }, predicates: [{ field: 'family', kind: 'exact', value: 'A' }],
+    })
   })
 
   it('round-trips a literal-only nested branch with field rules', () => {

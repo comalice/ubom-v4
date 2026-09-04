@@ -2,7 +2,7 @@
   import { type DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
-  import { acceptsTaxonomyCategoryChildDrop, taxonomyTargetContainer, taxonomyTargetIsUsable, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyCategoryChildDrop, taxonomyTargetContainer, taxonomyTargetIsUsable, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let parent: TaxonomyDraftNode
   export let field: string | undefined = undefined
@@ -19,6 +19,9 @@
   export let onContextDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, field: string, targetIndex: number) => void = () => {}
   export let contextFieldsForNode: (targetId: string) => string[] = () => []
   export let targetFieldForNode: (targetId: string) => string | undefined = (targetId) => targetId
+  export let grammar: TaxonomyGrammar = { id: '', label: '', fields: 0, nodes: [] }
+  export let onBranchDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, branchPath: string) => void = () => {}
+  export let onBranchFieldDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, branchPath: string, field: string) => void = () => {}
 
   $: sourceChildren = parent.children
   $: normalizedExcludedFields = excludedFields.map((targetId) => targetFieldForNode(targetId) ?? targetId)
@@ -63,6 +66,9 @@
         {onNodeLabelChange}
         {onNodeIdChange}
         {onRulePredicateChange}
+        {grammar}
+        {onBranchDrop}
+        {onBranchFieldDrop}
         contextFields={field === undefined ? [] : contextFieldsForNode(child.targetId)}
         {onContextDrop}
         {contextFieldsForNode}

@@ -160,11 +160,25 @@ export function taxonomyGrammarAlternatives(grammar: TaxonomyGrammar): Structure
 export function taxonomyGrammarNode(grammar: TaxonomyGrammar, targetId: string): StructureNode | undefined {
   let result: StructureNode | undefined
   const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
-    if (!result && (String(node.id) === targetId || node.branchPath === targetId || node.path === targetId)) result = node
+    if (!result && (String(node.id) === targetId || node.label === targetId || node.branchPath === targetId || node.path === targetId)) result = node
     visit(node.children)
   })
   visit(grammar.nodes)
   return result
+}
+
+/** Returns the nearest choices owned by a taxonomy grammar target. */
+export function taxonomyGrammarChoices(grammar: TaxonomyGrammar, targetId: string): StructureNode[] {
+  const target = taxonomyGrammarNode(grammar, targetId)
+  if (!target) return []
+  const choices: StructureNode[] = []
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (node.blockType === 'choice') choices.push(node)
+    else visit(node.children)
+  })
+  if (target.blockType === 'choice') choices.push(target)
+  else visit(target.children)
+  return choices
 }
 
 function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predicates']>[number]): string {
@@ -531,6 +545,21 @@ export function addTaxonomyDraftChild(node: TaxonomyDraftNode, parentID: string,
     return { ...node, children }
   }
   return { ...node, children: node.children.map((current) => addTaxonomyDraftChild(current, parentID, child, targetIndex)) }
+}
+
+/** Creates a branch-scoped category below the active taxonomy node. */
+export function addTaxonomyDraftBranchChild(node: TaxonomyDraftNode, parentID: string, id: string, branchPath: string, label = 'New category'): TaxonomyDraftNode {
+  if (!parentID.trim() || !id.trim() || !branchPath.trim()) return node
+  const placement: TaxonomyPlacement = { id, targetId: branchPath, type: 'category', title: label, summary: `Branch ${branchPath}`, label, nodeId: id }
+  return addTaxonomyDraftChild(node, parentID, { id, label, targetId: branchPath, branch: { path: [branchPath] }, placements: [placement], rules: [], children: [] }, 0)
+}
+
+/** Creates a branch-scoped category with its first captured-field predicate. */
+export function addTaxonomyDraftBranchFieldChild(node: TaxonomyDraftNode, parentID: string, id: string, branchPath: string, field: string, label = 'New category'): TaxonomyDraftNode {
+  if (!field.trim()) return node
+  const predicate = `${field} = A`
+  const placement: TaxonomyPlacement = { id, targetId: field, type: 'category', title: label, summary: predicate, label, nodeId: id, predicate, predicateData: { kind: 'exact', field, value: 'A' } }
+  return addTaxonomyDraftChild(node, parentID, { id, label, targetId: branchPath, branch: { path: [branchPath] }, placements: [placement], rules: [], children: [] }, 0)
 }
 
 /** Moves an existing category node without changing its placement or descendants. */

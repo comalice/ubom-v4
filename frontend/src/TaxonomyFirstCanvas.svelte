@@ -5,7 +5,7 @@
   import TaxonomyPalette from './TaxonomyPalette.svelte'
   import PrimitiveButton from './PrimitiveButton.svelte'
   import TaxonomyChoiceBranches from './TaxonomyChoiceBranches.svelte'
-  import { addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, taxonomyContextFields, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, addTaxonomyDraftRule, findTaxonomyDraftNode, findTaxonomyDraftPath, moveTaxonomyDraftCategory, moveTaxonomyDraftRule, removeTaxonomyDraftCategorySubtree, removeTaxonomyDraftRule, taxonomyContextFields, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, type TaxonomyDraftNode, type TaxonomyDragPayload, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let grammar: TaxonomyGrammar
   export let taxonomyDraft: TaxonomyDraftNode
@@ -43,12 +43,19 @@
     selectedNodeID = placement.id
   }
 
-  function addBranchCategory(state: DragDropState<TaxonomyDragPayload>, branchPath: string) {
+  function addBranchCategory(state: DragDropState<TaxonomyDragPayload>, parentID: string, branchPath: string) {
     const item = state.draggedItem
     if (item?.kind !== 'palette' || item.taxonomyType !== 'category') return
     const id = `taxonomy-category-${placementNumber++}`
-    const placement: TaxonomyPlacement = { id, targetId: branchPath, type: 'category', title: 'New category', summary: `Branch ${branchPath}`, label: 'New category', nodeId: id }
-    change(addTaxonomyDraftChild(taxonomyDraft, taxonomyDraft.id, { id, label: 'New category', targetId: branchPath, branch: { path: [branchPath] }, placements: [placement], rules: [], children: [] }))
+    change(addTaxonomyDraftBranchChild(taxonomyDraft, parentID, id, branchPath))
+    selectedNodeID = id
+  }
+
+  function addBranchFieldCategory(state: DragDropState<TaxonomyDragPayload>, parentID: string, branchPath: string, field: string) {
+    const item = state.draggedItem
+    if (item?.kind !== 'palette' || item.taxonomyType !== 'category') return
+    const id = `taxonomy-category-${placementNumber++}`
+    change(addTaxonomyDraftBranchFieldChild(taxonomyDraft, parentID, id, branchPath, field))
     selectedNodeID = id
   }
 
@@ -100,10 +107,9 @@
   <main class="taxonomy-editor-canvas">
     <div class="taxonomy-editor-heading"><div><span class="mock-section-label">Taxonomy tree</span><h3>{taxonomyDraft.label}</h3></div><span class="taxonomy-editor-count">{grammar.id} · {grammar.fields} fields</span></div>
     <p class="taxonomy-grammar-note">The taxonomy tree is the work surface. Categories expose later grammar fields as context lanes.</p>
-     <TaxonomyChoiceBranches {grammar} {readOnly} onBranchDrop={addBranchCategory} />
-    <div class="taxonomy-grammar-tree">
-       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root"><span class="taxonomy-grammar-kind">root scope</span><strong>{taxonomyDraft.label}</strong><small>all values matching {grammar.id}</small>{#if !readOnly}<button class="primitive-button primitive-button-secondary button-size-small" type="button" aria-label={`View attributes for ${taxonomyDraft.label}`} on:click={(event) => openAttributes(event, taxonomyDraft.id)}>attributes</button>{/if}<div class="taxonomy-first-root-context">{#if firstField}<div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field={firstField} {readOnly} onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} /></div>{/if}</div></div>
-      <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">{#each taxonomyDraft.children.filter((child) => taxonomyTargetField(grammar, child.targetId) !== firstTargetField) as child (child.id)}{#if child.placements[0]}<div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => selectCategory(event, child.id)} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}><TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} contextFields={taxonomyContextFields(grammar, child.targetId)} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} {readOnly} onContextDrop={handleFieldDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} /></div>{/if}{/each}</div>
+     <div class="taxonomy-grammar-tree">
+       <div class:selected={selectedNodeID === taxonomyDraft.id} class="taxonomy-first-root"><span class="taxonomy-grammar-kind">root scope</span><strong>{taxonomyDraft.label}</strong><small>all values matching {grammar.id}</small>{#if !readOnly}<button class="primitive-button primitive-button-secondary button-size-small" type="button" aria-label={`View attributes for ${taxonomyDraft.label}`} on:click={(event) => openAttributes(event, taxonomyDraft.id)}>attributes</button>{/if}<div class="taxonomy-first-root-context"><TaxonomyChoiceBranches {grammar} targetId={taxonomyDraft.targetId} parentId={taxonomyDraft.id} {readOnly} onBranchDrop={addBranchCategory} onBranchFieldDrop={addBranchFieldCategory} />{#if firstField}<div class="taxonomy-first-context-lane"><TaxonomyCategoryChildren parent={taxonomyDraft} field={firstField} {readOnly} onDrop={handleChildDrop} onContextDrop={handleFieldDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} {grammar} onBranchDrop={addBranchCategory} onBranchFieldDrop={addBranchFieldCategory} /></div>{/if}</div></div>
+       <div class="taxonomy-first-branches taxonomy-grammar-structure-tree">{#each taxonomyDraft.children.filter((child) => taxonomyTargetField(grammar, child.targetId) !== firstTargetField) as child (child.id)}{#if child.placements[0]}<div class:selected={selectedNodeID === child.id} class="taxonomy-first-category" role="button" tabindex="0" on:click={(event) => selectCategory(event, child.id)} on:keydown={(event) => event.key === 'Enter' && (selectedNodeID = child.id)}><TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyTargetContainer(taxonomyDraft.id)} contextFields={taxonomyContextFields(grammar, child.targetId)} contextFieldsForNode={(targetId) => taxonomyContextFields(grammar, targetId)} targetFieldForNode={(targetId) => taxonomyTargetField(grammar, targetId)} {grammar} {readOnly} onContextDrop={handleFieldDrop} onChildDrop={handleChildDrop} onRuleDrop={handleRuleDrop} onRemove={removePlacement} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} onBranchDrop={addBranchCategory} onBranchFieldDrop={addBranchFieldCategory} /></div>{/if}{/each}</div>
     </div>
     {#if readOnly}<PrimitiveButton variant="secondary" size="small" type="button" on:click={() => onAttributes(taxonomyDraft.id)}>attributes</PrimitiveButton>{/if}
     <div class="taxonomy-first-effective"><span class="mock-section-label">Effective condition for {selectedNode.label}</span><code>{effectivePredicate || 'any valid part number'}</code><small>Inherited from the taxonomy path.</small></div>

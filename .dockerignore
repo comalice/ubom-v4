@@ -1,0 +1,6 @@
+.git
+.reference
+frontend/node_modules
+frontend/dist
+server/dev.db
+**/*_test.go

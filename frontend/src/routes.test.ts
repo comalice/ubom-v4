@@ -11,6 +11,13 @@ describe('sequence definition routes', () => {
     expect(parseRoute('/catalog')).toEqual({ kind: 'catalog' })
   })
 
+  it('parses readable catalog taxonomy paths separately from query state', () => {
+    expect(parseRoute('/catalog/components/fasteners?taxonomyDef=components-v3&q=bolt&page=2')).toEqual({
+      kind: 'catalog',
+      state: { path: ['components', 'fasteners'], taxonomyDef: 'components-v3', q: 'bolt', page: 2 },
+    })
+  })
+
   it('parses shareable catalog query state and omits defaults', () => {
     expect(parseRoute('/catalog?taxonomyDef=components-v3&node=resistors&q=10k%20%2B&filter.resistance=10k&filter.tolerance=1%25&page=2&pageSize=50&sort=updatedAt&order=desc')).toEqual({
       kind: 'catalog',
@@ -35,6 +42,7 @@ describe('sequence definition routes', () => {
     expect(serializeCatalogRouteState({ pageSize: 50 })).toBe('')
     expect(parseCatalogRouteState(serializeCatalogRouteState(state))).toEqual(state)
     expect(catalogPath()).toBe('/catalog')
+    expect(catalogPath({ path: ['components', 'fasteners'], taxonomyDef: 'components-v3', q: 'bolt' })).toBe('/catalog/components/fasteners?taxonomyDef=components-v3&q=bolt')
   })
 
   it('serializes every catalog interaction state, including pagination and sorting', () => {

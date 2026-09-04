@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, previewSeqDefCandidate, previewSeqDefRoot, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
+import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -64,6 +64,27 @@ describe('taxonomy revision history API', () => {
 })
 
 describe('taxonomy node API', () => {
+  it('resolves readable labels to stable IDs and rejects ambiguous segments', () => {
+    const root = {
+      id: 'components', label: 'Components', children: [
+        { id: 'fasteners', label: 'Fasteners & Joining', children: [{ id: 'bolts', label: 'Bolts' }] },
+        { id: 'duplicate', label: 'Fasteners & Joining', children: [] },
+      ],
+    }
+    expect(resolveTaxonomyPath(root, ['components', 'bolts'])).toBeUndefined()
+    expect(resolveTaxonomyPath(root, ['components', 'fasteners-joining'])).toBeUndefined()
+    expect(resolveTaxonomyPath({ ...root, children: [root.children[0]] }, ['components', 'fasteners-joining', 'bolts'])).toEqual(['components', 'fasteners', 'bolts'])
+  })
+
+  it('uses resolved stable IDs for a readable path API lookup', async () => {
+    const root = { id: 'components', label: 'Components', children: [{ id: 'fasteners', label: 'Fasteners & Joining', children: [] }] }
+    const node = { id: 'fasteners', taxonomyDefId: 'components-v3', seqDefId: 'components-seq-v2', label: 'Fasteners & Joining', path: [], attributes: [], children: [], partNumbers: [] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(node), { status: 200 }))
+
+    await expect(getTaxonomyNodeBySlugPath('components-v3', root, ['components', 'fasteners-joining'])).resolves.toEqual(node)
+    expect(fetchMock).toHaveBeenCalledWith('/api/taxonomies/components-v3/nodes/fasteners')
+  })
+
   it('uses the resolved taxonomy definition ID for every node lookup', async () => {
     const root = { id: 'components', label: 'Components', children: [{ id: 'resistors', label: 'Resistors' }] }
     const resistor = { ...root, id: 'resistors', label: 'Resistors', children: [] }

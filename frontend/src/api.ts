@@ -160,6 +160,26 @@ export async function getTaxonomyNodeByPath(taxonomyID: string, segments: string
   return node
 }
 
+/** Resolve URL slugs using taxonomy metadata, returning stable node IDs. */
+export function resolveTaxonomyPath(root: TaxonomyNodeInput, segments: string[]): string[] | undefined {
+  if (!segments.length || taxonomySlug(root.label) !== segments[0]) return undefined
+  const ids = [root.id]
+  let current = root
+  for (const segment of segments.slice(1)) {
+    const matches = (current.children ?? []).filter(child => taxonomySlug(child.label) === segment)
+    if (matches.length !== 1) return undefined
+    current = matches[0]
+    ids.push(current.id)
+  }
+  return ids
+}
+
+export async function getTaxonomyNodeBySlugPath(taxonomyID: string, root: TaxonomyNodeInput, segments: string[]): Promise<TaxonomyNodeView> {
+  const ids = resolveTaxonomyPath(root, segments)
+  if (!ids) throw new Error('404 Not Found')
+  return getTaxonomyNode(taxonomyID, ids[ids.length - 1])
+}
+
 export const getPart = (value: string) => get<PartNumberView>(`/api/parts/by-value/${encodeURIComponent(value)}`)
 
 export const getParts = () => get<PartListItem[]>('/api/parts')

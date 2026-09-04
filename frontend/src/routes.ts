@@ -20,6 +20,8 @@ export type Route =
 
 export type CatalogRouteState = {
   taxonomyDef?: string
+  /** Human-readable taxonomy slugs from the catalog root to the current node. */
+  path?: string[]
   node?: string
   q?: string
   filters?: Record<string, string[]>
@@ -89,9 +91,11 @@ export function parseRoute(pathname?: string): Route {
   const url = new URL(currentPath, 'http://localhost')
   const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent)
   if (parts.length === 0) return { kind: 'home' }
-  if (parts.length === 1 && parts[0] === 'catalog') {
+  if (parts.length >= 1 && parts[0] === 'catalog') {
     const state = parseCatalogRouteState(url.searchParams)
-    return Object.keys(state).length ? { kind: 'catalog', state } : { kind: 'catalog' }
+    const path = parts.slice(1)
+    const catalogState = path.length ? { ...state, path } : state
+    return Object.keys(catalogState).length ? { kind: 'catalog', state: catalogState } : { kind: 'catalog' }
   }
   if (parts.length === 1 && parts[0] === 'parts') return { kind: 'parts' }
   if (parts.length === 1 && parts[0] === 'artifacts') return { kind: 'artifacts' }
@@ -140,7 +144,8 @@ export const taxonomyPath = (labels: string[], seqDef?: string) => {
 
 export const catalogPath = (state?: CatalogRouteState) => {
   const query = serializeCatalogRouteState(state)
-  return query ? `/catalog?${query}` : '/catalog'
+  const path = state?.path?.length ? `/catalog/${state.path.map(segment => encodeURIComponent(segment)).join('/')}` : '/catalog'
+  return query ? `${path}?${query}` : path
 }
 
 export const partPath = (value: string) => `/part/${encodeURIComponent(value)}`

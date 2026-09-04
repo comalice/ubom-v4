@@ -7,8 +7,8 @@
   import FilterOptionList, { type FilterOption } from './FilterOptionList.svelte'
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
-  import { getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, searchParts, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
-  import { catalogPath, type CatalogRouteState } from './routes'
+  import { getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
+  import { catalogPath, taxonomySlug, type CatalogRouteState } from './routes'
 
   export let state: CatalogRouteState | undefined = undefined
   export let navigate: (path: string) => void
@@ -40,7 +40,9 @@
       const taxonomy = routeState.taxonomyDef
         ? await getTaxonomyDef(routeState.taxonomyDef)
         : await getCurrentTaxonomy()
-      const nodeID = routeState.node ?? taxonomy.root.id
+      const resolvedPath = routeState.path ? resolveTaxonomyPath(taxonomy.root, routeState.path) : undefined
+      if (routeState.path && !resolvedPath) throw new Error('404 Not Found')
+      const nodeID = resolvedPath?.at(-1) ?? routeState.node ?? taxonomy.root.id
       const [resolvedNode, result] = await Promise.all([
         getTaxonomyNode(taxonomy.id, nodeID),
         searchParts({ ...routeState, taxonomyDef: taxonomy.id, node: nodeID }),
@@ -73,7 +75,9 @@
   }
 
   function categoryHref(id: string) {
-    return catalogPath(scopedState({ node: id, page: undefined }))
+    const path = node?.path.map(item => taxonomySlug(item.label)) ?? []
+    const child = node?.children.find(item => item.id === id)
+    return catalogPath(scopedState({ path: [...path, taxonomySlug(child?.label ?? id)], node: undefined, page: undefined }))
   }
 
   function handleCatalogLink(event: MouseEvent) {
@@ -94,7 +98,9 @@
     if (!node || !definition) return []
     return node.path.map((item, index) => ({
       label: item.label,
-      href: index < node!.path.length - 1 ? categoryHref(item.id) : undefined,
+      href: index < node!.path.length - 1
+        ? catalogPath(scopedState({ path: node!.path.slice(0, index + 1).map(pathItem => taxonomySlug(pathItem.label)), node: undefined, page: undefined }))
+        : undefined,
     }))
   }
 
@@ -160,7 +166,7 @@
     </svelte:fragment>
     <div class="catalog-main">
       <nav class="catalog-breadcrumbs" aria-label="Catalog scope">
-        <a href={catalogPath(scopedState({ node: undefined, page: undefined }))}>Catalog</a>
+        <a href={catalogPath({ ...scopedState({ node: undefined, page: undefined }), path: undefined })}>Catalog</a>
         {#each breadcrumbs() as crumb, index}<span aria-hidden="true">/</span>{#if crumb.href}<a href={crumb.href}>{crumb.label}</a>{:else}<strong aria-current="page">{crumb.label}</strong>{/if}{/each}
       </nav>
       <div class="catalog-main-heading"><div><p class="eyebrow">Category</p><h2>{node.label}</h2></div><span class="catalog-result-count">{total} {total === 1 ? 'part' : 'parts'}</span></div>

@@ -1133,7 +1133,11 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 		return TaxonomyNodeView{}, store.ErrNotFound
 	}
 	var parts []ubom.PartNumber
-	if lister, ok := s.store.(store.TaxonomyNodePartNumberLister); ok {
+	var revisionSummaries map[ubom.PartRevisionID]string
+	if lister, ok := s.store.(store.TaxonomyNodePartNumberRevisionLister); ok {
+		result, loadErr := lister.ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID, nodeID)
+		parts, revisionSummaries, err = result.Parts, result.RevisionSummaries, loadErr
+	} else if lister, ok := s.store.(store.TaxonomyNodePartNumberLister); ok {
 		parts, err = lister.ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID, nodeID)
 	} else {
 		parts, err = s.store.ListPartNumbersByTaxonomyNode(taxonomyID, nodeID)
@@ -1192,7 +1196,7 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 				return TaxonomyNodeView{}, err
 			}
 		}
-		item, err := s.partNumberListItemWithDefinitions(part, partSeqDef, taxonomyDef)
+		item, err := s.partNumberListItemWithDefinitionsAndRevisionSummaries(part, partSeqDef, taxonomyDef, revisionSummaries)
 		if err != nil {
 			return TaxonomyNodeView{}, err
 		}
@@ -1214,6 +1218,10 @@ func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, 
 }
 
 func (s *Service) partNumberListItemWithDefinitions(part ubom.PartNumber, seqDef ubom.SeqDef, taxonomyDef ubom.TaxonomyDef) (PartNumberListItem, error) {
+	return s.partNumberListItemWithDefinitionsAndRevisionSummaries(part, seqDef, taxonomyDef, nil)
+}
+
+func (s *Service) partNumberListItemWithDefinitionsAndRevisionSummaries(part ubom.PartNumber, seqDef ubom.SeqDef, taxonomyDef ubom.TaxonomyDef, revisionSummaries map[ubom.PartRevisionID]string) (PartNumberListItem, error) {
 	taxonomyPath, err := partTaxonomyPathWithDefinitions(part, seqDef, taxonomyDef)
 	if err != nil {
 		return PartNumberListItem{}, err
@@ -1232,6 +1240,14 @@ func (s *Service) partNumberListItemWithDefinitions(part ubom.PartNumber, seqDef
 	}
 	item.Attributes = attributes
 	for _, revisionID := range part.PartRevisionID {
+		if revisionSummaries != nil {
+			revision, ok := revisionSummaries[revisionID]
+			if !ok {
+				return PartNumberListItem{}, store.ErrNotFound
+			}
+			item.Revisions = append(item.Revisions, RevisionSummary{ID: revisionID, Revision: revision})
+			continue
+		}
 		revision, err := s.store.GetPartRevision(revisionID)
 		if err != nil {
 			return PartNumberListItem{}, err

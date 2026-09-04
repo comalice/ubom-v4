@@ -128,6 +128,15 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(gotParent, parent) {
 		t.Fatalf("GetPartRevision() with BOM = %#v, want %#v", gotParent, parent)
 	}
+	bulk, err := store.ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyDef.ID, "resistors")
+	if err != nil {
+		t.Fatalf("ListPartNumbersByTaxonomyNodeWithRevisionSummaries() error = %v", err)
+	}
+	wantBulkPart := part
+	wantBulkPart.PartRevisionID = []ubom.PartRevisionID{revision.ID, parent.ID}
+	if len(bulk.Parts) != 1 || !reflect.DeepEqual(bulk.Parts[0], wantBulkPart) || bulk.RevisionSummaries[revision.ID] != "1" || bulk.RevisionSummaries[parent.ID] != "2" {
+		t.Fatalf("bulk node result = %#v, summaries = %#v", bulk.Parts, bulk.RevisionSummaries)
+	}
 }
 
 func TestSQLiteStoreRoundTripsTypedTaxonomyPredicates(t *testing.T) {

@@ -48,3 +48,14 @@ type Store interface {
 type TaxonomyNodePartNumberLister interface {
 	ListPartNumbersByTaxonomyNodeUnvalidated(ubom.TaxonomyDefID, ubom.TaxonomyNodeID) ([]ubom.PartNumber, error)
 }
+
+// TaxonomyNodePartNumberRevisionLister is the optimized node path. It returns
+// complete part rows and the revision data needed for list rendering.
+type TaxonomyNodePartNumberRevisionLister interface {
+	ListPartNumbersByTaxonomyNodeWithRevisionSummaries(ubom.TaxonomyDefID, ubom.TaxonomyNodeID) (TaxonomyNodePartNumbers, error)
+}
+
+type TaxonomyNodePartNumbers struct {
+	Parts             []ubom.PartNumber
+	RevisionSummaries map[ubom.PartRevisionID]string
+}

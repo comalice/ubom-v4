@@ -984,36 +984,70 @@ func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 }
 
 func (s *SQLiteStore) ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
-	rows, err := s.db.Query(`SELECT value FROM part_numbers
-		WHERE taxonomy_def_id = ? AND taxonomy_node_id = ? ORDER BY value`, taxonomyID, nodeID)
+	result, err := s.ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID, nodeID)
 	if err != nil {
 		return nil, err
 	}
+	return result.Parts, nil
+}
+
+func (s *SQLiteStore) ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) (TaxonomyNodePartNumbers, error) {
+	rows, err := s.db.Query(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status
+		FROM part_numbers WHERE taxonomy_def_id = ? AND taxonomy_node_id = ? ORDER BY value`, taxonomyID, nodeID)
+	if err != nil {
+		return TaxonomyNodePartNumbers{}, err
+	}
 	defer rows.Close()
-	values := []string{}
+	parts := []ubom.PartNumber{}
+	partsByID := map[int64]int{}
 	for rows.Next() {
-		var value string
-		if err := rows.Scan(&value); err != nil {
-			rows.Close()
-			return nil, err
+		var part ubom.PartNumber
+		var id int64
+		var attributeData []byte
+		if err := rows.Scan(&id, &part.Value, &part.SeqDefID, &part.TaxonomyDefID, &part.TaxonomyNodeID, &attributeData, &part.Status); err != nil {
+			return TaxonomyNodePartNumbers{}, err
 		}
-		values = append(values, value)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	parts := make([]ubom.PartNumber, 0, len(values))
-	for _, value := range values {
-		part, err := s.GetPartNumber(value)
-		if err != nil {
-			return nil, err
+		part.ID = ubom.PartNumberID(strconv.FormatInt(id, 10))
+		if err := json.Unmarshal(attributeData, &part.Attributes); err != nil {
+			return TaxonomyNodePartNumbers{}, err
 		}
 		parts = append(parts, part)
+		partsByID[id] = len(parts) - 1
 	}
-	return parts, nil
+	if err := rows.Err(); err != nil {
+		return TaxonomyNodePartNumbers{}, err
+	}
+	if err := rows.Close(); err != nil {
+		return TaxonomyNodePartNumbers{}, err
+	}
+
+	revisionRows, err := s.db.Query(`SELECT r.part_number_id, r.id, r.revision
+		FROM part_revisions r
+		JOIN part_numbers p ON p.id = r.part_number_id
+		WHERE p.taxonomy_def_id = ? AND p.taxonomy_node_id = ?
+		ORDER BY p.value, r.id`, taxonomyID, nodeID)
+	if err != nil {
+		return TaxonomyNodePartNumbers{}, err
+	}
+	defer revisionRows.Close()
+	revisionSummaries := map[ubom.PartRevisionID]string{}
+	for revisionRows.Next() {
+		var partID, id int64
+		var revision string
+		if err := revisionRows.Scan(&partID, &id, &revision); err != nil {
+			return TaxonomyNodePartNumbers{}, err
+		}
+		partIndex, ok := partsByID[partID]
+		if !ok {
+			return TaxonomyNodePartNumbers{}, errors.New("revision references a part outside the taxonomy node")
+		}
+		parts[partIndex].PartRevisionID = append(parts[partIndex].PartRevisionID, ubom.PartRevisionID(strconv.FormatInt(id, 10)))
+		revisionSummaries[ubom.PartRevisionID(strconv.FormatInt(id, 10))] = revision
+	}
+	if err := revisionRows.Err(); err != nil {
+		return TaxonomyNodePartNumbers{}, err
+	}
+	return TaxonomyNodePartNumbers{Parts: parts, RevisionSummaries: revisionSummaries}, nil
 }
 
 func (s *SQLiteStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {

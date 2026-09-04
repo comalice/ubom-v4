@@ -361,14 +361,29 @@ func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 }
 
 func (s *MemoryStore) ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
+	result, err := s.ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	return result.Parts, nil
+}
+
+func (s *MemoryStore) ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) (TaxonomyNodePartNumbers, error) {
 	parts := []ubom.PartNumber{}
+	revisionSummaries := map[ubom.PartRevisionID]string{}
 	for _, part := range s.partNumbers {
 		if part.TaxonomyDefID == taxonomyID && part.TaxonomyNodeID == nodeID {
-			parts = append(parts, clonePartNumber(part))
+			cloned := clonePartNumber(part)
+			parts = append(parts, cloned)
+			for _, revisionID := range cloned.PartRevisionID {
+				if revision, ok := s.partRevisions[revisionID]; ok {
+					revisionSummaries[revisionID] = revision.Revision
+				}
+			}
 		}
 	}
 	sort.Slice(parts, func(i, j int) bool { return parts[i].Value < parts[j].Value })
-	return parts, nil
+	return TaxonomyNodePartNumbers{Parts: parts, RevisionSummaries: revisionSummaries}, nil
 }
 
 func (s *MemoryStore) CreatePartNumberDraft(draft ubom.PartNumberDraft) error {

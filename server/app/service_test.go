@@ -21,6 +21,20 @@ type countingTaxonomyNodeStore struct {
 	parts         []ubom.PartNumber
 }
 
+type countingNodeRevisionStore struct {
+	store.Store
+	revisionCalls int
+}
+
+func (s *countingNodeRevisionStore) ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) (store.TaxonomyNodePartNumbers, error) {
+	return s.Store.(store.TaxonomyNodePartNumberRevisionLister).ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID, nodeID)
+}
+
+func (s *countingNodeRevisionStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision, error) {
+	s.revisionCalls++
+	return s.Store.GetPartRevision(id)
+}
+
 func (s *countingTaxonomyNodeStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	s.taxonomyCalls++
 	return s.Store.GetTaxonomyDef(id)
@@ -90,6 +104,29 @@ func TestPartNumberViewUsesTypedClassificationAndEffectiveAttributes(t *testing.
 	}
 	if len(view.Attributes) != 1 || view.Attributes[0].ID != "finish" || view.Attributes[0].Value != "matte" {
 		t.Fatalf("attributes = %#v, want effective overridden finish", view.Attributes)
+	}
+}
+
+func TestTaxonomyNodeViewUsesBulkRevisionSummaries(t *testing.T) {
+	metadata := store.NewMemoryStore()
+	parent, err := LoadSampleData(metadata)
+	if err != nil {
+		t.Fatalf("LoadSampleData() error = %v", err)
+	}
+
+	counting := &countingNodeRevisionStore{Store: metadata}
+	view, err := NewService(counting).GetTaxonomyNodeView("sample-taxonomy-v1", "resistors")
+	if err != nil {
+		t.Fatalf("GetTaxonomyNodeView() error = %v", err)
+	}
+	if len(view.PartNumbers) != 1 || view.PartNumbers[0].ID != parent.ID {
+		t.Fatalf("part numbers = %#v, want only %q", view.PartNumbers, parent.ID)
+	}
+	if len(view.PartNumbers[0].Revisions) != 1 || view.PartNumbers[0].Revisions[0].Revision != "1" {
+		t.Fatalf("revisions = %#v, want revision 1", view.PartNumbers[0].Revisions)
+	}
+	if counting.revisionCalls != 0 {
+		t.Fatalf("GetPartRevision calls = %d, want 0", counting.revisionCalls)
 	}
 }
 

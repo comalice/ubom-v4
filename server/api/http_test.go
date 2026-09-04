@@ -227,6 +227,34 @@ func TestCatalogFacetsUseCurrentFilteredScope(t *testing.T) {
 	}
 }
 
+func TestCatalogRootReturnsGroupedCurrentTaxonomies(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/catalog/root", nil))
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d; body = %s", recording.Code, recording.Body)
+	}
+	var root app.CatalogRootView
+	if err := json.NewDecoder(recording.Body).Decode(&root); err != nil {
+		t.Fatal(err)
+	}
+	if len(root.Groups) != 1 || root.Groups[0].TaxonomyDefID != "sample-taxonomy-v1" || root.Groups[0].SeqDefID != "sample-pn-v1" {
+		t.Fatalf("root groups = %#v", root.Groups)
+	}
+	if len(root.Groups[0].Children) != 2 || root.Groups[0].Children[0].Count != 1 || root.Groups[0].Children[1].Count != 1 {
+		t.Fatalf("root children = %#v, want counts for both categories", root.Groups[0].Children)
+	}
+	bad := httptest.NewRecorder()
+	server.Handler().ServeHTTP(bad, httptest.NewRequest(http.MethodGet, "/api/catalog/root?taxonomyDef=sample-taxonomy-v1", nil))
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("scoped root status = %d, want bad request", bad.Code)
+	}
+}
+
 func TestCatalogFacetsRejectInvalidQuery(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()

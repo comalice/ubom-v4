@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiVersionMismatchError, BackendVersionProbeError, createSeqDefVersion, getCatalogFacets, getPart, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, probeBackendVersion, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
+import { ApiVersionMismatchError, BackendVersionProbeError, createSeqDefVersion, getCatalogFacets, getCatalogRoot, getPart, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, probeBackendVersion, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
+import { catalogRootViewModel } from './catalogRoot'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -195,6 +196,24 @@ describe('catalog facets API', () => {
 
     await expect(getCatalogFacets({ taxonomyDef: 'components/v3', node: 'fasteners', q: 'bolt', includeArchived: true, filters: { material: ['Steel', 'Aluminum'] }, ranges: { resistance: { min: '100' } }, page: 4 })).resolves.toEqual(result)
     expect(fetchMock).toHaveBeenCalledWith('/api/catalog/facets?q=bolt&taxonomyNode=fasteners&taxonomyDef=components%2Fv3&includeArchived=true&attribute=material%3DSteel&attribute=material%3DAluminum&attributeMin.resistance=100')
+  })
+})
+
+describe('catalog root API and view model', () => {
+  it('loads grouped root data and creates taxonomy-qualified links', async () => {
+    const root = { groups: [{ taxonomyDefId: 'sample-v1', seqDefId: 'sample-seq', root: { id: 'components', label: 'Components' }, children: [{ id: 'resistors', label: 'Resistors', count: 2 }] }] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(root), { status: 200 }))
+    await expect(getCatalogRoot()).resolves.toEqual(root)
+    expect(fetchMock).toHaveBeenCalledWith('/api/catalog/root')
+    expect(catalogRootViewModel(root).map(group => ({ heading: group.headingHref, child: group.children[0].href, label: group.children[0].label }))).toEqual([{
+      heading: '/catalog/components?taxonomyDef=sample-v1', child: '/catalog/components/resistors?taxonomyDef=sample-v1', label: 'Resistors',
+    }])
+  })
+
+  it('passes explicit archived state only when requested', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{"groups":[]}', { status: 200 }))
+    await getCatalogRoot(true)
+    expect(fetchMock).toHaveBeenCalledWith('/api/catalog/root?includeArchived=true')
   })
 })
 

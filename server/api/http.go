@@ -53,6 +53,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/parts", s.handlePartNumbers)
 	mux.HandleFunc("/api/catalog/facets", s.handleCatalogFacets)
+	mux.HandleFunc("/api/catalog/root", s.handleCatalogRoot)
 	mux.HandleFunc("/api/seq-defs", s.handleSeqDefs)
 	mux.HandleFunc("/api/seq-defs/preview", s.handleUnsavedSeqDefPreview)
 	mux.HandleFunc("/api/seq-defs/preview/candidate", s.handleSeqDefCandidatePreview)
@@ -302,6 +303,34 @@ func (s *Server) handleCatalogFacets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, facets)
+}
+
+func (s *Server) handleCatalogRoot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	query, err := parseCatalogQuery(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	for key := range r.URL.Query() {
+		if key != "includeArchived" {
+			writeError(w, http.StatusBadRequest, "catalog root accepts only includeArchived")
+			return
+		}
+	}
+	if query.TaxonomyDef != "" || query.TaxonomyNode != "" || query.Q != "" || len(query.Attributes) > 0 || len(query.Ranges) > 0 {
+		writeError(w, http.StatusBadRequest, "catalog root does not accept taxonomy scope or filters")
+		return
+	}
+	root, err := s.service.CatalogRootFor(query)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load catalog root")
+		return
+	}
+	writeJSON(w, root)
 }
 
 func parseCatalogQuery(r *http.Request) (app.PartSearchQuery, error) {

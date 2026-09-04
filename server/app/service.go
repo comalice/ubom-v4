@@ -481,6 +481,30 @@ type TaxonomyChildView struct {
 	ImageReference string              `json:"imageReference,omitempty"`
 }
 
+type CatalogRootView struct {
+	Groups []CatalogRootGroup `json:"groups"`
+}
+
+type CatalogRootGroup struct {
+	TaxonomyDefID ubom.TaxonomyDefID `json:"taxonomyDefId"`
+	SeqDefID      ubom.SeqDefID      `json:"seqDefId"`
+	Root          CatalogRootNode    `json:"root"`
+	Children      []CatalogRootChild `json:"children"`
+}
+
+type CatalogRootNode struct {
+	ID             ubom.TaxonomyNodeID `json:"id"`
+	Label          string              `json:"label"`
+	Description    string              `json:"description,omitempty"`
+	Image          string              `json:"image,omitempty"`
+	ImageReference string              `json:"imageReference,omitempty"`
+}
+
+type CatalogRootChild struct {
+	TaxonomyChildView
+	Count int `json:"count"`
+}
+
 type PartNumberSummary struct {
 	ID    ubom.PartNumberID `json:"id"`
 	Value string            `json:"value"`
@@ -663,6 +687,91 @@ func (s *Service) CatalogFacetsFor(query PartSearchQuery) (CatalogFacets, error)
 		}
 	}
 	return result, nil
+}
+
+// CatalogRootFor builds every current taxonomy landing group from one loaded
+// taxonomy set and one loaded part set. Counts include descendants of each
+// top-level child and default to active parts unless explicitly overridden.
+func (s *Service) CatalogRootFor(query PartSearchQuery) (CatalogRootView, error) {
+	parts, err := s.store.ListPartNumbers()
+	if err != nil {
+		return CatalogRootView{}, err
+	}
+	taxonomies, err := s.store.ListTaxonomyDefs()
+	if err != nil {
+		return CatalogRootView{}, err
+	}
+	seqDefs := make(map[ubom.SeqDefID]struct{})
+	for _, taxonomy := range taxonomies {
+		taxonomy = taxonomy.WithLegacyDefaults()
+		seqDefs[taxonomy.SeqDef] = struct{}{}
+	}
+	orderedSeqDefs := make([]ubom.SeqDefID, 0, len(seqDefs))
+	for seqDef := range seqDefs {
+		orderedSeqDefs = append(orderedSeqDefs, seqDef)
+	}
+	sort.Slice(orderedSeqDefs, func(i, j int) bool { return orderedSeqDefs[i] < orderedSeqDefs[j] })
+	currentTaxonomies := make([]ubom.TaxonomyDef, 0, len(orderedSeqDefs))
+	for _, seqDef := range orderedSeqDefs {
+		current, currentErr := s.store.GetCurrentTaxonomyDef(seqDef)
+		if errors.Is(currentErr, store.ErrNotFound) {
+			continue
+		}
+		if currentErr != nil {
+			return CatalogRootView{}, currentErr
+		}
+		currentTaxonomies = append(currentTaxonomies, current.WithLegacyDefaults())
+	}
+	groups := make([]CatalogRootGroup, 0, len(currentTaxonomies))
+	groupByTaxonomy := make(map[ubom.TaxonomyDefID]int, len(currentTaxonomies))
+	for _, taxonomy := range currentTaxonomies {
+		children := make([]CatalogRootChild, 0, len(taxonomy.Taxonomy.Root.Children))
+		for _, child := range taxonomy.Taxonomy.Root.Children {
+			children = append(children, CatalogRootChild{TaxonomyChildView: TaxonomyChildView{
+				ID: child.ID, Label: child.Label, Description: child.Description,
+				Image: child.Image, ImageReference: child.ImageReference,
+			}})
+		}
+		groupByTaxonomy[taxonomy.ID] = len(groups)
+		groups = append(groups, CatalogRootGroup{
+			TaxonomyDefID: taxonomy.ID, SeqDefID: taxonomy.SeqDef,
+			Root: CatalogRootNode{ID: taxonomy.Taxonomy.Root.ID, Label: taxonomy.Taxonomy.Root.Label,
+				Description: taxonomy.Taxonomy.Root.Description, Image: taxonomy.Taxonomy.Root.Image,
+				ImageReference: taxonomy.Taxonomy.Root.ImageReference},
+			Children: children,
+		})
+	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i].TaxonomyDefID < groups[j].TaxonomyDefID })
+	for i := range groups {
+		groupByTaxonomy[groups[i].TaxonomyDefID] = i
+	}
+	taxonomyByID := make(map[ubom.TaxonomyDefID]ubom.TaxonomyDef, len(currentTaxonomies))
+	for _, taxonomy := range currentTaxonomies {
+		taxonomyByID[taxonomy.ID] = taxonomy
+	}
+	for _, part := range parts {
+		if query.IncludeArchived == nil || !*query.IncludeArchived {
+			if part.EffectiveStatus() == ubom.PartNumberStatusArchived {
+				continue
+			}
+		}
+		taxonomy, exists := taxonomyByID[part.TaxonomyDefID]
+		if !exists {
+			continue
+		}
+		path, exists := findTaxonomyPath(taxonomy.Taxonomy.Root, part.TaxonomyNodeID)
+		if !exists || len(path) < 2 {
+			continue
+		}
+		group := &groups[groupByTaxonomy[taxonomy.ID]]
+		for childIndex := range group.Children {
+			if path[1].ID == group.Children[childIndex].ID {
+				group.Children[childIndex].Count++
+				break
+			}
+		}
+	}
+	return CatalogRootView{Groups: groups}, nil
 }
 
 func catalogFacetPartMatches(part ubom.PartNumber, taxonomy ubom.TaxonomyDef, query PartSearchQuery) bool {

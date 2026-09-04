@@ -71,6 +71,10 @@ export type CatalogFacetValue = { value: string; count: number }
 export type CatalogCategoryFacet = { id: string; label: string; count: number }
 export type CatalogAttributeFacet = { id: string; values: CatalogFacetValue[] }
 export type CatalogFacets = { categories: CatalogCategoryFacet[]; attributes: CatalogAttributeFacet[] }
+export type CatalogRootNode = { id: string; label: string; description?: string; image?: string; imageReference?: string }
+export type CatalogRootChild = CatalogRootNode & { count: number }
+export type CatalogRootGroup = { taxonomyDefId: string; seqDefId: string; root: CatalogRootNode; children: CatalogRootChild[] }
+export type CatalogRoot = { groups: CatalogRootGroup[] }
 
 export type TaxonomyNodeView = {
   id: string
@@ -293,6 +297,11 @@ export async function getCatalogFacets(options: PartSearchOptions = {}) {
     if (range?.max) params.set(`attributeMax.${attributeID}`, range.max)
   }
   return get<CatalogFacets>(`/api/catalog/facets?${params.toString()}`)
+}
+
+export async function getCatalogRoot(includeArchived = false) {
+  const query = includeArchived ? '?includeArchived=true' : ''
+  return get<CatalogRoot>(`/api/catalog/root${query}`)
 }
 
 export const getRevision = (id: string) => get<RevisionView>(`/api/revisions/${encodeURIComponent(id)}`)

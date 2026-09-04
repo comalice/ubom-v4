@@ -1,4 +1,4 @@
-# Catalog Taxonomy Selection QA
+# Grouped Catalog Root QA
 
 ## Fixture
 
@@ -18,9 +18,9 @@ as child categories.
 Run `make dev` and open the local application.
 
 Pass: the frontend and API are available without startup errors, and
-`/api/catalog/facets` responds to a valid catalog query.
+`/api/catalog/root` returns a JSON object with both current taxonomy groups.
 
-Fail: either service exits, the frontend cannot load, or the facets endpoint
+Fail: either service exits, the frontend cannot load, or the aggregate endpoint
 returns `404` or another unexpected error.
 
 ### 2. Open the unscoped catalog
@@ -31,58 +31,59 @@ Open:
 /catalog
 ```
 
-Pass: the page displays `Choose a catalog taxonomy`, and the selector contains
-both current taxonomy definitions. No catalog data request is made without a
-taxonomy choice when multiple current taxonomies exist.
+Pass: the page displays one sidebar group and one main tile section for each
+current taxonomy. It does not display a taxonomy selector or a combined filter
+panel, and the network log shows one `/api/catalog/root` request.
 
-Fail: the page selects a taxonomy silently, shows a generic 404, or the
-selector is absent or incomplete.
+Fail: a taxonomy is selected silently, a generic 404 is shown, a group is
+missing, or separate taxonomy/category requests are needed to render the root.
 
-### 3. Select a taxonomy and verify the root
+### 3. Verify groups, metadata, counts, and links
 
-Select `sample-taxonomy-v1`.
+Inspect the `sample-taxonomy-v1` group and its category tiles.
 
-Pass: the browser URL becomes `/catalog?taxonomyDef=sample-taxonomy-v1`; the
-page loads the `Components` root, shows `Resistors` and `Capacitors`, and does
-not display `404 Not Found`. The browser console has no errors, and both the
-parts search and catalog facets requests succeed.
+Pass: the group identifies `taxonomyDef=sample-taxonomy-v1` and its `seqDef`,
+shows the `Components` root and its metadata, and shows `Resistors` and
+`Capacitors` with active-part counts. Group headings link to
+`/catalog/<root-slug>?taxonomyDef=<id>` and child links include the same
+explicit taxonomy definition.
 
-Fail: selection navigates to a 404, the root is missing, the query loses the
-selected taxonomy definition, or either catalog API request fails.
+Fail: counts are combined across taxonomies, archived parts are included by
+default, links omit taxonomy context, or root metadata is absent.
 
-### 4. Verify root navigation and reload
+### 4. Verify scoped navigation and reload
 
-From the `Components` root, activate the `Catalog` breadcrumb, then reload the
-page. Open `Resistors`, return to `Catalog`, and reload again.
+Open the `Components` group heading, then reload. Open `Resistors`, return to
+`/catalog`, and reload again.
 
-Pass: root navigation preserves `taxonomyDef=sample-taxonomy-v1`; reloads keep
-the catalog on the same taxonomy and scope; child navigation loads the
-corresponding category without a full-page request for an unknown route.
+Pass: scoped URLs preserve `taxonomyDef=sample-taxonomy-v1`; reloads keep the
+catalog on the same taxonomy and scope; returning to `/catalog` restores all
+groups. Scoped pages still load their existing parts and facet requests.
 
-Fail: the root breadcrumb drops the taxonomy definition, reloads show the
-selector or a 404 unexpectedly, or a valid child link cannot resolve.
+Fail: a valid scoped URL 404s, taxonomy context is lost, or the root does not
+restore all current groups.
 
-### 5. Verify direct links and invalid paths
+### 5. Verify archived policy and invalid paths
 
 Open the following directly:
 
 ```text
-/catalog?taxonomyDef=sample-taxonomy-v1
+/catalog?includeArchived=true
+/api/catalog/root?includeArchived=true
 /catalog/components/resistors?taxonomyDef=sample-taxonomy-v1
 /catalog/not-a-real-category?taxonomyDef=sample-taxonomy-v1
 ```
 
-Pass: the first URL loads `Components`, the second loads `Resistors`, and the
-third reports a clear catalog-scope 404 without corrupting the application
-state.
+Pass: archived parts appear only with explicit inclusion, the aggregate API
+returns archived-inclusive counts, valid scoped URLs load, and the invalid path
+reports a clear catalog-scope 404 without corrupting application state.
 
-Fail: a valid URL 404s, an invalid scope renders unrelated data, or the error
-is hidden while requests continue indefinitely.
+Fail: archived parts are included by default, the aggregate endpoint accepts
+taxonomy-specific filters, or an invalid scope renders unrelated data.
 
 ## Completion
 
-The catalog selection run passes only when all five steps pass. Record the
+The grouped catalog root pass passes only when all five steps pass. Record the
 frontend URL, API URL, selected taxonomy ID, and failing request status for any
-failure. Run this playbook after taxonomy fixtures are created and whenever
-catalog routing, taxonomy selection, API handlers, or deployment proxy rules
-change.
+failure. Run this playbook whenever catalog routing, aggregate API handlers,
+taxonomy fixtures, or deployment proxy rules change.

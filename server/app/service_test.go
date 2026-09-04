@@ -9,6 +9,18 @@ import (
 	"ubom-v4/store"
 )
 
+type catalogRootCurrentStore struct {
+	store.Store
+	current ubom.TaxonomyDef
+}
+
+func (s catalogRootCurrentStore) GetCurrentTaxonomyDef(seqDef ubom.SeqDefID) (ubom.TaxonomyDef, error) {
+	if seqDef == s.current.SeqDef {
+		return s.current, nil
+	}
+	return s.Store.GetCurrentTaxonomyDef(seqDef)
+}
+
 func TestPartNumberViewUsesTypedClassificationAndEffectiveAttributes(t *testing.T) {
 	metadata := store.NewMemoryStore()
 	seq := ubom.NewSeqDef(ubom.Concat(
@@ -74,6 +86,76 @@ func TestSearchPartNumberViewsMatchesAnyValueWithinEachAttribute(t *testing.T) {
 	}
 	if result.Total != 1 || len(result.Items) != 1 || result.Items[0].Value != "PN-A" {
 		t.Fatalf("result = %#v, want only PN-A matching one value from each filter group", result)
+	}
+}
+
+func TestCatalogRootForGroupsCurrentTaxonomiesAndCountsActiveParts(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	seq := ubom.NewSeqDef(ubom.Literal("M-")).WithID("mechanical-seq")
+	if err := persistence.CreateSeqDef(seq); err != nil {
+		t.Fatal(err)
+	}
+	taxonomy := ubom.TaxonomyDef{ID: "mechanical-taxonomy-v1", DefinitionID: "mechanical-taxonomy", Version: 1, SeqDef: seq.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
+		ID: "mechanical", Label: "Mechanical", Description: "Mechanical parts", ImageReference: "asset://mechanical",
+		Children: []ubom.TaxonomyNode{{ID: "bearings", Label: "Bearings", Description: "Rolling parts", Image: "bearing.png"}},
+	}}}
+	if err := persistence.CreateTaxonomyDef(taxonomy); err != nil {
+		t.Fatal(err)
+	}
+	stale := taxonomy
+	stale.ID = "mechanical-taxonomy-v99"
+	stale.Version = 99
+	stale.Taxonomy.Root.Label = "Stale Mechanical"
+	if err := persistence.CreateTaxonomyDef(stale); err != nil {
+		t.Fatal(err)
+	}
+	part, err := ubom.NewSchema(seq, taxonomy, ubom.SchemaPolicy{}).NewPartNumber("M-", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part.TaxonomyNodeID = "bearings"
+	created, err := persistence.CreatePartNumber(part)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.ArchivePartNumber(created.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	service := NewService(catalogRootCurrentStore{Store: persistence, current: taxonomy})
+	root, err := service.CatalogRootFor(PartSearchQuery{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(root.Groups) != 2 {
+		t.Fatalf("groups = %#v, want two current taxonomies", root.Groups)
+	}
+	if root.Groups[0].TaxonomyDefID != "mechanical-taxonomy-v1" || root.Groups[1].TaxonomyDefID != "sample-taxonomy-v1" {
+		t.Fatalf("groups are not deterministically ordered: %#v", root.Groups)
+	}
+	mechanicalIndex := -1
+	for index := range root.Groups {
+		if root.Groups[index].TaxonomyDefID == taxonomy.ID {
+			mechanicalIndex = index
+		}
+	}
+	if mechanicalIndex < 0 {
+		t.Fatalf("mechanical group missing from %#v", root.Groups)
+	}
+	mechanical := root.Groups[mechanicalIndex]
+	if mechanical.TaxonomyDefID != taxonomy.ID || mechanical.SeqDefID != seq.ID || mechanical.Root.Label != "Mechanical" || mechanical.Root.ImageReference != "asset://mechanical" {
+		t.Fatalf("mechanical group = %#v", mechanical)
+	}
+	if len(mechanical.Children) != 1 || mechanical.Children[0].Description != "Rolling parts" || mechanical.Children[0].Image != "bearing.png" || mechanical.Children[0].Count != 0 {
+		t.Fatalf("mechanical children = %#v, want archived count excluded", mechanical.Children)
+	}
+	included := true
+	root, err = service.CatalogRootFor(PartSearchQuery{IncludeArchived: &included})
+	if err != nil || root.Groups[mechanicalIndex].Children[0].Count != 1 {
+		t.Fatalf("include archived root = %#v, error = %v", root, err)
 	}
 }
 

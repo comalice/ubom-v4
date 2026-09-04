@@ -8,9 +8,10 @@
   import FilterRange from './FilterRange.svelte'
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
-  import { getCatalogFacets, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type CatalogFacets, type PartListItem, type TaxonomyDefinitionView, type TaxonomyDefSummary, type TaxonomyNodeView } from './api'
+  import { getCatalogFacets, getCatalogRoot, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type CatalogFacets, type CatalogRoot, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
   import { catalogPageSizeOptions, catalogPath, catalogServerMaxPageSize, taxonomySlug, type CatalogRouteState } from './routes'
   import { currentTaxonomySummaries } from './taxonomySelection'
+  import { catalogRootViewModel } from './catalogRoot'
 
   export let state: CatalogRouteState | undefined = undefined
   export let navigate: (path: string, replace?: boolean) => void
@@ -25,10 +26,10 @@
   let query = ''
   let filters: Record<string, string[]> = {}
   let ranges: Record<string, { min?: string; max?: string }> = {}
+  let rootCatalog: CatalogRoot | null = null
   let currentPage = 1
   let currentPageSize = 50
   let request = 0
-  let taxonomyChoices: TaxonomyDefSummary[] = []
 
   const pageSizeOptions = [...catalogPageSizeOptions, catalogServerMaxPageSize]
   const sortOptions = [
@@ -50,8 +51,13 @@
     const requestID = ++request
     loading = true
     error = ''
-    taxonomyChoices = []
+    rootCatalog = null
     try {
+      if (!routeState.taxonomyDef && !routeState.path && !routeState.node) {
+        rootCatalog = await getCatalogRoot(routeState.includeArchived === true)
+        if (requestID !== request) return
+        return
+      }
       const taxonomy = routeState.taxonomyDef
         ? await getTaxonomyDef(routeState.taxonomyDef)
         : await getCurrentTaxonomy()
@@ -102,16 +108,7 @@
   async function getCurrentTaxonomy() {
     const current = currentTaxonomySummaries(await getTaxonomyDefs())
     if (current.length === 0) throw new Error('No current taxonomy is available')
-    if (current.length > 1) {
-      taxonomyChoices = current
-      throw new Error('Multiple current taxonomies are available. Select one to browse the catalog.')
-    }
     return getCurrentTaxonomyDef(current[0].seqDef)
-  }
-
-  function selectTaxonomy(event: Event) {
-    const taxonomyDef = (event.currentTarget as HTMLSelectElement).value
-    if (taxonomyDef) navigate(catalogPath({ ...state, taxonomyDef }))
   }
 
   function scopedState(overrides: Partial<CatalogRouteState> = {}): CatalogRouteState {
@@ -218,27 +215,42 @@
   $: totalPages = Math.max(1, Math.ceil(total / currentPageSize))
   $: selectedSort = state?.sort ?? 'value'
   $: selectedOrder = state?.order ?? 'asc'
+  $: rootGroups = rootCatalog ? catalogRootViewModel(rootCatalog) : []
 </script>
 
 {#if loading}
   <AsyncState state="loading" message="Loading catalog..." />
 {:else if error}
-  {#if taxonomyChoices.length > 1}
-    <section class="catalog-taxonomy-selection" aria-labelledby="catalog-taxonomy-selection-heading">
-      <p class="eyebrow">Catalog setup</p>
-      <h2 id="catalog-taxonomy-selection-heading">Choose a catalog taxonomy</h2>
-      <p class="muted">More than one current taxonomy is available. Select the taxonomy you want to browse.</p>
-      <label for="catalog-taxonomy-select">Taxonomy</label>
-      <select id="catalog-taxonomy-select" on:change={selectTaxonomy}>
-        <option value="">Select a taxonomy</option>
-        {#each taxonomyChoices as choice}
-          <option value={choice.id}>{choice.definitionId} v{choice.version} ({choice.seqDef})</option>
-        {/each}
-      </select>
-    </section>
-  {:else}
-    <AsyncState state="error" message={error} />
-  {/if}
+  <AsyncState state="error" message={error} />
+{:else if rootCatalog}
+  <CatalogBrowser title="Catalog" subtitle="Browse every current taxonomy by its top-level categories.">
+    <svelte:fragment slot="sidebar">
+      <div class="catalog-panel-content">
+        <section class="catalog-panel-section" aria-labelledby="catalog-root-sidebar-heading">
+          <p class="catalog-panel-kicker">Browse catalog</p>
+          <h2 id="catalog-root-sidebar-heading">Taxonomies</h2>
+          {#each rootGroups as group}
+            <div class="catalog-root-sidebar-group">
+              <a class="catalog-root-sidebar-heading" href={group.headingHref}>{group.root.label}</a>
+              <CategoryList categories={group.children.map(child => ({ id: child.id, label: child.label, href: child.href, count: child.count }))} />
+            </div>
+          {/each}
+        </section>
+      </div>
+    </svelte:fragment>
+    <div class="catalog-main catalog-root-main">
+      {#each rootGroups as group}
+        <section class="catalog-category-section" aria-labelledby={`catalog-root-${group.taxonomyDefId}`}>
+          <div class="catalog-section-heading">
+            <h2 id={`catalog-root-${group.taxonomyDefId}`}><a href={group.headingHref}>{group.root.label}</a></h2>
+            <span>taxonomyDef: {group.taxonomyDefId} · seqDef: {group.seqDefId}</span>
+          </div>
+          {#if group.root.description}<p class="catalog-root-description">{group.root.description}</p>{/if}
+          <CategoryTileGrid tiles={group.children.map(child => ({ id: `${group.taxonomyDefId}:${child.id}`, title: child.label, href: child.href, description: child.description, image: child.imageReference ?? child.image, partCount: child.count }))} />
+        </section>
+      {/each}
+    </div>
+  </CatalogBrowser>
 {:else if node && definition}
   <CatalogBrowser title={node.label} subtitle="Browse parts by taxonomy and filter the current scope.">
     <form class="catalog-search" slot="search" on:submit|preventDefault={submitSearch}>
@@ -344,9 +356,9 @@
   .catalog-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; color: var(--muted); font: .7rem ui-monospace, monospace; }
   .catalog-pagination button { padding: .45rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; cursor: pointer; font: inherit; }
   .catalog-pagination button:disabled { color: var(--muted); cursor: not-allowed; opacity: .55; }
-  .catalog-taxonomy-selection { max-width: 34rem; margin: 4rem auto; padding: 2rem; border: 1px solid var(--hairline); background: var(--surface); }
-  .catalog-taxonomy-selection h2 { margin: .25rem 0 .75rem; font: 400 1.6rem Georgia, serif; }
-  .catalog-taxonomy-selection p { margin: .5rem 0 1.25rem; }
-  .catalog-taxonomy-selection label { display: grid; gap: .35rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
-  .catalog-taxonomy-selection select { padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
+  .catalog-root-sidebar-group + .catalog-root-sidebar-group { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+  .catalog-root-sidebar-heading { display: block; margin-bottom: .35rem; color: var(--ink); font: 600 .78rem Georgia, serif; }
+  .catalog-root-description { margin: -.7rem 0 1rem; color: var(--muted); font-size: .75rem; }
+  .catalog-root-main .catalog-category-section:first-child { margin-top: 0; }
+  .catalog-root-main .catalog-section-heading h2 { margin: 0; font: 400 1.35rem Georgia, serif; }
 </style>

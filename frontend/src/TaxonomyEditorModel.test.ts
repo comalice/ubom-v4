@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -107,6 +107,49 @@ describe('taxonomy persisted-definition adapters', () => {
       id: 'root', label: 'Parts', children: [{ id: 'family', label: 'Family', predicates: [{ field: 'family', kind: 'numeric-range', min: 100, max: 199 }], children: [] }],
     } }, grammar)
     expect(draft.children[0].targetId).toBe('grammar-root')
+  })
+
+  it('preserves visible alternative labels, summaries, captured fields, and domains', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'choices', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [
+      { kind: 'concat', children: [{ kind: 'literal', text: 'A-' }, { kind: 'bind', name: 'code', child: { kind: 'range', min: 1, max: 9 } }] },
+      { kind: 'concat', children: [{ kind: 'literal', text: 'B' }, { kind: 'bind', name: 'code', child: { kind: 'range', min: 10, max: 99 } }] },
+      { kind: 'literal', text: 'literal branch' },
+    ] } })
+    const alternatives = taxonomyGrammarAlternatives(grammar)
+    expect(alternatives.map((alternative) => alternative.label)).toEqual(['alternative A', 'alternative B', 'alternative C'])
+    expect(alternatives[0]).toMatchObject({ alternativeSummary: '"A-" + code = 1..9 / width 1', capturedFields: ['code'], literalOnly: false })
+    expect(alternatives[2]).toMatchObject({ literalOnly: true, targetable: false, capturedFields: [] })
+    const bindings = alternatives.flatMap((alternative) => alternative.children.flatMap((node) => node.children))
+    expect(bindings.filter((node) => node.blockType === 'binding').map((node) => node.numericDomain)).toEqual([{ min: 1, max: 9 }, { min: 10, max: 99 }])
+  })
+
+  it('retains nested choice ancestry without flattening branch metadata', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'nested', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [
+      { kind: 'choice', children: [{ kind: 'bind', name: 'inner', child: { kind: 'literal', text: 'X' } }, { kind: 'literal', text: 'Y' }] },
+    ] } })
+    const alternatives = taxonomyGrammarAlternatives(grammar)
+    expect(alternatives.map((alternative) => alternative.label)).toEqual(['alternative A', 'alternative A', 'alternative B'])
+    expect(alternatives[1].choiceAncestry).toEqual([{ path: 'grammar-root', label: 'choice', summary: 'inner = "X" | "Y"' }])
+    expect(alternatives[2].literalOnly).toBe(true)
+  })
+
+  it('surfaces an ambiguous persisted field target instead of moving it to root', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'ambiguous', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [
+      { kind: 'bind', name: 'code', child: { kind: 'literal', text: 'A' } },
+      { kind: 'bind', name: 'code', child: { kind: 'literal', text: 'B' } },
+    ] } })
+    const draft = taxonomyDraftFromDefinition({ id: 'tax', definitionId: 'tax', version: 1, seqDef: 'ambiguous', attributeDefs: [], root: {
+      id: 'root', label: 'Parts', children: [{ id: 'ambiguous-category', label: 'Ambiguous', predicates: [{ field: 'code', kind: 'exact', value: 'A' }], children: [] }],
+    } }, grammar)
+    expect(draft.children[0]).toMatchObject({ targetId: 'ambiguous:code', targetResolution: { status: 'ambiguous', field: 'code' } })
+    expect(taxonomyDefinitionInputFromDraft('ambiguous', undefined, [], draft).root.children?.[0].predicates).toEqual([{ field: 'code', kind: 'exact', value: 'A' }])
+  })
+
+  it('does not treat unresolved frontend markers as grammar targets', () => {
+    expect(taxonomyTargetIsUsable('grammar-root')).toBe(true)
+    expect(taxonomyTargetIsUsable('field-name')).toBe(true)
+    expect(taxonomyTargetIsUsable('ambiguous:code')).toBe(false)
+    expect(taxonomyTargetIsUsable('unresolved:removed-field')).toBe(false)
   })
 
   it('serializes nested category predicates before each node\'s rules', () => {
@@ -226,6 +269,21 @@ describe('taxonomyDefinitionInputFromDraft', () => {
     expect(taxonomyDefinitionInputFromDraft('seq-v1', 'tax-v1', definitions, root)).toEqual({
       seqDef: 'seq-v1', parentId: 'tax-v1', attributeDefs: definitions, root: { id: 'root', label: 'Parts', attributes: [{ attributeDefId: 'finish', required: true }], predicates: [{ field: 'size', kind: 'numeric-range', min: 1, max: 9 }], children: [{ id: 'metal', label: 'Metal', predicates: [{ field: 'family', kind: 'exact', value: 'METAL' }] }] },
     })
+  })
+
+  it('uses a same-field category rule instead of the placeholder predicate', () => {
+    const root: TaxonomyDraftNode = {
+      id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
+        id: 'raw-material', label: 'Raw material', targetId: 'family',
+        placements: [{ id: 'category', targetId: 'family', type: 'category', title: 'Raw material', summary: 'Category', label: 'Raw material', nodeId: 'raw-material', predicate: 'family = A', predicateData: { kind: 'exact', field: 'family', value: 'A' } }],
+        rules: [{ id: 'family-range', targetId: 'raw-material', type: 'rule', title: 'family = 0..99', summary: 'family = 0..99', predicate: 'family = 0..99', predicateData: { kind: 'numeric-range', field: 'family', min: 0, max: 99 } }],
+        children: [],
+      }],
+    }
+
+    expect(taxonomyDefinitionInputFromDraft('gtd-pn-v1', undefined, [], root).root.children?.[0].predicates).toEqual([
+      { field: 'family', kind: 'numeric-range', min: 0, max: 99 },
+    ])
   })
 })
 

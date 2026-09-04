@@ -25,6 +25,11 @@
 
   $: nodeID = draftNode?.id ?? placement.nodeId ?? placement.id
   $: nodeContainer = draftNode ? taxonomyTargetContainer(draftNode.id) : ''
+  $: targetMessage = draftNode?.targetResolution?.status === 'ambiguous'
+    ? `Ambiguous ${draftNode.targetResolution.field} target: choose a branch occurrence`
+    : draftNode?.targetResolution?.status === 'unresolved'
+      ? `No grammar occurrence found for ${draftNode.targetResolution.field}`
+      : ''
 </script>
 
 <TaxonomyCategoryBlock
@@ -49,6 +54,7 @@
   onLabelChange={draftNode ? (label) => onNodeLabelChange(draftNode.id, label) : undefined}
   onNodeIdChange={draftNode ? (nodeId) => onNodeIdChange(draftNode.id, nodeId) : undefined}
 >
+  {#if targetMessage}<p class="taxonomy-target-warning" role="status">{targetMessage}</p>{/if}
   <svelte:fragment slot="context">
     {#if draftNode && contextFields.length}
       <div class="taxonomy-category-context">

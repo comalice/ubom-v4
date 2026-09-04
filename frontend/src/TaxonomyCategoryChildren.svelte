@@ -2,7 +2,7 @@
   import { type DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
-  import { acceptsTaxonomyCategoryChildDrop, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyCategoryChildDrop, taxonomyTargetContainer, taxonomyTargetIsUsable, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let parent: TaxonomyDraftNode
   export let field: string | undefined = undefined
@@ -32,7 +32,7 @@
   }
 
   function accepts(state: DragDropState<TaxonomyDragPayload>) {
-    return acceptsTaxonomyCategoryChildDrop(state.draggedItem, parent.id)
+    return (field !== undefined || taxonomyTargetIsUsable(parent.targetId)) && acceptsTaxonomyCategoryChildDrop(state.draggedItem, parent.id)
   }
 
   function drop(index: number) {
@@ -45,7 +45,7 @@
 
 <div class="taxonomy-category-children">
   <span class="taxonomy-category-children-label">{field ?? 'Child categories'}</span>
-  {#if !readOnly}
+  {#if !readOnly && (field !== undefined || taxonomyTargetIsUsable(parent.targetId))}
     <DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={container} accepts={accepts} onDrop={drop(visibleChildren.length ? childIndex(visibleChildren[0]) : sourceChildren.length)} ariaLabel={field ? `Drop a category on ${field} for ${parent.label}` : 'Drop a child category'} />
   {/if}
   {#each visibleChildren as child (child.id)}
@@ -69,7 +69,7 @@
         {targetFieldForNode}
       />
     {/if}
-    {#if !readOnly}
+    {#if !readOnly && (field !== undefined || taxonomyTargetIsUsable(parent.targetId))}
       <DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={container} accepts={accepts} onDrop={drop(childIndex(child) + 1)} ariaLabel={`Insert a category after ${child.label}`} />
     {/if}
   {/each}

@@ -8,6 +8,17 @@ export type TaxonomyGrammar = {
   nodes: StructureNode[]
 }
 
+export type TaxonomyTargetResolution =
+  | { status: 'unique'; field: string; targetId: string }
+  | { status: 'ambiguous'; field: string; candidates: string[] }
+  | { status: 'unresolved'; field: string }
+
+export const taxonomyAmbiguousTarget = (field: string) => `ambiguous:${field}`
+export const taxonomyUnresolvedTarget = (field: string) => `unresolved:${field}`
+export function taxonomyTargetIsUsable(targetId: string): boolean {
+  return !targetId.startsWith('ambiguous:') && !targetId.startsWith('unresolved:')
+}
+
 /** Returns binding names in their grammar order, without duplicate lanes. */
 export function taxonomyGrammarBindingFields(grammar: TaxonomyGrammar): string[] {
   const fields: string[] = []
@@ -63,22 +74,48 @@ function sequenceSummary(node: SeqDefNode): string {
   return (node.children ?? []).map(sequenceSummary).join(' + ') || 'empty'
 }
 
-function sequenceStructureNode(node: SeqDefNode, path: string): StructureNode {
+function sequenceStructureNode(node: SeqDefNode, path: string, choiceAncestry: StructureNode['choiceAncestry'] = []): StructureNode {
   const children = node.kind === 'bind'
-    ? (node.child ? [sequenceStructureNode(node.child, `${path}-child`)] : [])
+    ? (node.child ? [sequenceStructureNode(node.child, `${path}-child`, choiceAncestry)] : [])
     : node.kind === 'choice'
-      ? (node.children ?? []).map((child, index) => ({ id: `${path}-alternative-${index}`, label: `alternative ${String.fromCharCode(65 + index)}`, blockType: 'row', summary: sequenceSummary(child), children: [sequenceStructureNode(child, `${path}-alternative-${index}`)] }))
-      : (node.children ?? []).map((child, index) => sequenceStructureNode(child, `${path}-${index}`))
+      ? (node.children ?? []).map((child, index) => {
+        const alternativePath = `${path}-alternative-${index}`
+        const alternativeLabel = `alternative ${String.fromCharCode(65 + index)}`
+        const alternativeSummary = sequenceSummary(child)
+        const ancestry = [...choiceAncestry, { path, label: 'choice', summary: sequenceSummary(node) }]
+        return { id: alternativePath, label: alternativeLabel, blockType: 'row', summary: alternativeSummary, path: alternativePath, choiceAncestry, alternativeLabel, alternativeSummary, targetable: false, literalOnly: !containsBinding(child), capturedFields: bindingNames(child), children: [sequenceStructureNode(child, alternativePath, ancestry)] }
+      })
+      : (node.children ?? []).map((child, index) => sequenceStructureNode(child, `${path}-${index}`, choiceAncestry))
   return {
     id: path,
     label: node.kind === 'bind' ? (node.name ?? 'unnamed') : node.kind,
     blockType: node.kind === 'bind' ? 'binding' : node.kind,
     summary: sequenceSummary(node),
+    path,
+    choiceAncestry,
+    targetable: node.kind === 'bind',
+    literalOnly: node.kind !== 'bind' && !containsBinding(node),
+    capturedFields: bindingNames(node),
     ...(node.kind === 'bind' && node.child?.kind === 'range' && typeof node.child.max === 'number'
       ? { numericDomain: { min: node.child.min ?? 0, max: node.child.max } }
       : {}),
     children,
   }
+}
+
+function containsBinding(node: SeqDefNode): boolean {
+  if (node.kind === 'bind') return true
+  return (node.child ? [node.child] : node.children ?? []).some(containsBinding)
+}
+
+function bindingNames(node: SeqDefNode): string[] {
+  const names: string[] = []
+  const visit = (current: SeqDefNode) => {
+    if (current.kind === 'bind' && current.name && !names.includes(current.name)) names.push(current.name)
+    ;(current.child ? [current.child] : current.children ?? []).forEach(visit)
+  }
+  visit(node)
+  return names
 }
 
 function sequenceFieldCount(node: SeqDefNode, names = new Set<string>()): number {
@@ -97,48 +134,60 @@ export function taxonomyGrammarFromSeqDef(definition: SeqDefDefinition): Taxonom
   return { id: definition.id, label: definition.id, fields: sequenceFieldCount(definition.root), nodes: [{ id: 'grammar-root', label: 'Part number', blockType: 'sequence', summary: definition.id, children: root }] }
 }
 
+export function taxonomyGrammarAlternatives(grammar: TaxonomyGrammar): StructureNode[] {
+  const alternatives: StructureNode[] = []
+  const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
+    if (node.alternativeLabel) alternatives.push(node)
+    visit(node.children)
+  })
+  visit(grammar.nodes)
+  return alternatives
+}
+
 function predicateText(predicate: NonNullable<TaxonomyDefinition['root']['predicates']>[number]): string {
   return predicate.kind === 'numeric-range' ? `${predicate.field} = ${predicate.min}..${predicate.max}` : `${predicate.field} = ${predicate.value ?? ''}`
 }
 
 export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, grammar: TaxonomyGrammar): TaxonomyDraftNode {
-  const targetFor = (predicates: TaxonomyDefinition['root']['predicates']) => {
+  const targetFor = (predicates: TaxonomyDefinition['root']['predicates']): { targetId: string; resolution?: TaxonomyTargetResolution } => {
     const predicate = predicates?.[0]
     const field = predicate?.field
-    if (!field) return 'grammar-root'
+    if (!field) return { targetId: 'grammar-root' }
     const candidates: StructureNode[] = []
     const visit = (nodes: StructureNode[]) => nodes.forEach((node) => {
       if (node.label === field && node.blockType === 'binding') candidates.push(node)
       visit(node.children)
     })
     visit(grammar.nodes)
-    if (candidates.length <= 1) return candidates[0] ? String(candidates[0].id) : 'grammar-root'
+    if (candidates.length === 1) return { targetId: String(candidates[0].id), resolution: { status: 'unique', field, targetId: String(candidates[0].id) } }
+    if (!candidates.length) return { targetId: taxonomyUnresolvedTarget(field), resolution: { status: 'unresolved', field } }
 
     const numericPredicate = predicate?.kind === 'numeric-range'
       ? { min: predicate.min ?? 0, max: predicate.max ?? 0 }
       : predicate?.kind === 'exact' && /^-?\d+(?:\.\d+)?$/.test(predicate.value ?? '')
         ? { min: Number(predicate.value), max: Number(predicate.value) }
         : undefined
-    if (!numericPredicate) return 'grammar-root'
+    if (!numericPredicate) return { targetId: taxonomyAmbiguousTarget(field), resolution: { status: 'ambiguous', field, candidates: candidates.map((candidate) => String(candidate.id)) } }
 
     const compatible = candidates.filter((candidate): candidate is StructureNode & { numericDomain: { min: number; max: number } } => candidate.numericDomain !== undefined
       && candidate.numericDomain.min <= numericPredicate.min
       && candidate.numericDomain.max >= numericPredicate.max)
-    if (compatible.length === 1) return String(compatible[0].id)
+    if (compatible.length === 1) return { targetId: String(compatible[0].id), resolution: { status: 'unique', field, targetId: String(compatible[0].id) } }
     if (compatible.length > 1) {
       const narrowest = compatible.filter((candidate) => candidate.numericDomain
         && !compatible.some((other) => other !== candidate && other.numericDomain
           && other.numericDomain.min >= candidate.numericDomain.min
           && other.numericDomain.max <= candidate.numericDomain.max
           && (other.numericDomain.min !== candidate.numericDomain.min || other.numericDomain.max !== candidate.numericDomain.max)))
-      if (narrowest.length === 1) return String(narrowest[0].id)
+      if (narrowest.length === 1) return { targetId: String(narrowest[0].id), resolution: { status: 'unique', field, targetId: String(narrowest[0].id) } }
     }
-    // Equal or incomparable compatible domains stay unresolved instead of using traversal order.
-    return 'grammar-root'
+    // Equal or incomparable compatible domains remain ambiguous instead of using traversal order.
+    return { targetId: taxonomyAmbiguousTarget(field), resolution: { status: 'ambiguous', field, candidates: candidates.map((candidate) => String(candidate.id)) } }
   }
   const toNode = (node: TaxonomyDefinition['root'], isRoot = false): TaxonomyDraftNode => {
     const predicates = node.predicates ?? []
-    const targetId = targetFor(predicates)
+    const target = targetFor(predicates)
+    const targetId = target.targetId
     const categoryID = String(node.id)
     const rules = predicates.slice(isRoot ? 0 : 1).map((predicate, index) => ({
       id: `${categoryID}-rule-${index}`,
@@ -155,6 +204,7 @@ export function taxonomyDraftFromDefinition(definition: TaxonomyDefinition, gram
       id: categoryID,
       label: node.label,
       targetId,
+      ...(target.resolution ? { targetResolution: target.resolution } : {}),
       placements: isRoot ? [] : [{ id: categoryID, targetId, type: 'category', title: node.label, summary: predicates[0] ? predicateText(predicates[0]) : 'Category', label: node.label, nodeId: categoryID, predicate: predicates[0] ? predicateText(predicates[0]) : '' }],
       rules,
       attributes: (node.attributes ?? []).map((assignment) => ({ attributeDefId: assignment.attributeDefId, required: assignment.required })),
@@ -194,10 +244,15 @@ export function taxonomyDefinitionInputFromDraft(
 ): TaxonomyDefinitionInput {
   const toNode = (node: TaxonomyDraftNode): TaxonomyNodeInput => {
     const category = node.placements.find((placement) => placement.type === 'category')
+    const categoryPredicate = category ? placementPredicate(category) : undefined
+    const rules = node.rules.map(placementPredicate).filter((predicate): predicate is TaxonomyPredicate => predicate !== undefined)
+    // A category's first predicate is the placeholder/category match. A rule
+    // for that same field is the edited replacement, not an additional
+    // predicate (the server permits only one predicate per field).
     const predicates = [
-      category ? placementPredicate(category) : undefined,
-      ...node.rules.map(placementPredicate),
-    ].filter((predicate): predicate is TaxonomyPredicate => predicate !== undefined)
+      ...(categoryPredicate && !rules.some((rule) => rule.field === categoryPredicate.field) ? [categoryPredicate] : []),
+      ...rules,
+    ]
     return {
       id: node.id,
       label: node.label,
@@ -287,6 +342,7 @@ export type TaxonomyDraftNode = {
   id: string
   label: string
   targetId: string
+  targetResolution?: TaxonomyTargetResolution
   placements: TaxonomyPlacement[]
   rules: TaxonomyPlacement[]
   attributes?: TaxonomyAttributeAssignment[]

@@ -34,7 +34,7 @@
   function accepts(state: DragDropState<TaxonomyDragPayload>) {
     const item = state.draggedItem
     const taxonomySource = state.sourceContainer === taxonomyEditorContainer || state.sourceContainer.startsWith(`${taxonomyEditorContainer}:target:`)
-    return node.blockType === 'binding' && taxonomySource && Boolean(item && item.taxonomyType === 'category')
+    return node.blockType === 'binding' && node.targetable !== false && taxonomySource && Boolean(item && item.taxonomyType === 'category')
   }
   function getMode(state: DragDropState<TaxonomyDragPayload>) {
     if (state.draggedItem?.kind === 'palette') return 'new' as const

@@ -22,7 +22,10 @@
 </script>
 
 <li>
-  <span class="dnd-structure-node">{#if node.blockType === 'binding'}<span class="taxonomy-grammar-kind">binding</span>{/if}{node.label}<small>{node.summary}</small></span>
+  <span class="dnd-structure-node" class:taxonomy-grammar-nontargetable={node.targetable === false}>
+    {#if node.blockType === 'binding'}<span class="taxonomy-grammar-kind">binding</span>{/if}{node.label}<small>{node.summary}</small>
+    {#if node.literalOnly}<small>literal-only branch · not targetable</small>{/if}
+  </span>
        <TaxonomyGrammarDropTarget {node} {taxonomyDraft} placements={placements.filter((placement) => placement.targetId === String(node.id))} {readOnly} {onDrop} {onChildDrop} {onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} />
   {#if node.children.length}
     <ul class="dnd-structure-tree">

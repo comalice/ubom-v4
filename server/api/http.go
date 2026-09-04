@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math/big"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -13,6 +15,8 @@ import (
 	"ubom-v4/artifact"
 	"ubom-v4/store"
 )
+
+var catalogDecimalPattern = regexp.MustCompile(`^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$`)
 
 type Server struct {
 	service         *app.Service
@@ -201,6 +205,7 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		TaxonomyDef:  ubom.TaxonomyDefID(firstQueryValue(r, "taxonomyDef", "taxonomy")),
 		TaxonomyNode: ubom.TaxonomyNodeID(r.URL.Query().Get("taxonomyNode")),
 		Attributes:   map[ubom.AttributeDefID][]string{},
+		Ranges:       map[ubom.AttributeDefID]app.PartSearchRange{},
 		Sort:         r.URL.Query().Get("sort"),
 		Descending:   r.URL.Query().Get("order") == "desc" || r.URL.Query().Get("direction") == "desc",
 	}
@@ -219,7 +224,34 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		query.Attributes[ubom.AttributeDefID(key)] = append(query.Attributes[ubom.AttributeDefID(key)], value)
 	}
 	for key, values := range r.URL.Query() {
-		if !strings.HasPrefix(key, "attribute.") {
+		prefix := "attribute."
+		bound := ""
+		if strings.HasPrefix(key, "attributeMin.") {
+			prefix, bound = "attributeMin.", "min"
+		} else if strings.HasPrefix(key, "attributeMax.") {
+			prefix, bound = "attributeMax.", "max"
+		}
+		if bound != "" {
+			attributeID := strings.TrimPrefix(key, prefix)
+			if attributeID == "" || len(values) != 1 || values[0] == "" {
+				writeError(w, http.StatusBadRequest, "invalid numeric range filter for "+attributeID)
+				return
+			}
+			parsed, ok := parseCatalogDecimal(values[0])
+			if !ok {
+				writeError(w, http.StatusBadRequest, "invalid numeric range value for "+attributeID)
+				return
+			}
+			rangeValue := query.Ranges[ubom.AttributeDefID(attributeID)]
+			if bound == "min" {
+				rangeValue.Minimum = parsed
+			} else {
+				rangeValue.Maximum = parsed
+			}
+			query.Ranges[ubom.AttributeDefID(attributeID)] = rangeValue
+			continue
+		}
+		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
 		attributeID := strings.TrimPrefix(key, "attribute.")
@@ -235,6 +267,12 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 			query.Attributes[ubom.AttributeDefID(attributeID)] = append(query.Attributes[ubom.AttributeDefID(attributeID)], value)
 		}
 	}
+	for attributeID, bounds := range query.Ranges {
+		if bounds.Minimum != nil && bounds.Maximum != nil && bounds.Minimum.Cmp(bounds.Maximum) > 0 {
+			writeError(w, http.StatusBadRequest, "numeric range minimum exceeds maximum for "+string(attributeID))
+			return
+		}
+	}
 	result, err := s.service.SearchPartNumberViews(query)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not load part numbers")
@@ -247,6 +285,13 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, result)
+}
+
+func parseCatalogDecimal(value string) (*big.Rat, bool) {
+	if !catalogDecimalPattern.MatchString(value) {
+		return nil, false
+	}
+	return new(big.Rat).SetString(value)
 }
 
 func firstQueryValue(r *http.Request, keys ...string) string {

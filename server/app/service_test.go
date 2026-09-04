@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"math/big"
 	"testing"
 
 	ubom "ubom-v4"
@@ -73,6 +74,21 @@ func TestSearchPartNumberViewsMatchesAnyValueWithinEachAttribute(t *testing.T) {
 	}
 	if result.Total != 1 || len(result.Items) != 1 || result.Items[0].Value != "PN-A" {
 		t.Fatalf("result = %#v, want only PN-A matching one value from each filter group", result)
+	}
+}
+
+func TestSearchPartNumberViewsMatchesDecimalRangesExactly(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	minimum, _ := new(big.Rat).SetString("9999.999")
+	maximum, _ := new(big.Rat).SetString("10000.000")
+	result, err := NewService(persistence).SearchPartNumberViews(PartSearchQuery{
+		Ranges: map[ubom.AttributeDefID]PartSearchRange{"resistance": {Minimum: minimum, Maximum: maximum}},
+	})
+	if err != nil || result.Total != 1 || result.Items[0].Value != "PN-A" {
+		t.Fatalf("result = %#v, error = %v", result, err)
 	}
 }
 

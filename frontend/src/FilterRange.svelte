@@ -5,19 +5,32 @@
   export let onChange: (range: { minimum: string; maximum: string }) => void = () => {}
   let localMinimum = ''
   let localMaximum = ''
+  let previousMinimum = minimum
+  let previousMaximum = maximum
 
   $: activeMinimum = minimum ?? localMinimum
   $: activeMaximum = maximum ?? localMaximum
 
+  // Sync only when the parent changes a bound. An undefined prop is normally
+  // uncontrolled state, so it must not clear typing on every reactive update.
+  $: if (minimum !== previousMinimum) {
+    localMinimum = minimum ?? ''
+    previousMinimum = minimum
+  }
+  $: if (maximum !== previousMaximum) {
+    localMaximum = maximum ?? ''
+    previousMaximum = maximum
+  }
+
   function updateMinimum(event: Event) {
     const nextMinimum = (event.currentTarget as HTMLInputElement).value
-    if (minimum === undefined) localMinimum = nextMinimum
+    localMinimum = nextMinimum
     onChange({ minimum: nextMinimum, maximum: activeMaximum })
   }
 
   function updateMaximum(event: Event) {
     const nextMaximum = (event.currentTarget as HTMLInputElement).value
-    if (maximum === undefined) localMaximum = nextMaximum
+    localMaximum = nextMaximum
     onChange({ minimum: activeMinimum, maximum: nextMaximum })
   }
 </script>

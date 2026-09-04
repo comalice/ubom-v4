@@ -141,11 +141,12 @@ describe('part search API', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }))
 
     await expect(searchParts({
-      taxonomyDef: 'components/v3', node: 'resistors', q: '10k +',
-      filters: { tolerance: ['1%', '5%'], footprint: ['0603'] },
+       taxonomyDef: 'components/v3', node: 'resistors', q: '10k +',
+       filters: { tolerance: ['1%', '5%'], footprint: ['0603'] },
+       ranges: { resistance: { min: '100', max: '10000' } },
       page: 3, pageSize: 50, sort: 'id', order: 'desc',
     })).resolves.toEqual(result)
-    expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=10k+%2B&taxonomyNode=resistors&taxonomyDef=components%2Fv3&attribute=footprint%3D0603&attribute=tolerance%3D1%25&attribute=tolerance%3D5%25&page=3&pageSize=50&sort=id&order=desc')
+    expect(fetchMock).toHaveBeenCalledWith('/api/parts?q=10k+%2B&taxonomyNode=resistors&taxonomyDef=components%2Fv3&attribute=footprint%3D0603&attribute=tolerance%3D1%25&attribute=tolerance%3D5%25&attributeMin.resistance=100&attributeMax.resistance=10000&page=3&pageSize=50&sort=id&order=desc')
   })
 })
 

@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 
@@ -508,10 +509,16 @@ type PartSearchQuery struct {
 	TaxonomyDef  ubom.TaxonomyDefID
 	TaxonomyNode ubom.TaxonomyNodeID
 	Attributes   map[ubom.AttributeDefID][]string
+	Ranges       map[ubom.AttributeDefID]PartSearchRange
 	Page         int
 	PageSize     int
 	Sort         string
 	Descending   bool
+}
+
+type PartSearchRange struct {
+	Minimum *big.Rat
+	Maximum *big.Rat
 }
 
 type PartSearchResult struct {
@@ -577,6 +584,24 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 				if attributeMatched {
 					break
 				}
+			}
+			if !attributeMatched {
+				matched = false
+				break
+			}
+		}
+		for id, bounds := range query.Ranges {
+			attributeMatched := false
+			for _, attribute := range part.Attributes {
+				if attribute.AttributeDefID != id {
+					continue
+				}
+				value, ok := new(big.Rat).SetString(attribute.Value)
+				if !ok || bounds.Minimum != nil && value.Cmp(bounds.Minimum) < 0 || bounds.Maximum != nil && value.Cmp(bounds.Maximum) > 0 {
+					continue
+				}
+				attributeMatched = true
+				break
 			}
 			if !attributeMatched {
 				matched = false

@@ -25,11 +25,14 @@ export type CatalogRouteState = {
   node?: string
   q?: string
   filters?: Record<string, string[]>
+  ranges?: Record<string, CatalogRange>
   page?: number
   pageSize?: number
   sort?: 'value' | 'id'
   order?: 'asc' | 'desc'
 }
+
+export type CatalogRange = { min?: string; max?: string }
 
 const catalogDefaults = {
   page: 1,
@@ -41,6 +44,7 @@ const catalogDefaults = {
 export const catalogPageSizeOptions = [25, 50, 100] as const
 export const catalogServerMaxPageSize = 200
 const catalogSortValues = ['value', 'id'] as const
+const numericValue = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$/
 
 const positiveInteger = (value: string | null, fallback: number) => {
   if (!value || !/^\d+$/.test(value)) return fallback
@@ -58,11 +62,18 @@ const validPageSize = (value: string | null) => {
 export function parseCatalogRouteState(search: string | URLSearchParams): CatalogRouteState {
   const params = typeof search === 'string' ? new URLSearchParams(search) : search
   const filters: Record<string, string[]> = {}
+  const ranges: Record<string, CatalogRange> = {}
   for (const [key, value] of params) {
     if (key.startsWith('filter.') && key.length > 'filter.'.length && value) {
       const attribute = key.slice('filter.'.length)
       filters[attribute] = [...new Set([...(filters[attribute] ?? []), value])].sort()
     }
+  }
+  for (const [key, value] of params) {
+    const prefix = key.startsWith('attributeMin.') ? 'attributeMin.' : key.startsWith('attributeMax.') ? 'attributeMax.' : ''
+    if (!prefix || key.length === prefix.length || !value || !numericValue.test(value)) continue
+    const attribute = key.slice(prefix.length)
+    ranges[attribute] = { ...ranges[attribute], [prefix === 'attributeMin.' ? 'min' : 'max']: value }
   }
 
   const page = positiveInteger(params.get('page'), catalogDefaults.page)
@@ -75,6 +86,7 @@ export function parseCatalogRouteState(search: string | URLSearchParams): Catalo
     ...(params.get('node') ? { node: params.get('node')! } : {}),
     ...(params.get('q') ? { q: params.get('q')! } : {}),
     ...(Object.keys(filters).length ? { filters } : {}),
+    ...(Object.keys(ranges).length ? { ranges } : {}),
     ...(page !== catalogDefaults.page ? { page } : {}),
     ...(pageSize !== catalogDefaults.pageSize ? { pageSize } : {}),
     ...(sort !== catalogDefaults.sort ? { sort } : {}),
@@ -90,6 +102,12 @@ export function serializeCatalogRouteState(state: CatalogRouteState = {}): strin
   for (const key of Object.keys(state.filters ?? {}).sort()) {
     if (!key) continue
     for (const value of [...new Set(state.filters?.[key] ?? [])].filter(Boolean).sort()) params.append(`filter.${key}`, value)
+  }
+  for (const key of Object.keys(state.ranges ?? {}).sort()) {
+    if (!key) continue
+    const range = state.ranges?.[key]
+    if (range?.min && numericValue.test(range.min)) params.set(`attributeMin.${key}`, range.min)
+    if (range?.max && numericValue.test(range.max)) params.set(`attributeMax.${key}`, range.max)
   }
   if (Number.isSafeInteger(state.page) && state.page! > 0 && state.page !== catalogDefaults.page) params.set('page', String(state.page))
   if (Number.isSafeInteger(state.pageSize) && state.pageSize! > 0 && (catalogPageSizeOptions.includes(state.pageSize as (typeof catalogPageSizeOptions)[number]) || state.pageSize === catalogServerMaxPageSize) && state.pageSize !== catalogDefaults.pageSize) params.set('pageSize', String(state.pageSize))

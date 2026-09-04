@@ -35,6 +35,16 @@ describe('sequence definition routes', () => {
     expect(parseCatalogRouteState('?page=1&pageSize=25&sort=value&order=asc')).toEqual({ pageSize: 25 })
   })
 
+  it('parses and serializes independent numeric range bounds', () => {
+    const state = parseCatalogRouteState('?attributeMin.resistance=100&attributeMax.resistance=10000&attributeMin.tolerance=.1')
+    expect(state.ranges).toEqual({ resistance: { min: '100', max: '10000' }, tolerance: { min: '.1' } })
+    expect(serializeCatalogRouteState(state)).toBe('attributeMin.resistance=100&attributeMax.resistance=10000&attributeMin.tolerance=.1')
+  })
+
+  it('omits malformed numeric range URL values', () => {
+    expect(parseCatalogRouteState('?attributeMin.resistance=nope&attributeMax.resistance=&attributeMin.=1&attributeMax.tolerance=1/2')).toEqual({})
+  })
+
   it('falls back for unsupported sorting and pagination values', () => {
     expect(parseCatalogRouteState('?sort=updatedAt&order=sideways&page=0&pageSize=26')).toEqual({})
     expect(parseCatalogRouteState('?sort=id&order=desc&page=4&pageSize=200')).toEqual({ sort: 'id', order: 'desc', page: 4, pageSize: 200 })

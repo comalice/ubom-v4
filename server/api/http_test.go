@@ -167,9 +167,29 @@ func TestPartNumberListSupportsRepeatedAttributeFilters(t *testing.T) {
 	}
 }
 
+func TestPartNumberListSupportsNumericRangeFilters(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?attributeMin.resistance=9999.999&attributeMax.resistance=10000", nil))
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d; body = %s", recording.Code, recording.Body)
+	}
+	var result app.PartSearchResult
+	if err := json.NewDecoder(recording.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 1 || result.Items[0].Value != "PN-A" {
+		t.Fatalf("result = %#v, want PN-A", result)
+	}
+}
+
 func TestPartNumberListRejectsMalformedAttributeFilters(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
-	for _, query := range []string{"attribute=footprint", "attribute==0603", "attribute.=0603", "attribute.footprint="} {
+	for _, query := range []string{"attribute=footprint", "attribute==0603", "attribute.=0603", "attribute.footprint=", "attributeMin.resistance=not-a-number", "attributeMax.resistance=", "attributeMin.resistance=100&attributeMax.resistance=10", "attributeMin.resistance=1%2F2"} {
 		recording := httptest.NewRecorder()
 		server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/parts?"+query, nil))
 		if recording.Code != http.StatusBadRequest {

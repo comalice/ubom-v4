@@ -205,6 +205,11 @@ export async function searchParts(options: PartSearchOptions = {}) {
       if (value) params.append('attribute', `${attributeID}=${value}`)
     }
   }
+  for (const attributeID of Object.keys(options.ranges ?? {}).sort()) {
+    const range = options.ranges?.[attributeID]
+    if (range?.min) params.set(`attributeMin.${attributeID}`, range.min)
+    if (range?.max) params.set(`attributeMax.${attributeID}`, range.max)
+  }
   if (options.page) params.set('page', String(options.page))
   if (options.pageSize) params.set('pageSize', String(options.pageSize))
   if (options.sort) params.set('sort', options.sort)

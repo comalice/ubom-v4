@@ -5,6 +5,7 @@
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
   import CategoryTileGrid from './CategoryTileGrid.svelte'
   import FilterOptionList, { type FilterOption } from './FilterOptionList.svelte'
+  import FilterRange from './FilterRange.svelte'
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
   import { getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
@@ -21,6 +22,7 @@
   let error = ''
   let query = ''
   let filters: Record<string, string[]> = {}
+  let ranges: Record<string, { min?: string; max?: string }> = {}
   let currentPage = 1
   let currentPageSize = 50
   let request = 0
@@ -36,6 +38,7 @@
     loadedStateKey = stateKey
     query = state?.q ?? ''
     filters = state?.filters ?? {}
+    ranges = state?.ranges ?? {}
     load(state ?? {})
   }
   let loadedStateKey = ''
@@ -57,7 +60,11 @@
         .map(attribute => attribute.id))
       const effectiveFilters = Object.fromEntries(Object.entries(routeState.filters ?? {})
         .filter(([attribute]) => effectiveAttributeIDs.has(attribute)))
-      const effectiveState = { ...routeState, taxonomyDef: taxonomy.id, node: nodeID, filters: effectiveFilters }
+      const effectiveRangeAttributeIDs = new Set(resolvedNode.attributes
+        .filter(attribute => attribute.valueType === 'decimal').map(attribute => attribute.id))
+      const effectiveRanges = Object.fromEntries(Object.entries(routeState.ranges ?? {})
+        .filter(([attribute, range]) => effectiveRangeAttributeIDs.has(attribute) && (range.min || range.max)))
+      const effectiveState = { ...routeState, taxonomyDef: taxonomy.id, node: nodeID, filters: effectiveFilters, ranges: effectiveRanges }
       const result = await searchParts(effectiveState)
       if (requestID !== request) return
       definition = taxonomy
@@ -67,7 +74,7 @@
       currentPage = result.page
       currentPageSize = result.pageSize
       const canonicalPage = Math.min(Math.max(1, result.page), Math.max(1, Math.ceil(result.total / result.pageSize)))
-      const canonicalState = { ...routeState, filters: effectiveFilters, page: canonicalPage === 1 ? undefined : canonicalPage }
+      const canonicalState = { ...routeState, filters: effectiveFilters, ranges: effectiveRanges, page: canonicalPage === 1 ? undefined : canonicalPage }
       const canonicalPath = catalogPath(canonicalState)
       const currentPath = `${window.location.pathname}${window.location.search}`
       if (canonicalPath !== currentPath) navigate(canonicalPath, true)
@@ -92,7 +99,7 @@
   }
 
   function scopedState(overrides: Partial<CatalogRouteState> = {}): CatalogRouteState {
-    return { ...state, ...overrides, taxonomyDef: definition?.id ?? state?.taxonomyDef, filters: overrides.filters ?? filters }
+    return { ...state, ...overrides, taxonomyDef: definition?.id ?? state?.taxonomyDef, filters: overrides.filters ?? filters, ranges: overrides.ranges ?? ranges }
   }
 
   function categoryHref(id: string) {
@@ -146,9 +153,22 @@
     navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, filters: nextFilters, page: undefined })))
   }
 
+  function rangeFilters(): { attribute: string }[] {
+    return node?.attributes.filter(attribute => attribute.valueType === 'decimal').map(attribute => ({ attribute: attribute.id })) ?? []
+  }
+
+  function updateRange(attribute: string, range: { minimum: string; maximum: string }) {
+    const nextRanges = { ...ranges }
+    if (range.minimum || range.maximum) nextRanges[attribute] = { min: range.minimum || undefined, max: range.maximum || undefined }
+    else delete nextRanges[attribute]
+    ranges = nextRanges
+    navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, ranges: nextRanges, page: undefined })), true)
+  }
+
   function clearFilters() {
     filters = {}
-    navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, filters: {}, page: undefined })))
+    ranges = {}
+    navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, filters: {}, ranges: {}, page: undefined })))
   }
 
   function submitSearch() {
@@ -202,9 +222,17 @@
             <FilterWidget title={node.attributes.find(attribute => attribute.id === filter.attribute)?.label ?? filter.attribute}>
               <FilterOptionList options={filter.options} selectedValues={filters[filter.attribute] ?? []} onChange={values => updateFilter(filter.attribute, values)} />
             </FilterWidget>
-          {:else}
-            <p class="muted">No supported filters in this scope.</p>
           {/each}
+          {#each rangeFilters() as filter}
+            <FilterWidget title={node.attributes.find(attribute => attribute.id === filter.attribute)?.label ?? filter.attribute}>
+              <FilterRange
+                unit={node.attributes.find(attribute => attribute.id === filter.attribute)?.unit ?? ''}
+                minimum={ranges[filter.attribute]?.min}
+                maximum={ranges[filter.attribute]?.max}
+                onChange={value => updateRange(filter.attribute, value)} />
+            </FilterWidget>
+          {/each}
+          {#if enumFilters().length === 0 && rangeFilters().length === 0}<p class="muted">No supported filters in this scope.</p>{/if}
         </section>
       </div>
     </svelte:fragment>

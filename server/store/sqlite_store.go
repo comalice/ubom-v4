@@ -122,6 +122,8 @@ func (s *SQLiteStore) init() error {
 			FOREIGN KEY (taxonomy_def_id, taxonomy_node_id)
 				REFERENCES taxonomy_nodes(taxonomy_def_id, id)
 		);
+		CREATE INDEX IF NOT EXISTS idx_part_numbers_taxonomy_node_value
+			ON part_numbers (taxonomy_def_id, taxonomy_node_id, value);
 		CREATE TABLE IF NOT EXISTS part_number_drafts (
 			id TEXT PRIMARY KEY,
 			seq_def_id TEXT NOT NULL,
@@ -145,6 +147,8 @@ func (s *SQLiteStore) init() error {
 			FOREIGN KEY (revision_seq_def_id) REFERENCES seq_defs(id),
 			FOREIGN KEY (part_number_id) REFERENCES part_numbers(id)
 		);
+		CREATE INDEX IF NOT EXISTS idx_part_revisions_part_number_id_id
+			ON part_revisions (part_number_id, id);
 		CREATE TABLE IF NOT EXISTS bom_line_items (
 			parent_revision_id INTEGER NOT NULL,
 			position INTEGER NOT NULL,

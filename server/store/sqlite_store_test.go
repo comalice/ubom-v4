@@ -139,6 +139,96 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSQLiteStoreCreatesTaxonomyNodeLookupIndexes(t *testing.T) {
+	store, err := OpenSQLiteStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	indexColumns := func(table string) map[string][]string {
+		indexes := map[string][]string{}
+		rows, err := store.db.Query("PRAGMA index_list(" + table + ")")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var names []string
+		for rows.Next() {
+			var seq int
+			var name, origin string
+			var unique, partial int
+			if err := rows.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
+				rows.Close()
+				t.Fatal(err)
+			}
+			names = append(names, name)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			t.Fatal(err)
+		}
+		if err := rows.Close(); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range names {
+			columns, err := store.db.Query("PRAGMA index_info(" + name + ")")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for columns.Next() {
+				var seqno, cid int
+				var column string
+				if err := columns.Scan(&seqno, &cid, &column); err != nil {
+					columns.Close()
+					t.Fatal(err)
+				}
+				indexes[name] = append(indexes[name], column)
+			}
+			if err := columns.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return indexes
+	}
+
+	indexes := indexColumns("part_numbers")
+	if got := indexes["idx_part_numbers_taxonomy_node_value"]; !reflect.DeepEqual(got, []string{"taxonomy_def_id", "taxonomy_node_id", "value"}) {
+		t.Fatalf("part-number index columns = %#v", got)
+	}
+
+	indexes = indexColumns("part_revisions")
+	if got := indexes["idx_part_revisions_part_number_id_id"]; !reflect.DeepEqual(got, []string{"part_number_id", "id"}) {
+		t.Fatalf("revision index columns = %#v", got)
+	}
+}
+
+func TestSQLiteStoreAddsTaxonomyNodeLookupIndexesToExistingTables(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE part_numbers (id INTEGER PRIMARY KEY, value TEXT NOT NULL, taxonomy_def_id TEXT NOT NULL, taxonomy_node_id TEXT NOT NULL);
+		CREATE TABLE part_revisions (id INTEGER PRIMARY KEY, part_number_id INTEGER NOT NULL);`); err != nil {
+		t.Fatal(err)
+	}
+	store, err := NewSQLiteStore(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	for _, name := range []string{"idx_part_numbers_taxonomy_node_value", "idx_part_revisions_part_number_id_id"} {
+		var count int
+		if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?", name).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 1 {
+			t.Fatalf("index %q count = %d, want 1", name, count)
+		}
+	}
+}
+
 func TestSQLiteStoreRoundTripsTypedTaxonomyPredicates(t *testing.T) {
 	store, err := OpenSQLiteStore(":memory:")
 	if err != nil {

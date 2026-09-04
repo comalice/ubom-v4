@@ -1132,9 +1132,21 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	if !ok {
 		return TaxonomyNodeView{}, store.ErrNotFound
 	}
-	parts, err := s.store.ListPartNumbersByTaxonomyNode(taxonomyID, nodeID)
+	var parts []ubom.PartNumber
+	if lister, ok := s.store.(store.TaxonomyNodePartNumberLister); ok {
+		parts, err = lister.ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID, nodeID)
+	} else {
+		parts, err = s.store.ListPartNumbersByTaxonomyNode(taxonomyID, nodeID)
+	}
 	if err != nil {
 		return TaxonomyNodeView{}, err
+	}
+	var seqDef ubom.SeqDef
+	if len(parts) > 0 {
+		seqDef, err = s.store.GetSeqDef(taxonomyDef.SeqDef)
+		if err != nil {
+			return TaxonomyNodeView{}, err
+		}
 	}
 	effectiveAttributes, err := taxonomyDef.Taxonomy.EffectiveAttributes(nodeID)
 	if err != nil {
@@ -1173,7 +1185,14 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 		view.Children = append(view.Children, TaxonomyChildView{ID: child.ID, Label: child.Label, Description: child.Description, Image: child.Image, ImageReference: child.ImageReference})
 	}
 	for _, part := range parts {
-		item, err := s.partNumberListItem(part)
+		partSeqDef := seqDef
+		if part.SeqDefID != seqDef.ID {
+			partSeqDef, err = s.store.GetSeqDef(part.SeqDefID)
+			if err != nil {
+				return TaxonomyNodeView{}, err
+			}
+		}
+		item, err := s.partNumberListItemWithDefinitions(part, partSeqDef, taxonomyDef)
 		if err != nil {
 			return TaxonomyNodeView{}, err
 		}
@@ -1183,7 +1202,19 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 }
 
 func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, error) {
-	taxonomyPath, err := s.partTaxonomyPath(part)
+	seqDef, err := s.store.GetSeqDef(part.SeqDefID)
+	if err != nil {
+		return PartNumberListItem{}, err
+	}
+	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
+	if err != nil {
+		return PartNumberListItem{}, err
+	}
+	return s.partNumberListItemWithDefinitions(part, seqDef, taxonomyDef)
+}
+
+func (s *Service) partNumberListItemWithDefinitions(part ubom.PartNumber, seqDef ubom.SeqDef, taxonomyDef ubom.TaxonomyDef) (PartNumberListItem, error) {
+	taxonomyPath, err := partTaxonomyPathWithDefinitions(part, seqDef, taxonomyDef)
 	if err != nil {
 		return PartNumberListItem{}, err
 	}
@@ -1194,10 +1225,6 @@ func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, 
 		Attributes:   []PartAttributeView{},
 		Revisions:    make([]RevisionSummary, 0, len(part.PartRevisionID)),
 		Status:       part.EffectiveStatus(),
-	}
-	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
-	if err != nil {
-		return PartNumberListItem{}, err
 	}
 	attributes, err := partAttributeViews(part, taxonomyDef)
 	if err != nil {
@@ -1277,6 +1304,14 @@ func (s *Service) partTaxonomyPath(part ubom.PartNumber) ([]string, error) {
 	return interpreted.Classification.Labels, nil
 }
 
+func partTaxonomyPathWithDefinitions(part ubom.PartNumber, seqDef ubom.SeqDef, taxonomyDef ubom.TaxonomyDef) ([]string, error) {
+	interpreted, err := interpretPartWithDefinitions(part, seqDef, taxonomyDef)
+	if err != nil {
+		return nil, err
+	}
+	return interpreted.Classification.Labels, nil
+}
+
 // interpretPart is the application boundary for durable part-number meaning.
 // Views must consume Schema's parsed and classified result rather than
 // reimplementing SeqDef parsing or taxonomy projection.
@@ -1289,16 +1324,21 @@ func (s *Service) interpretPart(part ubom.PartNumber) (ubom.InterpretedValue, ub
 	if err != nil {
 		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, err
 	}
+	interpreted, err := interpretPartWithDefinitions(part, seqDef, taxonomyDef)
+	return interpreted, taxonomyDef, err
+}
+
+func interpretPartWithDefinitions(part ubom.PartNumber, seqDef ubom.SeqDef, taxonomyDef ubom.TaxonomyDef) (ubom.InterpretedValue, error) {
 	// Root-only classifications remain valid for the open policy used by the
 	// durable part-number contract.
 	interpreted, err := ubom.NewSchema(seqDef, taxonomyDef, ubom.SchemaPolicy{}).Interpret(part.Value)
 	if err != nil {
-		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, err
+		return ubom.InterpretedValue{}, err
 	}
 	if interpreted.Classification == nil || interpreted.Classification.NodeID != part.TaxonomyNodeID {
-		return ubom.InterpretedValue{}, ubom.TaxonomyDef{}, ubom.NewDomainError(ubom.ErrorCategoryConflict, "part number classification does not match its stored taxonomy node")
+		return ubom.InterpretedValue{}, ubom.NewDomainError(ubom.ErrorCategoryConflict, "part number classification does not match its stored taxonomy node")
 	}
-	return interpreted, taxonomyDef, nil
+	return interpreted, nil
 }
 
 func findTaxonomyPath(node ubom.TaxonomyNode, id ubom.TaxonomyNodeID) ([]TaxonomyPathItem, bool) {

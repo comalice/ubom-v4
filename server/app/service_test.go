@@ -14,6 +14,30 @@ type catalogRootCurrentStore struct {
 	current ubom.TaxonomyDef
 }
 
+type countingTaxonomyNodeStore struct {
+	store.Store
+	taxonomyCalls int
+	seqDefCalls   int
+	parts         []ubom.PartNumber
+}
+
+func (s *countingTaxonomyNodeStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
+	s.taxonomyCalls++
+	return s.Store.GetTaxonomyDef(id)
+}
+
+func (s *countingTaxonomyNodeStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
+	s.seqDefCalls++
+	return s.Store.GetSeqDef(id)
+}
+
+func (s *countingTaxonomyNodeStore) ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
+	if s.parts != nil {
+		return s.parts, nil
+	}
+	return s.Store.(store.TaxonomyNodePartNumberLister).ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID, nodeID)
+}
+
 func (s catalogRootCurrentStore) GetCurrentTaxonomyDef(seqDef ubom.SeqDefID) (ubom.TaxonomyDef, error) {
 	if seqDef == s.current.SeqDef {
 		return s.current, nil
@@ -325,6 +349,59 @@ func TestTaxonomyNodeViewUsesExactNodeMembership(t *testing.T) {
 	}
 	if len(child.PartNumbers) != 1 || child.PartNumbers[0].Value != "A" {
 		t.Fatalf("child parts = %#v, want A", child.PartNumbers)
+	}
+}
+
+func TestTaxonomyNodeViewReusesDefinitionsForPartItems(t *testing.T) {
+	metadata := store.NewMemoryStore()
+	seq := ubom.NewSeqDef(ubom.Bind("kind", ubom.Choice(ubom.Literal("A")))).WithID("reuse-seq")
+	taxonomy := ubom.TaxonomyDef{ID: "reuse-taxonomy", SeqDef: seq.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Label: "Root", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "A")}}}}
+	if err := metadata.CreateSeqDef(seq); err != nil {
+		t.Fatal(err)
+	}
+	if err := metadata.CreateTaxonomyDef(taxonomy); err != nil {
+		t.Fatal(err)
+	}
+	part, err := ubom.NewSchema(seq, taxonomy, ubom.SchemaPolicy{}).NewPartNumber("A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := metadata.CreatePartNumber(part); err != nil {
+		t.Fatal(err)
+	}
+
+	counting := &countingTaxonomyNodeStore{Store: metadata}
+	view, err := NewService(counting).GetTaxonomyNodeView(taxonomy.ID, "root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.PartNumbers) != 1 || view.PartNumbers[0].Value != "A" {
+		t.Fatalf("part numbers = %#v, want A", view.PartNumbers)
+	}
+	if counting.taxonomyCalls != 1 || counting.seqDefCalls != 1 {
+		t.Fatalf("definition calls = taxonomy %d, sequence %d; want one each", counting.taxonomyCalls, counting.seqDefCalls)
+	}
+}
+
+func TestTaxonomyNodeViewPreservesClassificationConflict(t *testing.T) {
+	metadata := store.NewMemoryStore()
+	seq := ubom.NewSeqDef(ubom.Bind("kind", ubom.Choice(ubom.Literal("A")))).WithID("conflict-seq")
+	taxonomy := ubom.TaxonomyDef{ID: "conflict-taxonomy", SeqDef: seq.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{ID: "root", Label: "Root", Predicates: []ubom.TaxonomyPredicate{ubom.ExactPredicate("kind", "A")}}}}
+	if err := metadata.CreateSeqDef(seq); err != nil {
+		t.Fatal(err)
+	}
+	if err := metadata.CreateTaxonomyDef(taxonomy); err != nil {
+		t.Fatal(err)
+	}
+	part, err := ubom.NewSchema(seq, taxonomy, ubom.SchemaPolicy{}).NewPartNumber("A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part.TaxonomyNodeID = "wrong-node"
+	counting := &countingTaxonomyNodeStore{Store: metadata, parts: []ubom.PartNumber{part}}
+	_, err = NewService(counting).GetTaxonomyNodeView(taxonomy.ID, "root")
+	if !ubom.IsCategory(err, ubom.ErrorCategoryConflict) {
+		t.Fatalf("error = %v, want classification conflict", err)
 	}
 }
 

@@ -357,6 +357,10 @@ func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 	if !taxonomyNodeExists(taxonomy.Taxonomy.Root, nodeID) {
 		return nil, ErrNotFound
 	}
+	return s.ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID, nodeID)
+}
+
+func (s *MemoryStore) ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
 	parts := []ubom.PartNumber{}
 	for _, part := range s.partNumbers {
 		if part.TaxonomyDefID == taxonomyID && part.TaxonomyNodeID == nodeID {

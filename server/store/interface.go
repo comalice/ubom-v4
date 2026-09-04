@@ -42,3 +42,9 @@ type Store interface {
 	CreatePartRevision(ubom.PartRevision) (ubom.PartRevision, error)
 	GetPartRevision(ubom.PartRevisionID) (ubom.PartRevision, error)
 }
+
+// TaxonomyNodePartNumberLister is the internal fast path for callers that
+// have already validated the taxonomy node.
+type TaxonomyNodePartNumberLister interface {
+	ListPartNumbersByTaxonomyNodeUnvalidated(ubom.TaxonomyDefID, ubom.TaxonomyNodeID) ([]ubom.PartNumber, error)
+}

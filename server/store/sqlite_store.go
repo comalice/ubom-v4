@@ -980,6 +980,10 @@ func (s *SQLiteStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefI
 	if !taxonomyNodeExists(taxonomy.Taxonomy.Root, nodeID) {
 		return nil, ErrNotFound
 	}
+	return s.ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID, nodeID)
+}
+
+func (s *SQLiteStore) ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
 	rows, err := s.db.Query(`SELECT value FROM part_numbers
 		WHERE taxonomy_def_id = ? AND taxonomy_node_id = ? ORDER BY value`, taxonomyID, nodeID)
 	if err != nil {

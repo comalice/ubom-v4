@@ -763,6 +763,10 @@ func (s *PostgresStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDe
 	if !taxonomyNodeExists(taxonomy.Taxonomy.Root, nodeID) {
 		return nil, ErrNotFound
 	}
+	return s.ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID, nodeID)
+}
+
+func (s *PostgresStore) ListPartNumbersByTaxonomyNodeUnvalidated(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {
 	rows, err := s.query(`SELECT value FROM part_numbers
 		WHERE taxonomy_def_id = ? AND taxonomy_node_id = ? ORDER BY value`, taxonomyID, nodeID)
 	if err != nil {

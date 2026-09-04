@@ -89,7 +89,13 @@
 </script>
 
 <CatalogBrowser title="Browse parts" subtitle="Navigate by category, then narrow the current scope with relevant attributes.">
-  <label class="catalog-search" slot="search">Search parts<input placeholder="Part number or description" /></label>
+  <form class="catalog-search" slot="search" on:submit|preventDefault>
+    <label for="playground-catalog-search-input">Search parts</label>
+    <div class="catalog-search-controls">
+      <input id="playground-catalog-search-input" placeholder="Part number or description" />
+      <button type="submit">Search</button>
+    </div>
+  </form>
   <svelte:fragment slot="sidebar">
     <div class="catalog-panel-content">
       <section class="catalog-panel-section" aria-labelledby="catalog-categories-heading">
@@ -139,8 +145,11 @@
 
 <style>
   .catalog-search { display: grid; flex: 0 1 20rem; gap: .3rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
-  .catalog-search input { min-width: 0; padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
+  .catalog-search-controls { display: flex; min-width: 0; gap: .45rem; }
+  .catalog-search input { min-width: 0; flex: 1; padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
   .catalog-search input:focus { border-color: var(--accent); outline: none; }
+  .catalog-search button { flex: none; padding: .6rem .8rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .2rem; cursor: pointer; font: .7rem ui-monospace, monospace; }
+  .catalog-search button:hover, .catalog-search button:focus-visible { background: var(--ink); outline: none; }
   .catalog-panel-content { min-width: 0; }
   .catalog-panel-section { padding: 1rem; }
   .catalog-panel-section + .catalog-panel-section { border-top: 1px solid var(--hairline); }
@@ -160,5 +169,5 @@
   .catalog-category-section, .catalog-parts-section { margin-top: 1.75rem; }
   .catalog-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; padding-bottom: .4rem; border-bottom: 1px solid var(--hairline); }
   .catalog-section-heading h3 { margin: 0; font: 400 1.1rem Georgia, serif; }
-  @media (max-width: 700px) { .catalog-search { max-width: none; } }
+  @media (max-width: 700px) { .catalog-search { flex: none; width: 100%; max-width: none; } }
 </style>

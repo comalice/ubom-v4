@@ -255,7 +255,10 @@
   <CatalogBrowser title={node.label} subtitle="Browse parts by taxonomy and filter the current scope.">
     <form class="catalog-search" slot="search" on:submit|preventDefault={submitSearch}>
       <label for="catalog-search-input">Search by part number</label>
-      <input id="catalog-search-input" bind:value={query} placeholder="Part number" />
+      <div class="catalog-search-controls">
+        <input id="catalog-search-input" bind:value={query} placeholder="Part number" />
+        <button type="submit">Search</button>
+      </div>
     </form>
     <svelte:fragment slot="sidebar">
       <div class="catalog-panel-content">
@@ -334,8 +337,11 @@
 
 <style>
   .catalog-search { display: grid; flex: 0 1 20rem; gap: .3rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
-  .catalog-search input { min-width: 0; padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
+  .catalog-search-controls { display: flex; min-width: 0; gap: .45rem; }
+  .catalog-search input { min-width: 0; flex: 1; padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
   .catalog-search input:focus { border-color: var(--accent); outline: none; }
+  .catalog-search button { flex: none; padding: .6rem .8rem; color: var(--surface); background: var(--accent); border: 0; border-radius: .2rem; cursor: pointer; font: .7rem ui-monospace, monospace; }
+  .catalog-search button:hover, .catalog-search button:focus-visible { background: var(--ink); outline: none; }
   .catalog-panel-content { min-width: 0; }
   .catalog-panel-section { padding: 1rem; }
   .catalog-panel-section + .catalog-panel-section { border-top: 1px solid var(--hairline); }
@@ -361,4 +367,5 @@
   .catalog-root-description { margin: -.7rem 0 1rem; color: var(--muted); font-size: .75rem; }
   .catalog-root-main .catalog-category-section:first-child { margin-top: 0; }
   .catalog-root-main .catalog-section-heading h2 { margin: 0; font: 400 1.35rem Georgia, serif; }
+  @media (max-width: 700px) { .catalog-search { flex: none; width: 100%; } }
 </style>

@@ -742,8 +742,6 @@ select.primitive-input { min-height: 2.3rem; }
   .summary-cards { grid-template-columns: 1fr; margin-bottom: 2rem; }
   .home-hero { margin-top: 1rem; }
   .part-log-heading { align-items: flex-start; flex-direction: column; gap: .35rem; }
-  .part-search-controls { align-items: stretch; flex-direction: column; }
-  .part-search-controls button { width: 100%; }
   .part-pagination { flex-wrap: wrap; }
   .grammar-basic-example { grid-template-columns: 1fr; }
   .grammar-block-meta { grid-column: 1; }

@@ -242,8 +242,8 @@
 {:else if node && definition}
   <CatalogBrowser title={node.label} subtitle="Browse parts by taxonomy and filter the current scope.">
     <form class="catalog-search" slot="search" on:submit|preventDefault={submitSearch}>
-      <label for="catalog-search-input">Search parts</label>
-      <input id="catalog-search-input" bind:value={query} placeholder="Part number or description" />
+      <label for="catalog-search-input">Search by part number</label>
+      <input id="catalog-search-input" bind:value={query} placeholder="Part number" />
     </form>
     <svelte:fragment slot="sidebar">
       <div class="catalog-panel-content">

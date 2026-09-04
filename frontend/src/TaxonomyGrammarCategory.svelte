@@ -65,7 +65,7 @@
   {#if targetMessage}<p class="taxonomy-target-warning" role="status">{targetMessage}</p>{/if}
   <svelte:fragment slot="context">
     {#if draftNode}
-      <TaxonomyChoiceBranches {grammar} targetId={draftNode.targetId} {readOnly} onBranchDrop={(state, branchPath, targetIndex) => onBranchDrop(state, draftNode!.id, branchPath, targetIndex)} onBranchFieldDrop={(state, branchPath, field, targetIndex) => onBranchFieldDrop(state, draftNode!.id, branchPath, field, targetIndex)}><svelte:fragment slot="branch" let:path><TaxonomyBranchSection parent={draftNode} {path} {grammar} {readOnly} contextFieldsForNode={contextFieldsForNode} {targetFieldForNode} onDrop={(state, parentID, branchPath, index) => onBranchDrop(state, parentID, branchPath, index)} {onChildDrop} {onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onBranchDrop} {onBranchFieldDrop} /></svelte:fragment></TaxonomyChoiceBranches>
+      <TaxonomyChoiceBranches {grammar} targetId={draftNode.targetId} {readOnly}><svelte:fragment slot="branch" let:path><TaxonomyBranchSection parent={draftNode} {path} {grammar} {readOnly} contextFieldsForNode={contextFieldsForNode} {targetFieldForNode} onDrop={(state, parentID, branchPath, index) => onBranchDrop(state, parentID, branchPath, index)} {onChildDrop} {onContextDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onBranchDrop} {onBranchFieldDrop} /></svelte:fragment></TaxonomyChoiceBranches>
     {/if}
     {#if draftNode && progressiveContextFields.length}
       <div class="taxonomy-category-context">

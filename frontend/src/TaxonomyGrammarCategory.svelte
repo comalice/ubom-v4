@@ -5,7 +5,7 @@
   import TaxonomyRuleBlock from './TaxonomyRuleBlock.svelte'
   import DropZone from './DropZone.svelte'
   import TaxonomyChoiceBranches from './TaxonomyChoiceBranches.svelte'
-  import { acceptsTaxonomyRuleDrop, taxonomyGrammarNode, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyRuleDrop, taxonomyBranchContainer, taxonomyGrammarNode, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let placement: TaxonomyPlacement
   export let draftNode: TaxonomyDraftNode | undefined
@@ -64,7 +64,7 @@
   {#if targetMessage}<p class="taxonomy-target-warning" role="status">{targetMessage}</p>{/if}
   <svelte:fragment slot="context">
     {#if draftNode}
-      <TaxonomyChoiceBranches {grammar} targetId={draftNode.targetId} {readOnly} onBranchDrop={(state, branchPath) => onBranchDrop(state, draftNode!.id, branchPath)} onBranchFieldDrop={(state, branchPath, field) => onBranchFieldDrop(state, draftNode!.id, branchPath, field)} />
+      <TaxonomyChoiceBranches {grammar} targetId={draftNode.targetId} {readOnly} onBranchDrop={(state, branchPath) => onBranchDrop(state, draftNode!.id, branchPath)} onBranchFieldDrop={(state, branchPath, field) => onBranchFieldDrop(state, draftNode!.id, branchPath, field)}><svelte:fragment slot="branch" let:path>{#each draftNode.children.filter((child) => child.branch?.path[child.branch.path.length - 1] === path) as child (child.id)}{#if child.placements[0]}<TaxonomyGrammarCategory placement={child.placements[0]} draftNode={child} parentContainer={taxonomyBranchContainer(path)} contextFields={contextFieldsForNode(path)} {readOnly} onContextDrop={onContextDrop} onChildDrop={onChildDrop} onRuleDrop={onRuleDrop} onRemove={onRemove} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {grammar} {onBranchDrop} {onBranchFieldDrop} />{/if}{/each}</svelte:fragment></TaxonomyChoiceBranches>
     {/if}
     {#if draftNode && progressiveContextFields.length}
       <div class="taxonomy-category-context">

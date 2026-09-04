@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchContainer, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftBranchPath, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -195,6 +195,9 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(taxonomyDefinitionInputFromDraft('seq', undefined, [], withField).root.children?.[0]).toEqual({
       id: 'numeric-branch', label: 'New category', branch: { path: ['root/choice[1]'] }, predicates: [{ field: 'family', kind: 'exact', value: 'A' }],
     })
+    expect(taxonomyDraftBranchPath(withField.children[0])).toBe('root/choice[1]')
+    expect(taxonomyBranchContainer('root/choice[1]', 'family')).toBe('taxonomy-editor:branch:root/choice[1]:field:family')
+    expect(taxonomyTargetContainer(withField.children[0].id)).toBe('taxonomy-editor:target:numeric-branch')
   })
 
   it('round-trips a literal-only nested branch with field rules', () => {

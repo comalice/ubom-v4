@@ -2,7 +2,7 @@
   import { type DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
   import TaxonomyGrammarCategory from './TaxonomyGrammarCategory.svelte'
-  import { acceptsTaxonomyCategoryChildDrop, taxonomyTargetContainer, taxonomyTargetIsUsable, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyCategoryChildDrop, taxonomyDraftBranchPath, taxonomyTargetContainer, taxonomyTargetIsUsable, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let parent: TaxonomyDraftNode
   export let field: string | undefined = undefined
@@ -28,7 +28,7 @@
   $: sourceChildren = parent.children
   $: normalizedExcludedFields = excludedFields.map((targetId) => targetFieldForNode(targetId) ?? targetId)
   $: visibleChildren = sourceChildren.filter((child) => field === undefined
-    ? !normalizedExcludedFields.includes(targetFieldForNode(child.targetId) ?? child.targetId)
+    ? !taxonomyDraftBranchPath(child) && !normalizedExcludedFields.includes(targetFieldForNode(child.targetId) ?? child.targetId)
     : targetFieldForNode(child.targetId) === field)
   $: container = taxonomyTargetContainer(field === undefined ? parent.id : `${parent.id}:field:${field}`)
 

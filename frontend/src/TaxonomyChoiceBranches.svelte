@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFirstBinding, type TaxonomyDragPayload, type TaxonomyGrammar } from './TaxonomyEditorModel'
+  import { taxonomyBranchContainer, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFirstBinding, type TaxonomyDragPayload, type TaxonomyGrammar } from './TaxonomyEditorModel'
   import type { StructureNode } from './StructureNode'
   import type { DragDropState } from '@thisux/sveltednd'
   import DropZone from './DropZone.svelte'
@@ -25,12 +25,14 @@
       {@const path = branchPath(alternative)}
       {@const targetLabel = taxonomyGrammarChoiceDropLabel(alternative, occurrence?.label)}
       {#if occurrence}
-        {#if !readOnly}
-          <DropZone variant="slot" mode="inactive" label={targetLabel} showLabel container={`taxonomy-editor:branch:${path}:field:${occurrence.label}`} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchFieldDrop(state, path, occurrence.label)} ariaLabel={targetLabel} />
-        {/if}
-      {:else if !readOnly}
-        <DropZone variant="slot" mode="inactive" label={targetLabel} showLabel container={`taxonomy-editor:branch:${path}`} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchDrop(state, path)} ariaLabel={targetLabel} />
+        <div class="taxonomy-branch-context">{#if !readOnly}<DropZone variant="slot" mode="inactive" label={targetLabel} showLabel container={taxonomyBranchContainer(path, occurrence.label)} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchFieldDrop(state, path, occurrence.label)} ariaLabel={targetLabel} />{/if}<slot name="branch" path={path} field={occurrence.label} /></div>
+      {:else}
+        <div class="taxonomy-branch-context">{#if !readOnly}<DropZone variant="slot" mode="inactive" label={targetLabel} showLabel container={taxonomyBranchContainer(path)} accepts={(state) => state.draggedItem?.kind === 'palette' && state.draggedItem.taxonomyType === 'category'} onDrop={(state) => onBranchDrop(state, path)} ariaLabel={targetLabel} />{/if}<slot name="branch" path={path} /></div>
       {/if}
     {/each}
   {/each}
 {/if}
+
+<style>
+  .taxonomy-branch-context { display: grid; gap: .35rem; }
+</style>

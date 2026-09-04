@@ -53,6 +53,11 @@ export function taxonomyBranchPath(grammar: TaxonomyGrammar, targetId: string): 
   return result
 }
 
+/** Returns the canonical branch that owns a branch-scoped draft node. */
+export function taxonomyDraftBranchPath(node: TaxonomyDraftNode): string | undefined {
+  return node.branch?.path[node.branch.path.length - 1]
+}
+
 /**
  * Finds the fields available below a taxonomy target. Root targets expose the
  * first field; unresolved targets expose all fields as a useful recovery path.
@@ -514,6 +519,10 @@ export const taxonomyEditorContainer = 'taxonomy-editor'
 
 export function taxonomyTargetContainer(targetId: string) {
   return `${taxonomyEditorContainer}:target:${targetId}`
+}
+
+export function taxonomyBranchContainer(branchPath: string, field?: string) {
+  return `${taxonomyEditorContainer}:branch:${branchPath}${field ? `:field:${field}` : ''}`
 }
 
 export function flattenTaxonomyDraft(node: TaxonomyDraftNode): TaxonomyPlacement[] {

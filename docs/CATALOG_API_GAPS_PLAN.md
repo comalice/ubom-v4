@@ -123,7 +123,7 @@ selected node's child views.
 Catalog links should be readable, for example:
 
 ```text
-/catalog/components/fasteners?taxonomyDef=components-v3
+/catalog/fasteners?taxonomyDef=components-v3
 ```
 
 The implementation must still resolve nodes using stable taxonomy IDs. Options

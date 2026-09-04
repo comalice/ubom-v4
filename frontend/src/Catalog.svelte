@@ -8,13 +8,16 @@
   import FilterRange from './FilterRange.svelte'
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
-  import { getCatalogFacets, getCatalogRoot, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type CatalogFacets, type CatalogRoot, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
+  import { getCatalogFacets, getCatalogRoot, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveCatalogPath, searchParts, type CatalogFacets, type CatalogRoot, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
   import { catalogPageSizeOptions, catalogPath, catalogServerMaxPageSize, taxonomySlug, type CatalogRouteState } from './routes'
+  import type { Breadcrumb } from './Breadcrumbs.svelte'
   import { currentTaxonomySummaries } from './taxonomySelection'
   import { catalogRootViewModel } from './catalogRoot'
 
   export let state: CatalogRouteState | undefined = undefined
   export let navigate: (path: string, replace?: boolean) => void
+  export let breadcrumbGeneration = 0
+  export let onBreadcrumbs: (items: Breadcrumb[], generation: number) => void = () => {}
 
   let definition: TaxonomyDefinitionView | null = null
   let node: TaxonomyNodeView | null = null
@@ -61,7 +64,7 @@
       const taxonomy = routeState.taxonomyDef
         ? await getTaxonomyDef(routeState.taxonomyDef)
         : await getCurrentTaxonomy()
-      const resolvedPath = routeState.path ? resolveTaxonomyPath(taxonomy.root, routeState.path) : undefined
+      const resolvedPath = routeState.path ? resolveCatalogPath(taxonomy.root, routeState.path) : undefined
       if (routeState.path && !resolvedPath) throw new Error('404 Not Found')
       const nodeID = resolvedPath?.at(-1) ?? routeState.node ?? taxonomy.root.id
       const resolvedNode = await getTaxonomyNode(taxonomy.id, nodeID)
@@ -85,8 +88,15 @@
       total = result.total
       currentPage = result.page
       currentPageSize = result.pageSize
+      if (requestID === request) onBreadcrumbs(catalogBreadcrumbs(), breadcrumbGeneration)
       const canonicalPage = Math.min(Math.max(1, result.page), Math.max(1, Math.ceil(result.total / result.pageSize)))
-      const canonicalState = { ...routeState, filters: effectiveFilters, ranges: effectiveRanges, page: canonicalPage === 1 ? undefined : canonicalPage }
+      const canonicalState = {
+        ...routeState,
+        path: routeState.path?.length ? routeState.path : undefined,
+        filters: effectiveFilters,
+        ranges: effectiveRanges,
+        page: canonicalPage === 1 ? undefined : canonicalPage,
+      }
       const canonicalPath = catalogPath(canonicalState)
       const currentPath = `${window.location.pathname}${window.location.search}`
       if (canonicalPath !== currentPath) navigate(canonicalPath, true)
@@ -116,7 +126,7 @@
   }
 
   function categoryHref(id: string) {
-    const path = node?.path.map(item => taxonomySlug(item.label)) ?? []
+    const path = node?.path.slice(1).map(item => taxonomySlug(item.label)) ?? []
     const child = node?.children.find(item => item.id === id)
     return catalogPath(scopedState({ path: [...path, taxonomySlug(child?.label ?? id)], node: undefined, page: undefined }))
   }
@@ -135,14 +145,18 @@
     return () => document.removeEventListener('click', handleCatalogLink)
   })
 
-  function breadcrumbs() {
+  function catalogBreadcrumbs(): Breadcrumb[] {
     if (!node || !definition) return []
-    return node.path.map((item, index) => ({
-      label: item.label,
-      href: index < node!.path.length - 1
-        ? catalogPath(scopedState({ path: node!.path.slice(0, index + 1).map(pathItem => taxonomySlug(pathItem.label)), node: undefined, page: undefined }))
-        : undefined,
-    }))
+    return [
+      { label: 'Home', href: '/' },
+      { label: 'Catalog', href: catalogPath({ ...scopedState({ node: undefined, page: undefined }), path: undefined }) },
+      ...node.path.slice(1).map((item, index, path) => ({
+        label: item.label,
+        href: index < path.length - 1
+          ? catalogPath(scopedState({ path: path.slice(0, index + 1).map(pathItem => taxonomySlug(pathItem.label)), node: undefined, page: undefined }))
+          : undefined,
+      })),
+    ]
   }
 
   function categoryItems(): CategoryListItem[] {
@@ -292,10 +306,6 @@
       </div>
     </svelte:fragment>
     <div class="catalog-main">
-      <nav class="catalog-breadcrumbs" aria-label="Catalog scope">
-        <a href={catalogPath({ ...scopedState({ node: undefined, page: undefined }), path: undefined })}>Catalog</a>
-        {#each breadcrumbs() as crumb, index}<span aria-hidden="true">/</span>{#if crumb.href}<a href={crumb.href}>{crumb.label}</a>{:else}<strong aria-current="page">{crumb.label}</strong>{/if}{/each}
-      </nav>
       <div class="catalog-main-heading"><div><p class="eyebrow">Category</p><h2>{node.label}</h2></div><span class="catalog-result-count">{total} {total === 1 ? 'part' : 'parts'}</span></div>
       {#if node.children.length > 0}
         <section class="catalog-category-section" aria-labelledby="catalog-categories-main-heading">
@@ -303,34 +313,36 @@
           <CategoryTileGrid tiles={node.children.map(child => ({ id: child.id, title: child.label, href: categoryHref(child.id), description: child.description, image: child.imageReference ?? child.image, partCount: facets.categories.find(facet => facet.id === child.id)?.count ?? 0 }))} />
         </section>
       {/if}
-      <section class="catalog-parts-section" aria-labelledby="catalog-parts-heading">
-        <div class="catalog-section-heading"><h3 id="catalog-parts-heading">Parts in this scope</h3><span>{parts.length} shown</span></div>
-        <div class="catalog-controls" aria-label="Catalog result controls">
-          <label>Sort by
-            <select value={selectedSort} on:change={updateSort}>
-              {#each sortOptions as option}<option value={option.value}>{option.label}</option>{/each}
-            </select>
-          </label>
-          <label>Order
-            <select value={selectedOrder} on:change={updateOrder}>
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
-          </label>
-          <label>Results per page
-            <select value={currentPageSize} on:change={updatePageSize}>
-              {#if !pageSizeOptions.includes(currentPageSize)}<option value={currentPageSize}>{currentPageSize}</option>{/if}
-              {#each pageSizeOptions as option}<option value={option}>{option}</option>{/each}
-            </select>
-          </label>
-        </div>
-        {#if parts.length > 0}<PartTable parts={parts} columns={node.attributes} seqDef={node.seqDefId} />{:else}<AsyncState state="empty" message="No parts in this scope." />{/if}
-        <nav class="catalog-pagination" aria-label="Catalog pagination">
-          <button type="button" on:click={() => updatePage(currentPage - 1)} disabled={currentPage <= 1}>Previous</button>
-          <span aria-live="polite">Page {currentPage} of {totalPages}</span>
-          <button type="button" on:click={() => updatePage(currentPage + 1)} disabled={currentPage >= totalPages}>Next</button>
-        </nav>
-      </section>
+      {#if parts.length > 0}
+        <section class="catalog-parts-section" aria-labelledby="catalog-parts-heading">
+          <div class="catalog-section-heading"><h3 id="catalog-parts-heading">Parts in this scope</h3><span>{parts.length} shown</span></div>
+          <div class="catalog-controls" aria-label="Catalog result controls">
+            <label>Sort by
+              <select value={selectedSort} on:change={updateSort}>
+                {#each sortOptions as option}<option value={option.value}>{option.label}</option>{/each}
+              </select>
+            </label>
+            <label>Order
+              <select value={selectedOrder} on:change={updateOrder}>
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </label>
+            <label>Results per page
+              <select value={currentPageSize} on:change={updatePageSize}>
+                {#if !pageSizeOptions.includes(currentPageSize)}<option value={currentPageSize}>{currentPageSize}</option>{/if}
+                {#each pageSizeOptions as option}<option value={option}>{option}</option>{/each}
+              </select>
+            </label>
+          </div>
+          <PartTable parts={parts} columns={node.attributes} seqDef={node.seqDefId} />
+          <nav class="catalog-pagination" aria-label="Catalog pagination">
+            <button type="button" on:click={() => updatePage(currentPage - 1)} disabled={currentPage <= 1}>Previous</button>
+            <span aria-live="polite">Page {currentPage} of {totalPages}</span>
+            <button type="button" on:click={() => updatePage(currentPage + 1)} disabled={currentPage >= totalPages}>Next</button>
+          </nav>
+        </section>
+      {/if}
     </div>
   </CatalogBrowser>
 {/if}
@@ -349,7 +361,6 @@
   .catalog-panel-content h2 { margin: 0 0 .7rem; font: 400 1.15rem Georgia, serif; }
   .catalog-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
   .catalog-panel-heading button { padding: 0; color: var(--accent); background: none; border: 0; cursor: pointer; font: .62rem ui-monospace, monospace; }
-  .catalog-breadcrumbs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; color: var(--muted); font-size: .7rem; }
   .catalog-main-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .catalog-main-heading h2 { margin: .2rem 0 0; font: 400 1.6rem Georgia, serif; }
   .catalog-result-count, .catalog-section-heading span { color: var(--muted); font: .65rem ui-monospace, monospace; }

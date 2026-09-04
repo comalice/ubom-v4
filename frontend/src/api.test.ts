@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiVersionMismatchError, BackendVersionProbeError, createSeqDefVersion, getCatalogFacets, getCatalogRoot, getPart, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, probeBackendVersion, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
+import { ApiVersionMismatchError, BackendVersionProbeError, createSeqDefVersion, getCatalogFacets, getCatalogRoot, getPart, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, probeBackendVersion, resolveCatalogPath, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
 import { catalogRootViewModel } from './catalogRoot'
 
 afterEach(() => vi.restoreAllMocks())
@@ -206,8 +206,15 @@ describe('catalog root API and view model', () => {
     await expect(getCatalogRoot()).resolves.toEqual(root)
     expect(fetchMock).toHaveBeenCalledWith('/api/catalog/root')
     expect(catalogRootViewModel(root).map(group => ({ heading: group.headingHref, child: group.children[0].href, label: group.children[0].label }))).toEqual([{
-      heading: '/catalog/components?taxonomyDef=sample-v1', child: '/catalog/components/resistors?taxonomyDef=sample-v1', label: 'Resistors',
+      heading: '/catalog?taxonomyDef=sample-v1', child: '/catalog/resistors?taxonomyDef=sample-v1', label: 'Resistors',
     }])
+  })
+
+  it('resolves catalog paths relative to the taxonomy root', () => {
+    const root = { id: 'components', label: 'Components', children: [{ id: 'resistors', label: 'Resistors' }] }
+    expect(resolveCatalogPath(root, [])).toEqual(['components'])
+    expect(resolveCatalogPath(root, ['resistors'])).toEqual(['components', 'resistors'])
+    expect(resolveCatalogPath(root, ['components'])).toBeUndefined()
   })
 
   it('passes explicit archived state only when requested', async () => {

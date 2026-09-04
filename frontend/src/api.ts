@@ -244,6 +244,11 @@ export function resolveTaxonomyPath(root: TaxonomyNodeInput, segments: string[])
   return ids
 }
 
+export function resolveCatalogPath(root: TaxonomyNodeInput, segments: string[]): string[] | undefined {
+  if (!segments.length) return [root.id]
+  return resolveTaxonomyPath(root, [taxonomySlug(root.label), ...segments])
+}
+
 export async function getTaxonomyNodeBySlugPath(taxonomyID: string, root: TaxonomyNodeInput, segments: string[]): Promise<TaxonomyNodeView> {
   const ids = resolveTaxonomyPath(root, segments)
   if (!ids) throw new Error('404 Not Found')

@@ -5,7 +5,7 @@
   import ArtifactTable from './ArtifactTable.svelte'
   import SnapshotTable from './SnapshotTable.svelte'
   import RevisionTable from './RevisionTable.svelte'
-  import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
+  import { type Breadcrumb } from './Breadcrumbs.svelte'
   import PartIdentity from './PartIdentity.svelte'
   import Shell from './Shell.svelte'
   import Authoring from './Authoring.svelte'
@@ -39,35 +39,41 @@
   let loading = true
   let updateNotice: UpdateNotice | null = null
   let bootstrapped = false
+  let catalogBreadcrumbGeneration = 0
+  let resolvedCatalogBreadcrumbs: Breadcrumb[] | null = null
 
   $: breadcrumbs = route.kind === 'catalog'
-    ? [{ label: 'Catalog' }]
+    ? (resolvedCatalogBreadcrumbs ?? [{ label: 'Home', href: '/' }, { label: 'Catalog' }])
     : route.kind === 'parts'
-    ? [{ label: 'Parts' }]
+    ? [{ label: 'Home', href: '/' }, { label: 'Parts' }]
     : route.kind === 'artifacts'
-      ? [{ label: 'Artifacts' }]
+      ? [{ label: 'Home', href: '/' }, { label: 'Artifacts' }]
       : route.kind === 'artifact' && artifact
-        ? [{ label: 'Artifacts', href: '/artifacts' }, { label: artifact.name }]
+        ? [{ label: 'Home', href: '/' }, { label: 'Artifacts', href: '/artifacts' }, { label: artifact.name }]
     : route.kind === 'taxonomy' && taxonomy
-    ? taxonomyBreadcrumbs(taxonomy)
+    ? [{ label: 'Home', href: '/' }, { label: 'Parts', href: '/parts' }, ...taxonomyBreadcrumbs(taxonomy)]
     : route.kind === 'part' && part
-      ? [{ label: 'Parts' }, { label: part.value }]
+      ? [{ label: 'Home', href: '/' }, { label: 'Parts', href: '/parts' }, { label: part.value }]
       : route.kind === 'revision' && revision
         ? [
+            { label: 'Home', href: '/' },
+            { label: 'Parts', href: '/parts' },
             { label: revision.partNumber.value, href: partPath(revision.partNumber.value) },
             { label: `Revision ${revision.revision}` },
           ]
       : route.kind === 'grammar-editor'
-        ? [{ label: 'Settings', href: '/settings' }, { label: 'Grammar editor' }]
+        ? [{ label: 'Home', href: '/' }, { label: 'Settings', href: '/settings' }, { label: 'Grammar editor' }]
        : (route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def')
-         ? [{ label: 'Settings', href: '/settings' }, { label: 'Sequence definitions' }]
+          ? [{ label: 'Home', href: '/' }, { label: 'Settings', href: '/settings' }, { label: 'Sequence definitions' }]
        : (route.kind === 'taxonomy-list' || route.kind === 'taxonomy-new' || route.kind === 'taxonomy-detail')
-         ? [{ label: 'Settings', href: '/settings' }, { label: 'Taxonomies' }]
+          ? [{ label: 'Home', href: '/' }, { label: 'Settings', href: '/settings' }, { label: 'Taxonomies' }]
       : route.kind === 'playground'
-        ? [{ label: 'Playground' }]
-        : route.kind === 'settings'
-          ? [{ label: 'Settings' }]
-        : []
+         ? [{ label: 'Home', href: '/' }, { label: 'Playground' }]
+         : route.kind === 'settings'
+           ? [{ label: 'Home', href: '/' }, { label: 'Settings' }]
+         : route.kind === 'home'
+           ? [{ label: 'Home' }]
+           : []
 
   function taxonomyBreadcrumbs(view: TaxonomyNodeView): Breadcrumb[] {
     return view.path.map((item, index) => ({
@@ -78,6 +84,8 @@
 
   async function load() {
     route = parseRoute()
+    catalogBreadcrumbGeneration += 1
+    resolvedCatalogBreadcrumbs = null
     taxonomy = null
     part = null
     revision = null
@@ -114,7 +122,13 @@
     }
   }
 
+  function updateCatalogBreadcrumbs(items: Breadcrumb[], generation: number) {
+    if (route.kind === 'catalog' && generation === catalogBreadcrumbGeneration) resolvedCatalogBreadcrumbs = items
+  }
+
   function navigate(path: string, replace = false) {
+    const currentPath = `${window.location.pathname}${window.location.search}`
+    if (currentPath === path) return
     history[replace ? 'replaceState' : 'pushState']({}, '', path)
     if (bootstrapped) void load()
   }
@@ -183,8 +197,7 @@
   </div>
 {/if}
 
-<Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts' || route.kind === 'catalog'}>
-  <Breadcrumbs items={breadcrumbs} />
+<Shell breadcrumbs={breadcrumbs} fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts' || route.kind === 'catalog'}>
   {#if loading}
     <AsyncState state="loading" message="Loading..." />
   {:else if error}
@@ -192,7 +205,7 @@
   {:else if route.kind === 'home'}
     <Home />
   {:else if route.kind === 'catalog'}
-    <Catalog state={route.state} navigate={navigate} />
+    <Catalog state={route.state} navigate={navigate} breadcrumbGeneration={catalogBreadcrumbGeneration} onBreadcrumbs={updateCatalogBreadcrumbs} />
   {:else if route.kind === 'parts'}
     <PartLog />
   {:else if route.kind === 'artifacts'}

@@ -1,8 +1,10 @@
 <script lang="ts">
+  import Breadcrumbs, { type Breadcrumb } from './Breadcrumbs.svelte'
   import PrimitiveLink from './PrimitiveLink.svelte'
 
   export let title = 'UBOM'
   export let fullWidth = false
+  export let breadcrumbs: Breadcrumb[] = []
 </script>
 
 <svelte:head><title>{title} · UBOM</title></svelte:head>
@@ -18,5 +20,6 @@
 </header>
 
 <main class:full-width={fullWidth} class="page-shell">
+  <Breadcrumbs items={breadcrumbs} />
   <slot />
 </main>

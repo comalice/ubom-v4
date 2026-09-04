@@ -15,7 +15,7 @@
   {#if taxonomy.length > 0}
     <nav class="taxonomy-path" aria-label="Part category">
       {#each taxonomy as label, index}
-        {#if index > 0}<span class="breadcrumb-separator" aria-hidden="true">/</span>{/if}
+        {#if index > 0}<span class="path-separator" aria-hidden="true">/</span>{/if}
         <PrimitiveLink href={taxonomyPath(taxonomy.slice(0, index + 1))}>{label}</PrimitiveLink>
       {/each}
     </nav>

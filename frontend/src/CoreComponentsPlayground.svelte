@@ -47,7 +47,7 @@
   <section class="core-component-group" aria-labelledby="navigation-heading">
     <div class="core-component-heading"><div><p class="mock-section-label">Navigation and identity</p><h3 id="navigation-heading">Navigation and identity</h3></div><span class="core-component-count">4 components</span></div>
     <div class="core-component-grid">
-      <article class="core-component-card"><h4>Breadcrumbs</h4><p class="muted">Linked ancestors and the current page.</p><Breadcrumbs items={[{ label: 'Parts', href: '/parts' }, { label: 'Fasteners' }, { label: 'PN-100' }]} /></article>
+      <article class="core-component-card"><h4>Breadcrumbs</h4><p class="muted">Linked ancestors and the current page.</p><Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Parts', href: '/parts' }, { label: 'Fasteners' }, { label: 'PN-100' }]} /></article>
       <article class="core-component-card"><h4>IdentityLink</h4><p class="muted">Part and revision identity with copy feedback.</p><IdentityLink partNumber="PN-100" revision="A" revisionID="revision-1" /></article>
       <article class="core-component-card"><h4>PartIdentity</h4><p class="muted">Identity, taxonomy path, and attributes.</p><PartIdentity partNumber="PN-100" taxonomy={['Components', 'Fasteners']} revision="A" attributes={[{ id: 'material', label: 'Material', value: 'Steel' }]} /></article>
       <article class="core-component-card"><h4>StructureTree</h4><p class="muted">Recursive structure display.</p><StructureTree nodes={structure} showIds={false} /></article>

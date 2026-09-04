@@ -20,7 +20,7 @@ export type Route =
 
 export type CatalogRouteState = {
   taxonomyDef?: string
-  /** Human-readable taxonomy slugs from the catalog root to the current node. */
+  /** Human-readable taxonomy slugs below the catalog taxonomy root. */
   path?: string[]
   node?: string
   q?: string

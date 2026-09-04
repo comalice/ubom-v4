@@ -32,6 +32,7 @@ a:hover { color: var(--ink); text-decoration: underline; }
 .breadcrumbs a { color: var(--muted); }
 .breadcrumbs a:hover { color: var(--accent); }
 .breadcrumb-separator { color: var(--hairline); }
+.path-separator { color: var(--hairline); }
 .taxonomy-path { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin: .75rem 0 1.5rem; font-size: .85rem; }
 .taxonomy-path a { color: var(--muted); }
 .taxonomy-path a:hover { color: var(--accent); }

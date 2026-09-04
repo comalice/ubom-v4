@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Breadcrumbs from './Breadcrumbs.svelte'
   import CatalogBrowser from './CatalogBrowser.svelte'
   import CategoryList, { type CategoryListItem } from './CategoryList.svelte'
   import CategoryTileGrid from './CategoryTileGrid.svelte'
@@ -119,7 +120,7 @@
 
   </svelte:fragment>
     <div class="catalog-main">
-      <div class="catalog-breadcrumbs"><span>Home</span><span aria-hidden="true">/</span><strong>Fastening &amp; Joining</strong></div>
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Catalog', href: '/catalog' }, { label: 'Fastening & Joining' }]} />
       <div class="catalog-main-heading"><div><p class="eyebrow">Category</p><h2>Fastening &amp; Joining</h2></div><span class="catalog-result-count">67 parts</span></div>
       {#if activeFilterLabels.length > 0}
         <div class="catalog-active-filters" aria-label="Active filters"><span class="catalog-active-filters-label">Active filters</span>{#each activeFilterLabels as filter}<span class="catalog-filter-chip">{filter}<button type="button" aria-label={`Remove ${filter}`} on:click={() => removeFilter(filter)}>x</button></span>{/each}</div>
@@ -157,7 +158,6 @@
   .catalog-panel-content h2 { margin: 0 0 .7rem; font: 400 1.15rem Georgia, serif; }
   .catalog-panel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
   .catalog-panel-heading button { padding: 0; color: var(--accent); background: none; border: 0; cursor: pointer; font: .62rem ui-monospace, monospace; }
-  .catalog-breadcrumbs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; color: var(--muted); font-size: .7rem; }
   .catalog-main-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .catalog-main-heading h2 { margin: .2rem 0 0; font: 400 1.6rem Georgia, serif; }
   .catalog-result-count, .catalog-section-heading span { color: var(--muted); font: .65rem ui-monospace, monospace; }

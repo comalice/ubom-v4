@@ -36,7 +36,7 @@
           <td class="unsupported" aria-label="Description not supported">—</td>
           <td class="part-taxonomy">
             {#each part.taxonomyPath as label, index}
-              {#if index > 0}<span class="breadcrumb-separator" aria-hidden="true"> / </span>{/if}
+              {#if index > 0}<span class="path-separator" aria-hidden="true"> / </span>{/if}
               <PrimitiveLink href={taxonomyPath(part.taxonomyPath.slice(0, index + 1), seqDef)}>{label}</PrimitiveLink>
             {/each}
           </td>

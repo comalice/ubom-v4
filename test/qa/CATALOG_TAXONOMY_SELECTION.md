@@ -45,8 +45,8 @@ Inspect the `sample-taxonomy-v1` group and its category tiles.
 Pass: the group identifies `taxonomyDef=sample-taxonomy-v1` and its `seqDef`,
 shows the `Components` root and its metadata, and shows `Resistors` and
 `Capacitors` with active-part counts. Group headings link to
-`/catalog/<root-slug>?taxonomyDef=<id>` and child links include the same
-explicit taxonomy definition.
+`/catalog?taxonomyDef=<id>` and child links use paths relative to the taxonomy
+root, with the same explicit taxonomy definition.
 
 Fail: counts are combined across taxonomies, archived parts are included by
 default, links omit taxonomy context, or root metadata is absent.
@@ -70,7 +70,7 @@ Open the following directly:
 ```text
 /catalog?includeArchived=true
 /api/catalog/root?includeArchived=true
-/catalog/components/resistors?taxonomyDef=sample-taxonomy-v1
+/catalog/resistors?taxonomyDef=sample-taxonomy-v1
 /catalog/not-a-real-category?taxonomyDef=sample-taxonomy-v1
 ```
 

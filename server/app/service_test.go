@@ -16,9 +16,10 @@ type catalogRootCurrentStore struct {
 
 type countingTaxonomyNodeStore struct {
 	store.Store
-	taxonomyCalls int
-	seqDefCalls   int
-	parts         []ubom.PartNumber
+	taxonomyCalls     int
+	listTaxonomyCalls int
+	seqDefCalls       int
+	parts             []ubom.PartNumber
 }
 
 type countingNodeRevisionStore struct {
@@ -52,6 +53,11 @@ func (s *countingAllRevisionStore) GetPartRevision(id ubom.PartRevisionID) (ubom
 func (s *countingTaxonomyNodeStore) GetTaxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
 	s.taxonomyCalls++
 	return s.Store.GetTaxonomyDef(id)
+}
+
+func (s *countingTaxonomyNodeStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
+	s.listTaxonomyCalls++
+	return s.Store.ListTaxonomyDefs()
 }
 
 func (s *countingTaxonomyNodeStore) GetSeqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
@@ -180,6 +186,31 @@ func TestSearchPartNumberViewsCachesDefinitionsAcrossFilteringAndRendering(t *te
 	}
 	if counting.taxonomyCalls != 1 || counting.seqDefCalls != 1 {
 		t.Fatalf("definition calls = taxonomy %d, sequence %d; want one of each", counting.taxonomyCalls, counting.seqDefCalls)
+	}
+}
+
+func TestCatalogFacetsForScopedRequestLoadsOnlyRequestedTaxonomy(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	counting := &countingTaxonomyNodeStore{Store: persistence}
+
+	result, err := NewService(counting).CatalogFacetsFor(PartSearchQuery{
+		TaxonomyDef:  "sample-taxonomy-v1",
+		TaxonomyNode: "components",
+	})
+	if err != nil {
+		t.Fatalf("CatalogFacetsFor() error = %v", err)
+	}
+	if counting.taxonomyCalls != 1 {
+		t.Fatalf("GetTaxonomyDef calls = %d, want 1", counting.taxonomyCalls)
+	}
+	if counting.listTaxonomyCalls != 0 {
+		t.Fatalf("ListTaxonomyDefs calls = %d, want 0", counting.listTaxonomyCalls)
+	}
+	if len(result.Categories) != 2 || result.Categories[0].Count != 1 || result.Categories[1].Count != 1 {
+		t.Fatalf("categories = %#v, want both categories with count 1", result.Categories)
 	}
 }
 

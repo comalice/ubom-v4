@@ -631,23 +631,30 @@ type CatalogFacetValue struct {
 }
 
 // CatalogFacetsFor returns all requested facet counts after one part load and
-// one taxonomy load. It intentionally does not issue a count query per child.
+// one taxonomy load for scoped requests. It intentionally does not issue a
+// count query per child.
 func (s *Service) CatalogFacetsFor(query PartSearchQuery) (CatalogFacets, error) {
 	parts, err := s.store.ListPartNumbers()
 	if err != nil {
 		return CatalogFacets{}, err
 	}
-	taxonomies, err := s.store.ListTaxonomyDefs()
-	if err != nil {
-		return CatalogFacets{}, err
-	}
-	taxonomyByID := make(map[ubom.TaxonomyDefID]ubom.TaxonomyDef, len(taxonomies))
-	for _, taxonomy := range taxonomies {
-		taxonomyByID[taxonomy.ID] = taxonomy
-	}
-	selected, ok := taxonomyByID[query.TaxonomyDef]
-	if query.TaxonomyDef != "" && !ok {
-		return CatalogFacets{}, store.ErrNotFound
+	var taxonomyByID map[ubom.TaxonomyDefID]ubom.TaxonomyDef
+	var selected ubom.TaxonomyDef
+	if query.TaxonomyDef != "" {
+		selected, err = s.store.GetTaxonomyDef(query.TaxonomyDef)
+		if err != nil {
+			return CatalogFacets{}, err
+		}
+		taxonomyByID = map[ubom.TaxonomyDefID]ubom.TaxonomyDef{selected.ID: selected}
+	} else {
+		taxonomies, listErr := s.store.ListTaxonomyDefs()
+		if listErr != nil {
+			return CatalogFacets{}, listErr
+		}
+		taxonomyByID = make(map[ubom.TaxonomyDefID]ubom.TaxonomyDef, len(taxonomies))
+		for _, taxonomy := range taxonomies {
+			taxonomyByID[taxonomy.ID] = taxonomy
+		}
 	}
 	var scopeNode ubom.TaxonomyNode
 	if query.TaxonomyDef != "" {

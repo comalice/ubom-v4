@@ -191,6 +191,7 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(branch.children[0]).toMatchObject({ targetId: 'root/choice[0]', branch: { path: ['root/choice[0]'] } })
 
     const withField = addTaxonomyDraftBranchFieldChild(root, 'root', 'numeric-branch', 'root/choice[1]', 'family')
+    expect(withField.children[0]).toMatchObject({ targetId: 'root/choice[1]', branch: { path: ['root/choice[1]'] } })
     expect(taxonomyDefinitionInputFromDraft('seq', undefined, [], withField).root.children?.[0]).toEqual({
       id: 'numeric-branch', label: 'New category', branch: { path: ['root/choice[1]'] }, predicates: [{ field: 'family', kind: 'exact', value: 'A' }],
     })

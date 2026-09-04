@@ -57,6 +57,24 @@ make dev
 The frontend is available at `http://localhost:5173` and proxies `/api` to the
 API at `http://localhost:8080`.
 
+For local development, `make dev` seeds a SQLite database at
+`./.data/dev.db`. To run the local API against the Compose Postgres service
+without reseeding it, use:
+
+```sh
+make dev-postgres
+```
+
+The Postgres data directory defaults to `./.data/postgres`, matching the
+`POSTGRES_DATA_DIR` bind mount used by Compose. Override it consistently when
+using another directory:
+
+```sh
+POSTGRES_DATA_DIR=/srv/ubom/postgres docker compose up -d postgres
+POSTGRES_DSN='postgresql://ubom:ubom-dev-only@localhost:5432/ubom?sslmode=disable' \
+POSTGRES_DATA_DIR=/srv/ubom/postgres make dev-postgres
+```
+
 Useful checks:
 
 ```sh
@@ -76,7 +94,8 @@ per-request timing output:
 ## Compose Deployment
 
 `docker compose up --build` starts the frontend, API, and durable Postgres
-volume. Open `http://localhost:8080`.
+bind-mounted data directory. The directory defaults to `./.data/postgres` and
+can be changed with `POSTGRES_DATA_DIR`. Open `http://localhost:8080`.
 
 The API runs embedded, versioned Postgres migrations before serving. The API
 provides `/healthz` for process health and `/readyz` for database readiness.
@@ -136,10 +155,10 @@ cat backup.dump | docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRE
 docker compose start ubom frontend
 ```
 
-The named Postgres volume is persistent, but it is not a backup. Artifact
+The Postgres data directory is persistent, but it is not a backup. Artifact
 snapshot files, when configured, live outside Postgres and must be backed up
 separately. Expect data loss since the last successful backup if both the
-volume and its backup are lost.
+directory and its backup are lost.
 
 ## Release Scope
 

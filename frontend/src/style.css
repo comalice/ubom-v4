@@ -706,6 +706,13 @@ select.primitive-input { min-height: 2.3rem; }
 .taxonomy-kind-field { color: #7655a8; }
 .taxonomy-drop-zone { display: grid; gap: .45rem; min-height: 3.1rem; place-items: center; padding: .5rem; text-align: center; font: .62rem ui-monospace, monospace; }
 .taxonomy-branch-drop-zone { min-height: 3.1rem; padding: .5rem; }
+.taxonomy-branch-section { display: grid; gap: .35rem; margin: .55rem 0 .25rem 1rem; padding: .7rem 0 0 1rem; border-top: 1px solid var(--hairline); border-left: 1px solid var(--hairline); position: relative; }
+.taxonomy-branch-section::before { position: absolute; top: -.35rem; left: -.35rem; width: .65rem; height: .65rem; content: ''; border-left: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); transform: rotate(45deg); background: var(--ground); }
+.taxonomy-branch-heading { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+.taxonomy-branch-eyebrow { color: var(--accent); font: 600 .58rem ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.taxonomy-branch-label { overflow: hidden; color: var(--muted); font: .62rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.taxonomy-branch-rail { display: grid; gap: .4rem; min-width: 0; }
+.taxonomy-branch-gap { min-height: 2.25rem; }
 .taxonomy-overlay-card { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .55rem; color: var(--ink); background: var(--surface); border: 1px solid var(--accent); border-radius: .2rem; }
 .taxonomy-overlay-card strong { color: var(--accent); font-size: .75rem; font-weight: 500; }
 .taxonomy-inspector-rule { display: grid; gap: .3rem; margin-top: 1rem; padding: .7rem; background: var(--accent-light); border: 1px solid var(--hairline); border-radius: .25rem; }

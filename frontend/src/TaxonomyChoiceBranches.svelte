@@ -7,8 +7,8 @@
   export let grammar: TaxonomyGrammar
   export let targetId = ''
   export let readOnly = false
-  export let onBranchDrop: (state: DragDropState<TaxonomyDragPayload>, branchPath: string) => void = () => {}
-  export let onBranchFieldDrop: (state: DragDropState<TaxonomyDragPayload>, branchPath: string, field: string) => void = () => {}
+  export let onBranchDrop: (state: DragDropState<TaxonomyDragPayload>, branchPath: string, targetIndex?: number) => void = () => {}
+  export let onBranchFieldDrop: (state: DragDropState<TaxonomyDragPayload>, branchPath: string, field: string, targetIndex?: number) => void = () => {}
 
   $: choices = taxonomyGrammarChoices(grammar, targetId)
 

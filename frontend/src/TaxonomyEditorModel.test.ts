@@ -380,6 +380,16 @@ describe('taxonomy draft editing', () => {
     expect(acceptsTaxonomyBranchDrop({ kind: 'palette', taxonomyType: 'rule' })).toBe(false)
   })
 
+  it('inserts branch categories in branch-local order without moving other contexts', () => {
+    const first = { id: 'first', label: 'First', targetId: 'root/choice[0]', branch: { path: ['root/choice[0]'] }, placements: [], rules: [], children: [] } as TaxonomyDraftNode
+    const field = { id: 'field', label: 'Field', targetId: 'family', placements: [], rules: [], children: [] } as TaxonomyDraftNode
+    const second = { id: 'second', label: 'Second', targetId: 'root/choice[0]', branch: { path: ['root/choice[0]'] }, placements: [], rules: [], children: [] } as TaxonomyDraftNode
+    const root: TaxonomyDraftNode = { id: 'root', label: 'Root', targetId: 'root', placements: [], rules: [], children: [first, field, second] }
+    const inserted = addTaxonomyDraftBranchChild(root, 'root', 'inserted', 'root/choice[0]', 'Inserted', 1)
+    expect(inserted.children.map(({ id }) => id)).toEqual(['first', 'field', 'inserted', 'second'])
+    expect(root.children.map(({ id }) => id)).toEqual(['first', 'field', 'second'])
+  })
+
   it('keeps edited category input in the draft used to remount collapsed blocks', () => {
     const draft: TaxonomyDraftNode = {
       id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{

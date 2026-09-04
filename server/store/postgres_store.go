@@ -428,6 +428,63 @@ func (s *PostgresStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
 	return items, nil
 }
 
+func (s *PostgresStore) CreatePartNumberSchema(schema ubom.PartNumberSchema) error {
+	if err := schema.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetPartNumberSchema(schema.ID); err == nil {
+		return ErrAlreadyExists
+	} else if !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	taxonomy, err := s.GetTaxonomyDef(schema.TaxonomyDef)
+	if err != nil {
+		return err
+	}
+	seqDef, err := s.GetSeqDef(taxonomy.SeqDef)
+	if err != nil {
+		return err
+	}
+	if err := ubom.NewSchema(seqDef, taxonomy, schema.Policy).Validate(); err != nil {
+		return err
+	}
+	_, err = s.exec("INSERT INTO part_number_schemas (id, name, taxonomy_def_id, require_classification) VALUES (?, ?, ?, ?)", schema.ID, schema.Name, schema.TaxonomyDef, schema.Policy.RequireClassification)
+	return err
+}
+
+func (s *PostgresStore) GetPartNumberSchema(id ubom.PartNumberSchemaID) (ubom.PartNumberSchema, error) {
+	var schema ubom.PartNumberSchema
+	var required bool
+	err := s.queryRow("SELECT id, name, taxonomy_def_id, require_classification FROM part_number_schemas WHERE id = ?", id).Scan(&schema.ID, &schema.Name, &schema.TaxonomyDef, &required)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ubom.PartNumberSchema{}, ErrNotFound
+	}
+	if err != nil {
+		return ubom.PartNumberSchema{}, err
+	}
+	schema.Policy.RequireClassification = required
+	return schema, nil
+}
+
+func (s *PostgresStore) ListPartNumberSchemas() ([]ubom.PartNumberSchema, error) {
+	rows, err := s.query("SELECT id, name, taxonomy_def_id, require_classification FROM part_number_schemas ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ubom.PartNumberSchema{}
+	for rows.Next() {
+		var schema ubom.PartNumberSchema
+		var required bool
+		if err := rows.Scan(&schema.ID, &schema.Name, &schema.TaxonomyDef, &required); err != nil {
+			return nil, err
+		}
+		schema.Policy.RequireClassification = required
+		items = append(items, schema)
+	}
+	return items, rows.Err()
+}
+
 func (s *PostgresStore) GetCurrentTaxonomyDef(seqDef ubom.SeqDefID) (ubom.TaxonomyDef, error) {
 	var id ubom.TaxonomyDefID
 	err := s.queryRow("SELECT taxonomy_def_id FROM current_taxonomies WHERE seq_def_id = ? AND state = 'current'", seqDef).Scan(&id)

@@ -129,6 +129,20 @@ type TaxonomyDefDefinitionView struct {
 	Root          ubom.TaxonomyNode   `json:"root"`
 }
 
+type PartNumberSchemaSummary struct {
+	ID                   ubom.PartNumberSchemaID `json:"id"`
+	Name                 string                  `json:"name"`
+	TaxonomyDef          ubom.TaxonomyDefID      `json:"taxonomyDef"`
+	TaxonomyDefinitionID string                  `json:"taxonomyDefinitionId"`
+	TaxonomyVersion      int                     `json:"taxonomyVersion"`
+	SeqDef               ubom.SeqDefID           `json:"seqDef"`
+	SeqDefinitionID      string                  `json:"seqDefinitionId"`
+	SeqVersion           int                     `json:"seqVersion"`
+	Policy               ubom.SchemaPolicy       `json:"policy"`
+}
+
+type PartNumberSchemaView = PartNumberSchemaSummary
+
 func (s *Service) CreateSeqDef(def ubom.SeqDef) error { return s.store.CreateSeqDef(def) }
 func (s *Service) CreateSeqDefVersion(parent ubom.SeqDefID, root ubom.SeqDefNode, requestedVersion int, requestedID ubom.SeqDefID) (SeqDefDefinitionView, error) {
 	original, err := s.store.GetSeqDef(parent)
@@ -162,6 +176,81 @@ func (s *Service) CreateSeqDefVersion(parent ubom.SeqDefID, root ubom.SeqDefNode
 }
 func (s *Service) CreateTaxonomyDef(def ubom.TaxonomyDef) error {
 	return s.store.CreateTaxonomyDef(def)
+}
+
+func (s *Service) CreatePartNumberSchema(schema ubom.PartNumberSchema) (PartNumberSchemaView, error) {
+	if err := schema.Validate(); err != nil {
+		return PartNumberSchemaView{}, err
+	}
+	if _, err := s.runtimeSchema(schema); err != nil {
+		return PartNumberSchemaView{}, err
+	}
+	if err := s.store.CreatePartNumberSchema(schema); err != nil {
+		return PartNumberSchemaView{}, err
+	}
+	return s.partNumberSchemaView(schema)
+}
+
+func (s *Service) runtimeSchema(schema ubom.PartNumberSchema) (ubom.Schema, error) {
+	taxonomy, err := s.store.GetTaxonomyDef(schema.TaxonomyDef)
+	if err != nil {
+		return ubom.Schema{}, err
+	}
+	seqDef, err := s.store.GetSeqDef(taxonomy.SeqDef)
+	if err != nil {
+		return ubom.Schema{}, err
+	}
+	composed := ubom.NewSchema(seqDef, taxonomy, schema.Policy)
+	if err := composed.Validate(); err != nil {
+		return ubom.Schema{}, err
+	}
+	return composed, nil
+}
+
+func (s *Service) partNumberSchemaView(schema ubom.PartNumberSchema) (PartNumberSchemaView, error) {
+	taxonomy, err := s.store.GetTaxonomyDef(schema.TaxonomyDef)
+	if err != nil {
+		return PartNumberSchemaView{}, err
+	}
+	seqDef, err := s.store.GetSeqDef(taxonomy.SeqDef)
+	if err != nil {
+		return PartNumberSchemaView{}, err
+	}
+	taxonomy = taxonomy.WithLegacyDefaults()
+	seqDef = seqDef.WithLegacyDefaults()
+	return PartNumberSchemaView{ID: schema.ID, Name: schema.Name, TaxonomyDef: taxonomy.ID, TaxonomyDefinitionID: taxonomy.DefinitionID, TaxonomyVersion: taxonomy.Version, SeqDef: seqDef.ID, SeqDefinitionID: seqDef.DefinitionID, SeqVersion: seqDef.Version, Policy: schema.Policy}, nil
+}
+
+func (s *Service) ListPartNumberSchemaViews() ([]PartNumberSchemaSummary, error) {
+	schemas, err := s.store.ListPartNumberSchemas()
+	if err != nil {
+		return nil, err
+	}
+	views := make([]PartNumberSchemaSummary, 0, len(schemas))
+	for _, schema := range schemas {
+		view, err := s.partNumberSchemaView(schema)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, view)
+	}
+	return views, nil
+}
+
+func (s *Service) GetPartNumberSchemaView(id ubom.PartNumberSchemaID) (PartNumberSchemaView, error) {
+	schema, err := s.store.GetPartNumberSchema(id)
+	if err != nil {
+		return PartNumberSchemaView{}, err
+	}
+	return s.partNumberSchemaView(schema)
+}
+
+func (s *Service) LoadPartNumberSchema(id ubom.PartNumberSchemaID) (ubom.Schema, error) {
+	schema, err := s.store.GetPartNumberSchema(id)
+	if err != nil {
+		return ubom.Schema{}, err
+	}
+	return s.runtimeSchema(schema)
 }
 func (s *Service) CreateTaxonomyRevision(seqDef ubom.SeqDefID, parent ubom.TaxonomyDefID, definitionID string, attributeDefs []ubom.AttributeDef, root ubom.TaxonomyNode) (TaxonomyDefDefinitionView, error) {
 	seq, err := s.store.GetSeqDef(seqDef)

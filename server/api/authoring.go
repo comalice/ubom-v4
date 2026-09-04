@@ -395,6 +395,61 @@ func (s *Server) handleTaxonomyDefPath(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, definition)
 }
 
+type partNumberSchemaRequest struct {
+	ID          ubom.PartNumberSchemaID `json:"id"`
+	Name        string                  `json:"name"`
+	TaxonomyDef ubom.TaxonomyDefID      `json:"taxonomyDef"`
+	Policy      ubom.SchemaPolicy       `json:"policy"`
+}
+
+func (s *Server) handlePartNumberSchemas(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		views, err := s.service.ListPartNumberSchemaViews()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not load part-number schemas")
+			return
+		}
+		writeJSON(w, views)
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var request partNumberSchemaRequest
+	if !decodeBody(w, r, &request) {
+		return
+	}
+	view, err := s.service.CreatePartNumberSchema(ubom.PartNumberSchema{ID: request.ID, Name: request.Name, TaxonomyDef: request.TaxonomyDef, Policy: request.Policy})
+	if err != nil {
+		writeCreateError(w, err)
+		return
+	}
+	writeJSONStatus(w, http.StatusCreated, view)
+}
+
+func (s *Server) handlePartNumberSchemaPath(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/part-number-schemas/"), "/")
+	if len(parts) != 1 || parts[0] == "" {
+		writeError(w, http.StatusBadRequest, "invalid part-number schema ID")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	view, err := s.service.GetPartNumberSchemaView(ubom.PartNumberSchemaID(parts[0]))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "part-number schema not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load part-number schema")
+		return
+	}
+	writeJSON(w, view)
+}
+
 func (s *Server) handleCreatePartNumber(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)

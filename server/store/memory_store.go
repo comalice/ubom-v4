@@ -16,18 +16,19 @@ var (
 )
 
 type MemoryStore struct {
-	mu              sync.Mutex
-	sources         map[artifact.SourceID]artifact.Source
-	artifacts       map[artifact.ID]artifact.Artifact
-	snapshots       map[artifact.SnapshotID]artifact.Snapshot
-	seqDefs         map[ubom.SeqDefID]ubom.SeqDef
-	taxonomyDefs    map[ubom.TaxonomyDefID]ubom.TaxonomyDef
-	currentTaxonomy map[ubom.SeqDefID]ubom.TaxonomyDefID
-	partNumbers     map[string]ubom.PartNumber
-	partRevisions   map[ubom.PartRevisionID]ubom.PartRevision
-	partDrafts      map[ubom.PartNumberDraftID]ubom.PartNumberDraft
-	nextPartID      int64
-	nextRevisionID  int64
+	mu                sync.Mutex
+	sources           map[artifact.SourceID]artifact.Source
+	artifacts         map[artifact.ID]artifact.Artifact
+	snapshots         map[artifact.SnapshotID]artifact.Snapshot
+	seqDefs           map[ubom.SeqDefID]ubom.SeqDef
+	taxonomyDefs      map[ubom.TaxonomyDefID]ubom.TaxonomyDef
+	partNumberSchemas map[ubom.PartNumberSchemaID]ubom.PartNumberSchema
+	currentTaxonomy   map[ubom.SeqDefID]ubom.TaxonomyDefID
+	partNumbers       map[string]ubom.PartNumber
+	partRevisions     map[ubom.PartRevisionID]ubom.PartRevision
+	partDrafts        map[ubom.PartNumberDraftID]ubom.PartNumberDraft
+	nextPartID        int64
+	nextRevisionID    int64
 }
 
 // compile time interface check
@@ -35,17 +36,18 @@ var _ Store = (*MemoryStore)(nil)
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		sources:         map[artifact.SourceID]artifact.Source{},
-		artifacts:       map[artifact.ID]artifact.Artifact{},
-		snapshots:       map[artifact.SnapshotID]artifact.Snapshot{},
-		seqDefs:         map[ubom.SeqDefID]ubom.SeqDef{},
-		taxonomyDefs:    map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
-		currentTaxonomy: map[ubom.SeqDefID]ubom.TaxonomyDefID{},
-		partNumbers:     map[string]ubom.PartNumber{},
-		partRevisions:   map[ubom.PartRevisionID]ubom.PartRevision{},
-		partDrafts:      map[ubom.PartNumberDraftID]ubom.PartNumberDraft{},
-		nextPartID:      1,
-		nextRevisionID:  1,
+		sources:           map[artifact.SourceID]artifact.Source{},
+		artifacts:         map[artifact.ID]artifact.Artifact{},
+		snapshots:         map[artifact.SnapshotID]artifact.Snapshot{},
+		seqDefs:           map[ubom.SeqDefID]ubom.SeqDef{},
+		taxonomyDefs:      map[ubom.TaxonomyDefID]ubom.TaxonomyDef{},
+		partNumberSchemas: map[ubom.PartNumberSchemaID]ubom.PartNumberSchema{},
+		currentTaxonomy:   map[ubom.SeqDefID]ubom.TaxonomyDefID{},
+		partNumbers:       map[string]ubom.PartNumber{},
+		partRevisions:     map[ubom.PartRevisionID]ubom.PartRevision{},
+		partDrafts:        map[ubom.PartNumberDraftID]ubom.PartNumberDraft{},
+		nextPartID:        1,
+		nextRevisionID:    1,
 	}
 }
 
@@ -281,6 +283,45 @@ func (s *MemoryStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
 	items := make([]ubom.TaxonomyDef, 0, len(s.taxonomyDefs))
 	for _, def := range s.taxonomyDefs {
 		items = append(items, cloneTaxonomyDef(def))
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items, nil
+}
+
+func (s *MemoryStore) CreatePartNumberSchema(schema ubom.PartNumberSchema) error {
+	if err := schema.Validate(); err != nil {
+		return err
+	}
+	if _, ok := s.partNumberSchemas[schema.ID]; ok {
+		return ErrAlreadyExists
+	}
+	taxonomy, err := s.GetTaxonomyDef(schema.TaxonomyDef)
+	if err != nil {
+		return err
+	}
+	seqDef, err := s.GetSeqDef(taxonomy.SeqDef)
+	if err != nil {
+		return err
+	}
+	if err := ubom.NewSchema(seqDef, taxonomy, schema.Policy).Validate(); err != nil {
+		return err
+	}
+	s.partNumberSchemas[schema.ID] = schema
+	return nil
+}
+
+func (s *MemoryStore) GetPartNumberSchema(id ubom.PartNumberSchemaID) (ubom.PartNumberSchema, error) {
+	schema, ok := s.partNumberSchemas[id]
+	if !ok {
+		return ubom.PartNumberSchema{}, ErrNotFound
+	}
+	return schema, nil
+}
+
+func (s *MemoryStore) ListPartNumberSchemas() ([]ubom.PartNumberSchema, error) {
+	items := make([]ubom.PartNumberSchema, 0, len(s.partNumberSchemas))
+	for _, schema := range s.partNumberSchemas {
+		items = append(items, schema)
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
 	return items, nil

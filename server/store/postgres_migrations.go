@@ -28,6 +28,12 @@ ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS image_reference TEXT NOT NUL
 	`CREATE INDEX IF NOT EXISTS idx_part_numbers_taxonomy_node_value ON part_numbers (taxonomy_def_id, taxonomy_node_id, value);
 CREATE INDEX IF NOT EXISTS idx_part_revisions_part_number_id_id ON part_revisions (part_number_id, id);`,
 	`ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS branch TEXT;`,
+	`CREATE TABLE IF NOT EXISTS part_number_schemas (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		taxonomy_def_id TEXT NOT NULL REFERENCES taxonomy_defs(id),
+		require_classification BOOLEAN NOT NULL DEFAULT FALSE
+	);`,
 }
 
 func runPostgresMigrations(db *sql.DB) error {

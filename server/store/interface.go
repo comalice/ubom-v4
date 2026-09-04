@@ -26,6 +26,10 @@ type Store interface {
 	GetCurrentTaxonomyDef(ubom.SeqDefID) (ubom.TaxonomyDef, error)
 	ListTaxonomyDefHistory(string) ([]ubom.TaxonomyDef, error)
 
+	CreatePartNumberSchema(ubom.PartNumberSchema) error
+	GetPartNumberSchema(ubom.PartNumberSchemaID) (ubom.PartNumberSchema, error)
+	ListPartNumberSchemas() ([]ubom.PartNumberSchema, error)
+
 	CreatePartNumber(ubom.PartNumber) (ubom.PartNumber, error)
 	ArchivePartNumber(ubom.PartNumberID) error
 	GetPartNumber(string) (ubom.PartNumber, error)

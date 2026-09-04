@@ -92,6 +92,13 @@ func (s *SQLiteStore) init() error {
 			FOREIGN KEY (seq_def_id) REFERENCES seq_defs(id),
 			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id)
 		);
+		CREATE TABLE IF NOT EXISTS part_number_schemas (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			taxonomy_def_id TEXT NOT NULL,
+			require_classification INTEGER NOT NULL DEFAULT 0,
+			FOREIGN KEY (taxonomy_def_id) REFERENCES taxonomy_defs(id)
+		);
 		CREATE TABLE IF NOT EXISTS taxonomy_nodes (
 			taxonomy_def_id TEXT NOT NULL,
 			id TEXT NOT NULL,
@@ -673,6 +680,63 @@ func (s *SQLiteStore) ListTaxonomyDefs() ([]ubom.TaxonomyDef, error) {
 		items = append(items, def)
 	}
 	return items, nil
+}
+
+func (s *SQLiteStore) CreatePartNumberSchema(schema ubom.PartNumberSchema) error {
+	if err := schema.Validate(); err != nil {
+		return err
+	}
+	if _, err := s.GetPartNumberSchema(schema.ID); err == nil {
+		return ErrAlreadyExists
+	} else if !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	taxonomy, err := s.GetTaxonomyDef(schema.TaxonomyDef)
+	if err != nil {
+		return err
+	}
+	seqDef, err := s.GetSeqDef(taxonomy.SeqDef)
+	if err != nil {
+		return err
+	}
+	if err := ubom.NewSchema(seqDef, taxonomy, schema.Policy).Validate(); err != nil {
+		return err
+	}
+	_, err = s.db.Exec("INSERT INTO part_number_schemas (id, name, taxonomy_def_id, require_classification) VALUES (?, ?, ?, ?)", schema.ID, schema.Name, schema.TaxonomyDef, schema.Policy.RequireClassification)
+	return err
+}
+
+func (s *SQLiteStore) GetPartNumberSchema(id ubom.PartNumberSchemaID) (ubom.PartNumberSchema, error) {
+	var schema ubom.PartNumberSchema
+	var requireClassification bool
+	err := s.db.QueryRow("SELECT id, name, taxonomy_def_id, require_classification FROM part_number_schemas WHERE id = ?", id).Scan(&schema.ID, &schema.Name, &schema.TaxonomyDef, &requireClassification)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ubom.PartNumberSchema{}, ErrNotFound
+	}
+	if err != nil {
+		return ubom.PartNumberSchema{}, err
+	}
+	schema.Policy.RequireClassification = requireClassification
+	return schema, nil
+}
+
+func (s *SQLiteStore) ListPartNumberSchemas() ([]ubom.PartNumberSchema, error) {
+	rows, err := s.db.Query("SELECT id, name, taxonomy_def_id, require_classification FROM part_number_schemas ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ubom.PartNumberSchema{}
+	for rows.Next() {
+		var schema ubom.PartNumberSchema
+		var required bool
+		if err := rows.Scan(&schema.ID, &schema.Name, &schema.TaxonomyDef, &required); err != nil {
+			return nil, err
+		}
+		schema.Policy.RequireClassification = required
+		items = append(items, schema)
+	}
+	return items, rows.Err()
 }
 
 func (s *SQLiteStore) GetCurrentTaxonomyDef(seqDef ubom.SeqDefID) (ubom.TaxonomyDef, error) {

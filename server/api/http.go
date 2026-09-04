@@ -61,6 +61,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/seq-defs/preview/candidate", s.handleSeqDefCandidatePreview)
 	mux.HandleFunc("/api/taxonomy-defs", s.handleTaxonomyDefs)
 	mux.HandleFunc("/api/taxonomy-defs/", s.handleTaxonomyDefPath)
+	mux.HandleFunc("/api/part-number-schemas", s.handlePartNumberSchemas)
+	mux.HandleFunc("/api/part-number-schemas/", s.handlePartNumberSchemaPath)
 	mux.HandleFunc("/api/seq-defs/", s.handleSeqDefPath)
 	mux.HandleFunc("/api/revisions", s.handleCreateRevision)
 	mux.HandleFunc("/api/part-drafts", s.handlePartDrafts)

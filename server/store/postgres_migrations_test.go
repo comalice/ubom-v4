@@ -25,7 +25,10 @@ func TestPostgresMigrationsIncludeTaxonomyNodeLookupIndexes(t *testing.T) {
 		!strings.Contains(postgresMigrations[0], "CREATE INDEX IF NOT EXISTS idx_part_revisions_part_number_id_id") {
 		t.Fatal("initial Postgres migration is missing taxonomy-node lookup indexes")
 	}
-	if !strings.Contains(postgresMigrations[len(postgresMigrations)-1], "CREATE INDEX IF NOT EXISTS idx_part_numbers_taxonomy_node_value") {
-		t.Fatal("upgrade migration is missing part-number taxonomy-node index")
+	if !strings.Contains(postgresMigrations[len(postgresMigrations)-2], "CREATE INDEX IF NOT EXISTS idx_part_numbers_taxonomy_node_value") {
+		t.Fatal("index upgrade migration is missing part-number taxonomy-node index")
+	}
+	if !strings.Contains(postgresMigrations[len(postgresMigrations)-1], "ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS branch TEXT") {
+		t.Fatal("latest Postgres migration is missing the taxonomy branch column upgrade")
 	}
 }

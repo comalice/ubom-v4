@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS bom_line_items (parent_revision_id BIGINT NOT NULL RE
 	`ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
 ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS image TEXT NOT NULL DEFAULT '';
 ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS image_reference TEXT NOT NULL DEFAULT '';`,
-	`ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS branch TEXT;`,
 	`CREATE INDEX IF NOT EXISTS idx_part_numbers_taxonomy_node_value ON part_numbers (taxonomy_def_id, taxonomy_node_id, value);
 CREATE INDEX IF NOT EXISTS idx_part_revisions_part_number_id_id ON part_revisions (part_number_id, id);`,
+	`ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS branch TEXT;`,
 }
 
 func runPostgresMigrations(db *sql.DB) error {

@@ -21,7 +21,15 @@
   let error = ''
   let query = ''
   let filters: Record<string, string[]> = {}
+  let currentPage = 1
+  let currentPageSize = 50
   let request = 0
+
+  const pageSizeOptions = [25, 50, 100]
+  const sortOptions = [
+    { value: 'value', label: 'Part number' },
+    { value: 'id', label: 'ID' },
+  ]
 
   $: stateKey = JSON.stringify(state ?? {})
   $: if (stateKey !== loadedStateKey) {
@@ -52,12 +60,16 @@
       node = resolvedNode
       parts = result.items
       total = result.total
+      currentPage = result.page
+      currentPageSize = result.pageSize
     } catch (reason) {
       if (requestID !== request) return
       definition = null
       node = null
       parts = []
       total = 0
+      currentPage = 1
+      currentPageSize = 50
       error = reason instanceof Error ? reason.message : 'Unable to load catalog'
     } finally {
       if (requestID === request) loading = false
@@ -133,6 +145,29 @@
   function submitSearch() {
     navigate(catalogPath(scopedState({ node: node?.id, q: query || undefined, page: undefined })))
   }
+
+  function updatePage(page: number) {
+    navigate(catalogPath(scopedState({ node: node?.id, page })))
+  }
+
+  function updatePageSize(event: Event) {
+    const pageSize = Number((event.currentTarget as HTMLSelectElement).value)
+    navigate(catalogPath(scopedState({ node: node?.id, pageSize, page: undefined })))
+  }
+
+  function updateSort(event: Event) {
+    const sort = (event.currentTarget as HTMLSelectElement).value
+    navigate(catalogPath(scopedState({ node: node?.id, sort, page: undefined })))
+  }
+
+  function updateOrder(event: Event) {
+    const order = (event.currentTarget as HTMLSelectElement).value as 'asc' | 'desc'
+    navigate(catalogPath(scopedState({ node: node?.id, order, page: undefined })))
+  }
+
+  $: totalPages = Math.max(1, Math.ceil(total / currentPageSize))
+  $: selectedSort = state?.sort ?? 'value'
+  $: selectedOrder = state?.order ?? 'asc'
 </script>
 
 {#if loading}
@@ -178,7 +213,31 @@
       {/if}
       <section class="catalog-parts-section" aria-labelledby="catalog-parts-heading">
         <div class="catalog-section-heading"><h3 id="catalog-parts-heading">Parts in this scope</h3><span>{parts.length} shown</span></div>
+        <div class="catalog-controls" aria-label="Catalog result controls">
+          <label>Sort by
+            <select value={selectedSort} on:change={updateSort}>
+              {#each sortOptions as option}<option value={option.value}>{option.label}</option>{/each}
+            </select>
+          </label>
+          <label>Order
+            <select value={selectedOrder} on:change={updateOrder}>
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </label>
+          <label>Results per page
+            <select value={currentPageSize} on:change={updatePageSize}>
+              {#if !pageSizeOptions.includes(currentPageSize)}<option value={currentPageSize}>{currentPageSize}</option>{/if}
+              {#each pageSizeOptions as option}<option value={option}>{option}</option>{/each}
+            </select>
+          </label>
+        </div>
         {#if parts.length > 0}<PartTable parts={parts} columns={node.attributes} seqDef={node.seqDefId} />{:else}<AsyncState state="empty" message="No parts in this scope." />{/if}
+        <nav class="catalog-pagination" aria-label="Catalog pagination">
+          <button type="button" on:click={() => updatePage(currentPage - 1)} disabled={currentPage <= 1}>Previous</button>
+          <span aria-live="polite">Page {currentPage} of {totalPages}</span>
+          <button type="button" on:click={() => updatePage(currentPage + 1)} disabled={currentPage >= totalPages}>Next</button>
+        </nav>
       </section>
     </div>
   </CatalogBrowser>
@@ -202,4 +261,10 @@
   .catalog-category-section, .catalog-parts-section { margin-top: 1.75rem; }
   .catalog-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; padding-bottom: .4rem; border-bottom: 1px solid var(--hairline); }
   .catalog-section-heading h3 { margin: 0; font: 400 1.1rem Georgia, serif; }
+  .catalog-controls { display: flex; flex-wrap: wrap; gap: .75rem 1rem; margin-bottom: 1rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .catalog-controls label { display: grid; gap: .3rem; }
+  .catalog-controls select { min-width: 8rem; padding: .45rem .55rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .72rem Inter, sans-serif; }
+  .catalog-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; color: var(--muted); font: .7rem ui-monospace, monospace; }
+  .catalog-pagination button { padding: .45rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; cursor: pointer; font: inherit; }
+  .catalog-pagination button:disabled { color: var(--muted); cursor: not-allowed; opacity: .55; }
 </style>

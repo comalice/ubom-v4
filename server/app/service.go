@@ -16,6 +16,58 @@ type Service struct {
 	store store.Store
 }
 
+// definitionCache is scoped to one catalog operation. Caching errors as well
+// as values preserves the first failing store call and avoids retrying it.
+type definitionCache struct {
+	store      store.Store
+	seqDefs    map[ubom.SeqDefID]ubom.SeqDef
+	seqErrors  map[ubom.SeqDefID]error
+	taxonomies map[ubom.TaxonomyDefID]ubom.TaxonomyDef
+	taxErrors  map[ubom.TaxonomyDefID]error
+}
+
+func newDefinitionCache(s store.Store) *definitionCache {
+	return &definitionCache{
+		store:      s,
+		seqDefs:    make(map[ubom.SeqDefID]ubom.SeqDef),
+		seqErrors:  make(map[ubom.SeqDefID]error),
+		taxonomies: make(map[ubom.TaxonomyDefID]ubom.TaxonomyDef),
+		taxErrors:  make(map[ubom.TaxonomyDefID]error),
+	}
+}
+
+func (c *definitionCache) seqDef(id ubom.SeqDefID) (ubom.SeqDef, error) {
+	if definition, ok := c.seqDefs[id]; ok {
+		return definition, nil
+	}
+	if err, ok := c.seqErrors[id]; ok {
+		return ubom.SeqDef{}, err
+	}
+	definition, err := c.store.GetSeqDef(id)
+	if err != nil {
+		c.seqErrors[id] = err
+		return ubom.SeqDef{}, err
+	}
+	c.seqDefs[id] = definition
+	return definition, nil
+}
+
+func (c *definitionCache) taxonomyDef(id ubom.TaxonomyDefID) (ubom.TaxonomyDef, error) {
+	if definition, ok := c.taxonomies[id]; ok {
+		return definition, nil
+	}
+	if err, ok := c.taxErrors[id]; ok {
+		return ubom.TaxonomyDef{}, err
+	}
+	definition, err := c.store.GetTaxonomyDef(id)
+	if err != nil {
+		c.taxErrors[id] = err
+		return ubom.TaxonomyDef{}, err
+	}
+	c.taxonomies[id] = definition
+	return definition, nil
+}
+
 func NewService(s store.Store) *Service {
 	return &Service{store: s}
 }
@@ -690,21 +742,20 @@ func (s *Service) CatalogFacetsFor(query PartSearchQuery) (CatalogFacets, error)
 }
 
 // CatalogRootFor builds every current taxonomy landing group from one loaded
-// taxonomy set and one loaded part set. Counts include descendants of each
+// sequence set and one loaded part set. Counts include descendants of each
 // top-level child and default to active parts unless explicitly overridden.
 func (s *Service) CatalogRootFor(query PartSearchQuery) (CatalogRootView, error) {
 	parts, err := s.store.ListPartNumbers()
 	if err != nil {
 		return CatalogRootView{}, err
 	}
-	taxonomies, err := s.store.ListTaxonomyDefs()
+	listedSeqDefs, err := s.store.ListSeqDefs()
 	if err != nil {
 		return CatalogRootView{}, err
 	}
-	seqDefs := make(map[ubom.SeqDefID]struct{})
-	for _, taxonomy := range taxonomies {
-		taxonomy = taxonomy.WithLegacyDefaults()
-		seqDefs[taxonomy.SeqDef] = struct{}{}
+	seqDefs := make(map[ubom.SeqDefID]struct{}, len(listedSeqDefs))
+	for _, seqDef := range listedSeqDefs {
+		seqDefs[seqDef.ID] = struct{}{}
 	}
 	orderedSeqDefs := make([]ubom.SeqDefID, 0, len(seqDefs))
 	for seqDef := range seqDefs {
@@ -825,6 +876,7 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 		query.PageSize = 200
 	}
 	q := strings.ToLower(strings.TrimSpace(query.Q))
+	definitions := newDefinitionCache(s.store)
 	filtered := make([]ubom.PartNumber, 0, len(parts))
 	for _, part := range parts {
 		if query.IncludeArchived != nil && !*query.IncludeArchived && part.EffectiveStatus() == ubom.PartNumberStatusArchived {
@@ -837,7 +889,7 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 			continue
 		}
 		if query.TaxonomyNode != "" {
-			taxonomy, taxonomyErr := s.store.GetTaxonomyDef(part.TaxonomyDefID)
+			taxonomy, taxonomyErr := definitions.taxonomyDef(part.TaxonomyDefID)
 			if taxonomyErr != nil {
 				return PartSearchResult{}, taxonomyErr
 			}
@@ -921,7 +973,7 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 	}
 	items := make([]PartNumberListItem, 0, end-start)
 	for _, part := range filtered[start:end] {
-		item, itemErr := s.partNumberListItem(part)
+		item, itemErr := s.partNumberListItemWithCache(part, definitions)
 		if itemErr != nil {
 			return PartSearchResult{}, itemErr
 		}
@@ -1101,8 +1153,9 @@ func (s *Service) ListPartNumberViews() ([]PartNumberListItem, error) {
 		return nil, err
 	}
 	items := make([]PartNumberListItem, 0, len(parts))
+	definitions := newDefinitionCache(s.store)
 	for _, part := range parts {
-		item, err := s.partNumberListItem(part)
+		item, err := s.partNumberListItemWithCache(part, definitions)
 		if err != nil {
 			return nil, err
 		}
@@ -1206,11 +1259,15 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 }
 
 func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, error) {
-	seqDef, err := s.store.GetSeqDef(part.SeqDefID)
+	return s.partNumberListItemWithCache(part, newDefinitionCache(s.store))
+}
+
+func (s *Service) partNumberListItemWithCache(part ubom.PartNumber, definitions *definitionCache) (PartNumberListItem, error) {
+	seqDef, err := definitions.seqDef(part.SeqDefID)
 	if err != nil {
 		return PartNumberListItem{}, err
 	}
-	taxonomyDef, err := s.store.GetTaxonomyDef(part.TaxonomyDefID)
+	taxonomyDef, err := definitions.taxonomyDef(part.TaxonomyDefID)
 	if err != nil {
 		return PartNumberListItem{}, err
 	}

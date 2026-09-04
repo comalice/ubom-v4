@@ -150,6 +150,25 @@ func TestSearchPartNumberViewsMatchesAnyValueWithinEachAttribute(t *testing.T) {
 	}
 }
 
+func TestSearchPartNumberViewsCachesDefinitionsAcrossFilteringAndRendering(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
+	counting := &countingTaxonomyNodeStore{Store: persistence}
+
+	result, err := NewService(counting).SearchPartNumberViews(PartSearchQuery{TaxonomyNode: "components"})
+	if err != nil {
+		t.Fatalf("SearchPartNumberViews() error = %v", err)
+	}
+	if result.Total != 2 || len(result.Items) != 2 {
+		t.Fatalf("result = %#v, want both sample parts", result)
+	}
+	if counting.taxonomyCalls != 1 || counting.seqDefCalls != 1 {
+		t.Fatalf("definition calls = taxonomy %d, sequence %d; want one of each", counting.taxonomyCalls, counting.seqDefCalls)
+	}
+}
+
 func TestCatalogRootForGroupsCurrentTaxonomiesAndCountsActiveParts(t *testing.T) {
 	persistence := store.NewMemoryStore()
 	if _, err := LoadSampleData(persistence); err != nil {

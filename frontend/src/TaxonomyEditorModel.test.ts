@@ -43,6 +43,14 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(taxonomyTargetField(grammar, 'missing')).toBeUndefined()
   })
 
+  it('resolves a branch target to its first captured field', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'branch-target', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [
+      { kind: 'concat', children: [{ kind: 'bind', name: 'family', child: { kind: 'literal', text: 'A' } }, { kind: 'bind', name: 'group', child: { kind: 'literal', text: '1' } }] },
+      { kind: 'bind', name: 'family', child: { kind: 'literal', text: 'B' } },
+    ] } })
+    expect(taxonomyTargetField(grammar, 'root/choice[0]')).toBe('family')
+  })
+
   it('derives arbitrary binding and later context fields in grammar order', () => {
     const grammar = taxonomyGrammarFromSeqDef({ id: 'arbitrary', definitionId: 'seq', version: 1, root: { kind: 'concat', children: [
       { kind: 'bind', name: 'region-code', child: { kind: 'literal', text: 'EU' } },

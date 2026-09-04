@@ -40,7 +40,10 @@ export function taxonomyTargetField(grammar: TaxonomyGrammar, targetId: string):
     visit(node.children)
   })
   visit(grammar.nodes)
-  return field
+  if (field) return field
+  const branch = taxonomyGrammarNode(grammar, targetId)
+  if (branch?.branchPath === targetId) return branch.capturedFields?.[0]
+  return undefined
 }
 
 export function taxonomyBranchPath(grammar: TaxonomyGrammar, targetId: string): string | undefined {

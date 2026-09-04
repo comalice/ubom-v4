@@ -67,15 +67,17 @@
     const item = state.draggedItem
     const parent = findTaxonomyDraftNode(taxonomyDraft, parentID)
     if (!item || !parent || !taxonomyTargetIsUsable(parent.targetId)) return
-    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, parentID, targetIndex)
-    else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) change(moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, parentID, targetIndex))
+    const targetField = taxonomyTargetField(grammar, parent.targetId) ?? parent.targetId
+    if (item.kind === 'palette' && item.taxonomyType === 'category') addCategory(item, parentID, targetField, targetIndex)
+    else if (item.kind === 'taxonomy' && item.taxonomyType === 'category' && item.sourceNodeId) change(moveTaxonomyDraftCategory(taxonomyDraft, item.sourceNodeId, parentID, targetField, targetIndex))
   }
 
   function handleRuleDrop(state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) {
     const item = state.draggedItem
     const parent = findTaxonomyDraftNode(taxonomyDraft, parentID)
     if (!item || !parent || !taxonomyTargetIsUsable(parent.targetId)) return
-    if (item.kind === 'palette' && item.taxonomyType === 'rule') change(addTaxonomyDraftRule(taxonomyDraft, parentID, newPlacement(item, parent.targetId), targetIndex))
+    const targetField = taxonomyTargetField(grammar, parent.targetId) ?? parent.targetId
+    if (item.kind === 'palette' && item.taxonomyType === 'rule') change(addTaxonomyDraftRule(taxonomyDraft, parentID, newPlacement(item, targetField), targetIndex))
     else if (item.kind === 'taxonomy' && item.taxonomyType === 'rule' && item.sourceNodeId) change(moveTaxonomyDraftRule(taxonomyDraft, item.sourceNodeId, parentID, item.placementId, targetIndex))
   }
 

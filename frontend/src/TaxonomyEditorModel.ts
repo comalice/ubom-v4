@@ -82,6 +82,13 @@ export function taxonomyContextFields(grammar: TaxonomyGrammar, targetId: string
   return root || targetId === 'grammar-root' ? fields.slice(0, 1) : fields
 }
 
+export function taxonomyGrammarFollowingFields(grammar: TaxonomyGrammar, targetId: string, field?: string): string[] {
+  const target = taxonomyGrammarNode(grammar, targetId)
+  const fields = target?.capturedFields ?? taxonomyContextFields(grammar, targetId)
+  const index = field ? fields.indexOf(field) : 0
+  return fields.slice(index < 0 ? 0 : index + 1)
+}
+
 function sequenceSummary(node: SeqDefNode): string {
   if (node.kind === 'literal') return JSON.stringify(node.text ?? '')
   if (node.kind === 'range') return `${node.min ?? 0}..${node.max ?? 0} / width ${node.width ?? 1}`

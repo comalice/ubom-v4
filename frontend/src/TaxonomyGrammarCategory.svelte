@@ -6,7 +6,7 @@
   import DropZone from './DropZone.svelte'
   import TaxonomyChoiceBranches from './TaxonomyChoiceBranches.svelte'
   import TaxonomyBranchSection from './TaxonomyBranchSection.svelte'
-  import { acceptsTaxonomyRuleDrop, taxonomyBranchContainer, taxonomyGrammarNode, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
+  import { acceptsTaxonomyRuleDrop, taxonomyGrammarFollowingFields, taxonomyTargetContainer, type TaxonomyDragPayload, type TaxonomyDraftNode, type TaxonomyGrammar, type TaxonomyPlacement, type TaxonomyRulePredicate } from './TaxonomyEditorModel'
 
   export let placement: TaxonomyPlacement
   export let draftNode: TaxonomyDraftNode | undefined
@@ -35,9 +35,10 @@
     : draftNode?.targetResolution?.status === 'unresolved'
       ? `No grammar occurrence found for ${draftNode.targetResolution.field}`
       : ''
-  $: progressiveContextFields = draftNode?.branch && placement.predicateData?.field
-    ? (taxonomyGrammarNode(grammar, draftNode.targetId)?.capturedFields ?? []).slice(Math.max(0, (taxonomyGrammarNode(grammar, draftNode.targetId)?.capturedFields ?? []).indexOf(placement.predicateData.field) + 1))
+  $: progressiveContextFields = draftNode?.branch
+    ? taxonomyGrammarFollowingFields(grammar, draftNode.targetId, placement.predicateData?.field)
     : contextFields
+  $: childExcludedFields = draftNode?.branch ? progressiveContextFields : contextFields
 </script>
 
 <TaxonomyCategoryBlock
@@ -101,7 +102,7 @@
   </svelte:fragment>
   <svelte:fragment slot="children">
     {#if draftNode}
-      <TaxonomyCategoryChildren parent={draftNode} excludedFields={contextFields} {readOnly} onDrop={onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onContextDrop} {contextFieldsForNode} {targetFieldForNode} {grammar} {onBranchDrop} {onBranchFieldDrop} />
+      <TaxonomyCategoryChildren parent={draftNode} excludedFields={childExcludedFields} {readOnly} onDrop={onChildDrop} {onRuleDrop} {onRemove} {onDragEnd} {onAttributes} {onNodeLabelChange} {onNodeIdChange} {onRulePredicateChange} {onContextDrop} {contextFieldsForNode} {targetFieldForNode} {grammar} {onBranchDrop} {onBranchFieldDrop} />
     {/if}
   </svelte:fragment>
 </TaxonomyCategoryBlock>

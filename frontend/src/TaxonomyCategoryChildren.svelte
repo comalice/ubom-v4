@@ -7,6 +7,7 @@
   export let parent: TaxonomyDraftNode
   export let field: string | undefined = undefined
   export let excludedFields: string[] = []
+  export let suppressDropZones = false
   export let readOnly = false
   export let onDrop: ((state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) => void) | undefined
   export let onRuleDrop: (state: DragDropState<TaxonomyDragPayload>, parentID: string, targetIndex: number) => void = () => {}
@@ -48,7 +49,7 @@
 
 <div class="taxonomy-category-children">
   <span class="taxonomy-category-children-label">{field ?? 'Child categories'}</span>
-  {#if !readOnly && (field !== undefined || taxonomyTargetIsUsable(parent.targetId))}
+  {#if !suppressDropZones && !readOnly && (field !== undefined || taxonomyTargetIsUsable(parent.targetId))}
     <DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={container} accepts={accepts} onDrop={drop(visibleChildren.length ? childIndex(visibleChildren[0]) : sourceChildren.length)} ariaLabel={field ? `Drop a category on ${field} for ${parent.label}` : 'Drop a child category'} />
   {/if}
   {#each visibleChildren as child (child.id)}
@@ -75,7 +76,7 @@
         {targetFieldForNode}
       />
     {/if}
-    {#if !readOnly && (field !== undefined || taxonomyTargetIsUsable(parent.targetId))}
+    {#if !suppressDropZones && !readOnly && (field !== undefined || taxonomyTargetIsUsable(parent.targetId))}
       <DropZone variant="gap" mode="inactive" className="taxonomy-child-drop-zone" container={container} accepts={accepts} onDrop={drop(childIndex(child) + 1)} ariaLabel={`Insert a category after ${child.label}`} />
     {/if}
   {/each}

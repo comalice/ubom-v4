@@ -191,6 +191,10 @@ export function taxonomyGrammarFirstBinding(nodes: StructureNode[]): StructureNo
   return undefined
 }
 
+export function taxonomyGrammarFieldHasChoiceAlternatives(grammar: TaxonomyGrammar, targetId: string, field: string): boolean {
+  return taxonomyGrammarChoices(grammar, targetId).some((choice) => choice.children.some((alternative) => taxonomyGrammarFirstBinding(alternative.children)?.label === field))
+}
+
 export function taxonomyGrammarChoiceDropLabel(alternative: StructureNode, field?: string): string {
   const label = alternative.alternativeLabel?.replace(/^alternative\s+/i, '') ?? alternative.label
   return field ? `${field} - ${label}` : `branch - ${label}`

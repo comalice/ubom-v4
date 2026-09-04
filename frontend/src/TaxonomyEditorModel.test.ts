@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
+import { acceptsTaxonomyCategoryChildDrop, acceptsTaxonomyRuleDrop, addTaxonomyDraftBranchChild, addTaxonomyDraftBranchFieldChild, addTaxonomyDraftChild, effectiveTaxonomyAttributes, findTaxonomyDraftNode, moveTaxonomyDraftCategory, moveTaxonomyDraftChild, moveTaxonomyDraftRule, reorderTaxonomyDraftRule, taxonomyAssignmentErrorKey, taxonomyBranchPath, taxonomyContextFields, taxonomyDefinitionInputFromDraft, taxonomyDraftFromDefinition, taxonomyGrammarAlternatives, taxonomyGrammarBindingFields, taxonomyGrammarChoiceDropLabel, taxonomyGrammarChoices, taxonomyGrammarFieldHasChoiceAlternatives, taxonomyGrammarFirstBinding, taxonomyGrammarFromSeqDef, taxonomyTargetContainer, taxonomyTargetField, taxonomyTargetIsUsable, updateTaxonomyDraftNode, updateTaxonomyDraftRule, validateTaxonomyAttributes, type TaxonomyAttributeDefinition, type TaxonomyDraftNode, type TaxonomyPlacement } from './TaxonomyEditorModel'
 import type { TaxonomyPredicate } from './api'
 
 const definitions: TaxonomyAttributeDefinition[] = [
@@ -133,6 +133,17 @@ describe('taxonomy persisted-definition adapters', () => {
     expect(alternatives.map((alternative) => taxonomyGrammarFirstBinding(alternative.children)?.label)).toEqual(['family', 'family', undefined])
     expect(taxonomyGrammarChoiceDropLabel(alternatives[0], 'family')).toBe('family - A')
     expect(taxonomyGrammarChoiceDropLabel(alternatives[2])).toBe('branch - C')
+  })
+
+  it('detects when the root field is covered by choice alternatives', () => {
+    const grammar = taxonomyGrammarFromSeqDef({ id: 'root-choices', definitionId: 'seq', version: 1, root: { kind: 'choice', children: [
+      { kind: 'bind', name: 'code', child: { kind: 'literal', text: 'A' } },
+      { kind: 'bind', name: 'code', child: { kind: 'literal', text: 'B' } },
+    ] } })
+
+    expect(taxonomyGrammarFieldHasChoiceAlternatives(grammar, 'grammar-root', 'code')).toBe(true)
+    expect(taxonomyGrammarFieldHasChoiceAlternatives(grammar, 'grammar-root', 'other')).toBe(false)
+    expect(taxonomyGrammarFieldHasChoiceAlternatives(taxonomyGrammarFromSeqDef({ id: 'plain', definitionId: 'seq', version: 1, root: { kind: 'bind', name: 'code', child: { kind: 'literal', text: 'A' } } }), 'grammar-root', 'code')).toBe(false)
   })
 
   it('retains nested choice ancestry without flattening branch metadata', () => {

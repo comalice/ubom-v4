@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"regexp"
@@ -28,6 +29,7 @@ type Server struct {
 	snapshotService *app.SnapshotService
 	readiness       func() error
 	buildID         string
+	logger          *slog.Logger
 }
 
 func NewServer(service *app.Service) *Server {
@@ -35,14 +37,14 @@ func NewServer(service *app.Service) *Server {
 }
 
 func NewServerWithSnapshotService(service *app.Service, snapshotService *app.SnapshotService) *Server {
-	return &Server{service: service, snapshotService: snapshotService, buildID: BuildID}
+	return &Server{service: service, snapshotService: snapshotService, buildID: BuildID, logger: slog.Default()}
 }
 
 func NewServerWithBuildID(service *app.Service, buildID string) *Server {
 	if buildID == "" {
 		buildID = BuildID
 	}
-	return &Server{service: service, buildID: buildID}
+	return &Server{service: service, buildID: buildID, logger: slog.Default()}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -76,11 +78,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/artifact-sources", s.handleSources)
 	mux.HandleFunc("/api/artifacts", s.handleArtifacts)
 	mux.HandleFunc("/api/artifacts/", s.handleArtifact)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-UBOM-Build-ID", s.buildID)
 		mux.ServeHTTP(w, r)
 	})
+	return requestLogger(s.logger, handler)
 }
+
+// SetLogger replaces the structured logger used by the HTTP diagnostics.
+func (s *Server) SetLogger(logger *slog.Logger) { s.logger = logger }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

@@ -91,6 +91,16 @@ per-request timing output:
 ./scripts/stress-dev-endpoints.sh 100
 ```
 
+To time representative frontend HTML page requests repeatedly:
+
+```sh
+./scripts/measure-frontend-pages.sh 20
+```
+
+This measures the frontend response only. `curl` does not run page JavaScript or
+wait for API calls started by the browser; see `test/qa/FRONTEND_PAGE_LOAD.md`
+for the distinction and browser-level measurement guidance.
+
 ## Compose Deployment
 
 `docker compose up --build` starts the frontend, API, and durable Postgres

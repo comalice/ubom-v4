@@ -1,15 +1,14 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "firefox-devtools": {
+    "chrome-devtools": {
       "type": "local",
       "command": [
         "npx",
         "-y",
-        "@mozilla/firefox-devtools-mcp@latest",
+        "chrome-devtools-mcp@latest",
         "--headless",
-        "--tool-preset",
-        "developer"
+        "--executable-path=/usr/bin/chromium"
       ],
       "enabled": true
     }

@@ -24,6 +24,7 @@
   import { ApiVersionMismatchError, BackendVersionProbeError, frontendBuildID, getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, probeBackendVersion, searchParts, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
   import { updateNoticeForBuild, type UpdateNotice } from './updateNotice'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
+  import { closeEventSourceOnPageHide } from './eventSourceLifecycle'
 
   let route: Route = parseRoute()
   let taxonomy: TaxonomyNodeView | null = null
@@ -125,6 +126,7 @@
     window.addEventListener('popstate', handlePopState)
     let disposed = false
     let events: EventSource | undefined
+    let closeEvents = () => {}
     const handleVersion = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data) as { buildId?: string }
@@ -142,6 +144,7 @@
         const notice = updateNoticeForBuild(frontendBuildID, backendBuildID)
         if (notice) updateNotice ??= notice
         events = new EventSource('/api/events')
+        closeEvents = closeEventSourceOnPageHide(events, window)
         events.addEventListener('app-version', handleVersion)
         bootstrapped = true
         await load()
@@ -167,7 +170,8 @@
       disposed = true
       window.removeEventListener('popstate', handlePopState)
       events?.removeEventListener('app-version', handleVersion)
-      events?.close()
+      closeEvents()
+      events = undefined
     }
   })
 </script>

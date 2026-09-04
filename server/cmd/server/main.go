@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -59,8 +60,10 @@ func main() {
 		log.Fatalf("configure artifacts: %v", err)
 	}
 	server := api.NewServer(service)
+	server.SetLogger(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	if snapshotService != nil {
 		server = api.NewServerWithSnapshotService(service, snapshotService)
+		server.SetLogger(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	}
 	if config.BuildID != "" {
 		server.SetBuildID(config.BuildID)

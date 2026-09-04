@@ -64,3 +64,23 @@ configuration for the relevant adapter instead.
 The API exposes `/healthz` for process health and `/readyz` for database
 readiness. Postgres-backed startup runs embedded, versioned migrations before
 the listener is opened. SQLite remains the local-development option.
+
+## HTTP Diagnostics
+
+The HTTP server emits structured JSON request diagnostics through `log/slog`.
+Each request produces `http request started`, `http response started`, and
+`http request completed` records. The records include the method, path,
+request ID, status, response bytes, and elapsed time in milliseconds. The
+request ID is also returned as `X-Request-ID`, so a browser Network-panel
+request can be matched directly to server logs.
+
+For a slow request, look for a start record followed by its completion record:
+
+```sh
+docker compose logs --no-log-prefix ubom | grep '"request_id"' | jq 'select(.request_id == "...")'
+```
+
+The `/api/events` endpoint is a deliberate long-lived SSE connection. Its
+completion record is emitted only when the browser closes the connection, so
+do not treat the absence of its completion record as a stuck handler. Its
+response-start record confirms that the initial SSE response was sent.

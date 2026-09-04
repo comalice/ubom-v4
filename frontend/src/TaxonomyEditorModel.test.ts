@@ -230,6 +230,20 @@ describe('taxonomyDefinitionInputFromDraft', () => {
 })
 
 describe('taxonomy draft editing', () => {
+  it('keeps edited category input in the draft used to remount collapsed blocks', () => {
+    const draft: TaxonomyDraftNode = {
+      id: 'root', label: 'Parts', targetId: 'grammar-root', placements: [], rules: [], children: [{
+        id: 'category', label: 'Default category', targetId: 'family',
+        placements: [{ id: 'category', targetId: 'family', type: 'category', title: 'Default category', summary: 'Category', label: 'Default category', nodeId: 'category' }],
+        rules: [], children: [],
+      }],
+    }
+
+    const edited = updateTaxonomyDraftNode(draft, 'category', { label: 'User category' })
+    expect(findTaxonomyDraftNode(edited, 'category')).toMatchObject({ label: 'User category' })
+    expect(findTaxonomyDraftNode(edited, 'category')?.placements[0]).toMatchObject({ title: 'User category', label: 'User category' })
+  })
+
   it('accepts palette and existing category child payloads, but requires source context', () => {
     expect(acceptsTaxonomyCategoryChildDrop({ kind: 'palette', taxonomyType: 'category' }, 'destination')).toBe(true)
     expect(acceptsTaxonomyCategoryChildDrop({ kind: 'taxonomy', taxonomyType: 'category', placementId: 'source-placement', sourceNodeId: 'source' }, 'destination')).toBe(true)

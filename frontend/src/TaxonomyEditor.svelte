@@ -81,7 +81,7 @@
 </script>
 
 <section class="taxonomy-editor" aria-label="Taxonomy editor layout sketch">
-  <TaxonomyFirstCanvas grammar={grammar} taxonomyDraft={taxonomyDraft} {readOnly} onDraftChange={(next) => taxonomyDraft = next} {updateNodeLabel} {updateNodeID} {updateRulePredicate} onAttributes={(nodeID) => attributesNodeID = nodeID} />
+  <TaxonomyFirstCanvas grammar={grammar} taxonomyDraft={taxonomyDraft} {readOnly} onDraftChange={(next) => taxonomyDraft = next} onNodeLabelChange={updateNodeLabel} onNodeIdChange={updateNodeID} onRulePredicateChange={updateRulePredicate} onAttributes={(nodeID) => attributesNodeID = nodeID} />
 
   <section class="taxonomy-editor-status" aria-labelledby="taxonomy-status-heading">
     <div class="taxonomy-editor-heading"><span class="mock-section-label" id="taxonomy-status-heading">Definition status</span><span class="taxonomy-editor-count">{readOnly ? 'historical revision' : 'local draft'}</span></div>

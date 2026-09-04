@@ -530,6 +530,177 @@ type PartSearchResult struct {
 	PageSize int                  `json:"pageSize"`
 }
 
+// CatalogFacets contains counts for the current catalog result scope. Counts
+// include every active filter (including the filter whose values are counted),
+// rather than excluding the facet's own filter.
+type CatalogFacets struct {
+	Categories []CatalogCategoryFacet  `json:"categories"`
+	Attributes []CatalogAttributeFacet `json:"attributes"`
+}
+
+type CatalogCategoryFacet struct {
+	ID    ubom.TaxonomyNodeID `json:"id"`
+	Label string              `json:"label"`
+	Count int                 `json:"count"`
+}
+
+type CatalogAttributeFacet struct {
+	ID     ubom.AttributeDefID `json:"id"`
+	Values []CatalogFacetValue `json:"values"`
+}
+
+type CatalogFacetValue struct {
+	Value string `json:"value"`
+	Count int    `json:"count"`
+}
+
+// CatalogFacetsFor returns all requested facet counts after one part load and
+// one taxonomy load. It intentionally does not issue a count query per child.
+func (s *Service) CatalogFacetsFor(query PartSearchQuery) (CatalogFacets, error) {
+	parts, err := s.store.ListPartNumbers()
+	if err != nil {
+		return CatalogFacets{}, err
+	}
+	taxonomies, err := s.store.ListTaxonomyDefs()
+	if err != nil {
+		return CatalogFacets{}, err
+	}
+	taxonomyByID := make(map[ubom.TaxonomyDefID]ubom.TaxonomyDef, len(taxonomies))
+	for _, taxonomy := range taxonomies {
+		taxonomyByID[taxonomy.ID] = taxonomy
+	}
+	selected, ok := taxonomyByID[query.TaxonomyDef]
+	if query.TaxonomyDef != "" && !ok {
+		return CatalogFacets{}, store.ErrNotFound
+	}
+	var scopeNode ubom.TaxonomyNode
+	if query.TaxonomyDef != "" {
+		scopeNode = selected.Taxonomy.Root
+	}
+	scopeID := query.TaxonomyNode
+	if scopeID == "" && query.TaxonomyDef != "" {
+		scopeID = selected.Taxonomy.Root.ID
+	}
+	if query.TaxonomyNode != "" {
+		if query.TaxonomyDef == "" {
+			return CatalogFacets{}, errors.New("taxonomyDef is required with taxonomyNode")
+		}
+		var found bool
+		scopeNode, found = findTaxonomyNode(selected.Taxonomy.Root, query.TaxonomyNode)
+		if !found {
+			return CatalogFacets{}, store.ErrNotFound
+		}
+	}
+
+	result := CatalogFacets{Categories: make([]CatalogCategoryFacet, 0), Attributes: make([]CatalogAttributeFacet, 0)}
+	if query.TaxonomyDef != "" {
+		for _, child := range scopeNode.Children {
+			result.Categories = append(result.Categories, CatalogCategoryFacet{ID: child.ID, Label: child.Label})
+		}
+	}
+	if scopeID != "" {
+		effective, effectiveErr := selected.Taxonomy.EffectiveAttributes(scopeID)
+		if effectiveErr != nil {
+			return CatalogFacets{}, effectiveErr
+		}
+		defs := make(map[ubom.AttributeDefID]ubom.AttributeDef, len(selected.AttributeDefs))
+		for _, definition := range selected.AttributeDefs {
+			defs[definition.ID] = definition
+		}
+		for _, assignment := range effective {
+			definition, exists := defs[assignment.AttributeDefID]
+			if exists && definition.ValueType == ubom.AttributeValueEnum && len(definition.EnumValues) > 0 {
+				values := make([]CatalogFacetValue, 0, len(definition.EnumValues))
+				for _, value := range definition.EnumValues {
+					values = append(values, CatalogFacetValue{Value: value})
+				}
+				result.Attributes = append(result.Attributes, CatalogAttributeFacet{ID: definition.ID, Values: values})
+			}
+		}
+	}
+
+	for _, part := range parts {
+		taxonomy, exists := taxonomyByID[part.TaxonomyDefID]
+		if !exists || query.TaxonomyDef != "" && part.TaxonomyDefID != query.TaxonomyDef || !catalogFacetPartMatches(part, taxonomy, query) {
+			continue
+		}
+		if scopeID != "" {
+			path, pathOK := findTaxonomyPath(taxonomy.Taxonomy.Root, part.TaxonomyNodeID)
+			inScope := pathOK
+			if inScope {
+				inScope = false
+				for _, item := range path {
+					if item.ID == scopeID {
+						inScope = true
+						break
+					}
+				}
+			}
+			if !inScope {
+				continue
+			}
+			for i := range result.Categories {
+				for _, item := range path {
+					if item.ID == result.Categories[i].ID {
+						result.Categories[i].Count++
+						break
+					}
+				}
+			}
+			for i := range result.Attributes {
+				for _, attribute := range part.Attributes {
+					if attribute.AttributeDefID != result.Attributes[i].ID {
+						continue
+					}
+					for j := range result.Attributes[i].Values {
+						if result.Attributes[i].Values[j].Value == attribute.Value {
+							result.Attributes[i].Values[j].Count++
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+	return result, nil
+}
+
+func catalogFacetPartMatches(part ubom.PartNumber, taxonomy ubom.TaxonomyDef, query PartSearchQuery) bool {
+	if query.IncludeArchived != nil && !*query.IncludeArchived && part.EffectiveStatus() == ubom.PartNumberStatusArchived || query.Q != "" && !strings.Contains(strings.ToLower(part.Value), strings.ToLower(strings.TrimSpace(query.Q))) {
+		return false
+	}
+	for id, values := range query.Attributes {
+		matched := false
+		for _, attribute := range part.Attributes {
+			if attribute.AttributeDefID == id {
+				for _, value := range values {
+					if attribute.Value == value {
+						matched = true
+					}
+				}
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	for id, bounds := range query.Ranges {
+		matched := false
+		for _, attribute := range part.Attributes {
+			if attribute.AttributeDefID == id {
+				value, valid := new(big.Rat).SetString(attribute.Value)
+				if valid && (bounds.Minimum == nil || value.Cmp(bounds.Minimum) >= 0) && (bounds.Maximum == nil || value.Cmp(bounds.Maximum) <= 0) {
+					matched = true
+				}
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return query.TaxonomyDef == "" || part.TaxonomyDefID == taxonomy.ID
+}
+
 func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult, error) {
 	parts, err := s.store.ListPartNumbers()
 	if err != nil {

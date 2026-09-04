@@ -67,6 +67,10 @@ export type PartListItem = {
 }
 
 export type PartSearchResult = { items: PartListItem[]; total: number; page: number; pageSize: number }
+export type CatalogFacetValue = { value: string; count: number }
+export type CatalogCategoryFacet = { id: string; label: string; count: number }
+export type CatalogAttributeFacet = { id: string; values: CatalogFacetValue[] }
+export type CatalogFacets = { categories: CatalogCategoryFacet[]; attributes: CatalogAttributeFacet[] }
 
 export type TaxonomyNodeView = {
   id: string
@@ -216,6 +220,25 @@ export async function searchParts(options: PartSearchOptions = {}) {
   if (options.sort) params.set('sort', options.sort)
   if (options.order) params.set('order', options.order)
   return get<PartSearchResult>(`/api/parts?${params.toString()}`)
+}
+
+/** Facet counts use the complete active query; no facet's own filter is excluded. */
+export async function getCatalogFacets(options: PartSearchOptions = {}) {
+  const params = new URLSearchParams()
+  if (options.q) params.set('q', options.q)
+  const taxonomyNode = options.taxonomyNode ?? options.node
+  if (taxonomyNode) params.set('taxonomyNode', taxonomyNode)
+  if (options.taxonomyDef) params.set('taxonomyDef', options.taxonomyDef)
+  if (options.includeArchived !== undefined) params.set('includeArchived', String(options.includeArchived))
+  for (const attributeID of Object.keys(options.filters ?? {}).sort()) {
+    for (const value of options.filters?.[attributeID] ?? []) if (value) params.append('attribute', `${attributeID}=${value}`)
+  }
+  for (const attributeID of Object.keys(options.ranges ?? {}).sort()) {
+    const range = options.ranges?.[attributeID]
+    if (range?.min) params.set(`attributeMin.${attributeID}`, range.min)
+    if (range?.max) params.set(`attributeMax.${attributeID}`, range.max)
+  }
+  return get<CatalogFacets>(`/api/catalog/facets?${params.toString()}`)
 }
 
 export const getRevision = (id: string) => get<RevisionView>(`/api/revisions/${encodeURIComponent(id)}`)

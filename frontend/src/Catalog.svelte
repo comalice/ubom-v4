@@ -8,7 +8,7 @@
   import FilterRange from './FilterRange.svelte'
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
-  import { getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
+  import { getCatalogFacets, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type CatalogFacets, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
   import { catalogPageSizeOptions, catalogPath, catalogServerMaxPageSize, taxonomySlug, type CatalogRouteState } from './routes'
 
   export let state: CatalogRouteState | undefined = undefined
@@ -17,6 +17,7 @@
   let definition: TaxonomyDefinitionView | null = null
   let node: TaxonomyNodeView | null = null
   let parts: PartListItem[] = []
+  let facets: CatalogFacets = { categories: [], attributes: [] }
   let total = 0
   let loading = true
   let error = ''
@@ -65,11 +66,13 @@
       const effectiveRanges = Object.fromEntries(Object.entries(routeState.ranges ?? {})
         .filter(([attribute, range]) => effectiveRangeAttributeIDs.has(attribute) && (range.min || range.max)))
       const effectiveState = { ...routeState, taxonomyDef: taxonomy.id, node: nodeID, filters: effectiveFilters, ranges: effectiveRanges }
-      const result = await searchParts({ ...effectiveState, includeArchived: routeState.includeArchived ?? false })
+      const requestOptions = { ...effectiveState, includeArchived: routeState.includeArchived ?? false }
+      const [result, facetResult] = await Promise.all([searchParts(requestOptions), getCatalogFacets(requestOptions)])
       if (requestID !== request) return
       definition = taxonomy
       node = resolvedNode
       parts = result.items
+      facets = facetResult
       total = result.total
       currentPage = result.page
       currentPageSize = result.pageSize
@@ -83,6 +86,7 @@
       definition = null
       node = null
       parts = []
+      facets = { categories: [], attributes: [] }
       total = 0
       currentPage = 1
       currentPageSize = 50
@@ -133,7 +137,7 @@
   }
 
   function categoryItems(): CategoryListItem[] {
-    return node?.children.map(child => ({ id: child.id, label: child.label, href: categoryHref(child.id), selected: false })) ?? []
+    return node?.children.map(child => ({ id: child.id, label: child.label, href: categoryHref(child.id), count: facets.categories.find(facet => facet.id === child.id)?.count ?? 0, selected: false })) ?? []
   }
 
   function enumFilters(): { attribute: string; options: FilterOption[] }[] {
@@ -141,7 +145,7 @@
       .filter(attribute => attribute.valueType === 'enum' && (attribute.enumValues?.length ?? 0) > 0)
       .map(attribute => ({
         attribute: attribute.id,
-        options: (attribute.enumValues ?? []).map(value => ({ label: value, value })),
+        options: (attribute.enumValues ?? []).map(value => ({ label: value, value, count: facets.attributes.find(facet => facet.id === attribute.id)?.values.find(item => item.value === value)?.count ?? 0 })),
       })) ?? []
   }
 
@@ -254,7 +258,7 @@
       {#if node.children.length > 0}
         <section class="catalog-category-section" aria-labelledby="catalog-categories-main-heading">
           <div class="catalog-section-heading"><h3 id="catalog-categories-main-heading">Categories</h3><span>{node.children.length} categories</span></div>
-          <CategoryTileGrid tiles={node.children.map(child => ({ id: child.id, title: child.label, href: categoryHref(child.id), description: child.description, image: child.imageReference ?? child.image }))} />
+          <CategoryTileGrid tiles={node.children.map(child => ({ id: child.id, title: child.label, href: categoryHref(child.id), description: child.description, image: child.imageReference ?? child.image, partCount: facets.categories.find(facet => facet.id === child.id)?.count ?? 0 }))} />
         </section>
       {/if}
       <section class="catalog-parts-section" aria-labelledby="catalog-parts-heading">

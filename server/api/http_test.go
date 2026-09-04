@@ -167,6 +167,27 @@ func TestPartNumberListSupportsRepeatedAttributeFilters(t *testing.T) {
 	}
 }
 
+func TestCatalogFacetsUseCurrentFilteredScope(t *testing.T) {
+	persistence := store.NewMemoryStore()
+	if _, err := app.LoadSampleData(persistence); err != nil { t.Fatal(err) }
+	server := NewServer(app.NewService(persistence))
+	recording := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/catalog/facets?taxonomyDef=sample-taxonomy-v1&taxonomyNode=components&attribute=footprint=0603", nil)
+	server.Handler().ServeHTTP(recording, request)
+	if recording.Code != http.StatusOK { t.Fatalf("status = %d; body = %s", recording.Code, recording.Body) }
+	var facets app.CatalogFacets
+	if err := json.NewDecoder(recording.Body).Decode(&facets); err != nil { t.Fatal(err) }
+	if len(facets.Categories) != 2 || facets.Categories[0].Count != 1 || facets.Categories[1].Count != 1 { t.Fatalf("categories = %#v", facets.Categories) }
+	if len(facets.Attributes) != 1 || facets.Attributes[0].ID != "footprint" || facets.Attributes[0].Values[0].Count != 2 || facets.Attributes[0].Values[1].Count != 0 { t.Fatalf("attributes = %#v", facets.Attributes) }
+}
+
+func TestCatalogFacetsRejectInvalidQuery(t *testing.T) {
+	server := NewServer(app.NewService(store.NewMemoryStore()))
+	recording := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/catalog/facets?includeArchived=maybe", nil))
+	if recording.Code != http.StatusBadRequest { t.Fatalf("status = %d; want %d", recording.Code, http.StatusBadRequest) }
+}
+
 func TestPartNumberListSupportsNumericRangeFilters(t *testing.T) {
 	persistence := store.NewMemoryStore()
 	if _, err := app.LoadSampleData(persistence); err != nil {

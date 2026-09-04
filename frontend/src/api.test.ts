@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
+import { createSeqDefVersion, getCatalogFacets, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -160,6 +160,16 @@ describe('part search API', () => {
       '/api/parts?includeArchived=false',
       '/api/parts?includeArchived=true',
     ])
+  })
+})
+
+describe('catalog facets API', () => {
+  it('encodes the catalog scope and active filters without pagination', async () => {
+    const result = { categories: [{ id: 'bolts', label: 'Bolts', count: 3 }], attributes: [] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }))
+
+    await expect(getCatalogFacets({ taxonomyDef: 'components/v3', node: 'fasteners', q: 'bolt', includeArchived: true, filters: { material: ['Steel', 'Aluminum'] }, ranges: { resistance: { min: '100' } }, page: 4 })).resolves.toEqual(result)
+    expect(fetchMock).toHaveBeenCalledWith('/api/catalog/facets?q=bolt&taxonomyNode=fasteners&taxonomyDef=components%2Fv3&includeArchived=true&attribute=material%3DSteel&attribute=material%3DAluminum&attributeMin.resistance=100')
   })
 })
 

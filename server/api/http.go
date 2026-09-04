@@ -37,6 +37,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/readyz", s.handleReady)
 	mux.HandleFunc("/api/parts", s.handlePartNumbers)
+	mux.HandleFunc("/api/catalog/facets", s.handleCatalogFacets)
 	mux.HandleFunc("/api/seq-defs", s.handleSeqDefs)
 	mux.HandleFunc("/api/seq-defs/preview", s.handleUnsavedSeqDefPreview)
 	mux.HandleFunc("/api/seq-defs/preview/candidate", s.handleSeqDefCandidatePreview)
@@ -200,19 +201,57 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+	query, err := parseCatalogQuery(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, err := s.service.SearchPartNumberViews(query)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load part numbers")
+		return
+	}
+	// Keep the original unpaginated list response for existing callers. Query
+	// parameters opt into the part-log envelope and pagination metadata.
+	if r.URL.RawQuery == "" {
+		writeJSON(w, result.Items)
+		return
+	}
+	writeJSON(w, result)
+}
+
+func (s *Server) handleCatalogFacets(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	query, err := parseCatalogQuery(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	facets, err := s.service.CatalogFacetsFor(query)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "catalog scope not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load catalog facets")
+		return
+	}
+	writeJSON(w, facets)
+}
+
+func parseCatalogQuery(r *http.Request) (app.PartSearchQuery, error) {
 	query := app.PartSearchQuery{
-		Q:            r.URL.Query().Get("q"),
-		TaxonomyDef:  ubom.TaxonomyDefID(firstQueryValue(r, "taxonomyDef", "taxonomy")),
-		TaxonomyNode: ubom.TaxonomyNodeID(r.URL.Query().Get("taxonomyNode")),
-		Attributes:   map[ubom.AttributeDefID][]string{},
-		Ranges:       map[ubom.AttributeDefID]app.PartSearchRange{},
-		Sort:         r.URL.Query().Get("sort"),
-		Descending:   r.URL.Query().Get("order") == "desc" || r.URL.Query().Get("direction") == "desc",
+		Q: r.URL.Query().Get("q"), TaxonomyDef: ubom.TaxonomyDefID(firstQueryValue(r, "taxonomyDef", "taxonomy")),
+		TaxonomyNode: ubom.TaxonomyNodeID(r.URL.Query().Get("taxonomyNode")), Attributes: map[ubom.AttributeDefID][]string{},
+		Ranges: map[ubom.AttributeDefID]app.PartSearchRange{}, Sort: r.URL.Query().Get("sort"),
+		Descending: r.URL.Query().Get("order") == "desc" || r.URL.Query().Get("direction") == "desc",
 	}
 	if raw, ok := r.URL.Query()["includeArchived"]; ok {
 		if len(raw) != 1 || (raw[0] != "true" && raw[0] != "false") {
-			writeError(w, http.StatusBadRequest, "invalid includeArchived value")
-			return
+			return query, errors.New("invalid includeArchived value")
 		}
 		includeArchived := raw[0] == "true"
 		query.IncludeArchived = &includeArchived
@@ -226,8 +265,7 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 	for _, raw := range r.URL.Query()["attribute"] {
 		key, value, ok := strings.Cut(raw, "=")
 		if !ok || key == "" || value == "" {
-			writeError(w, http.StatusBadRequest, "invalid attribute filter")
-			return
+			return query, errors.New("invalid attribute filter")
 		}
 		query.Attributes[ubom.AttributeDefID(key)] = append(query.Attributes[ubom.AttributeDefID(key)], value)
 	}
@@ -242,13 +280,11 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		if bound != "" {
 			attributeID := strings.TrimPrefix(key, prefix)
 			if attributeID == "" || len(values) != 1 || values[0] == "" {
-				writeError(w, http.StatusBadRequest, "invalid numeric range filter for "+attributeID)
-				return
+				return query, errors.New("invalid numeric range filter for " + attributeID)
 			}
 			parsed, ok := parseCatalogDecimal(values[0])
 			if !ok {
-				writeError(w, http.StatusBadRequest, "invalid numeric range value for "+attributeID)
-				return
+				return query, errors.New("invalid numeric range value for " + attributeID)
 			}
 			rangeValue := query.Ranges[ubom.AttributeDefID(attributeID)]
 			if bound == "min" {
@@ -264,35 +300,21 @@ func (s *Server) handlePartNumbers(w http.ResponseWriter, r *http.Request) {
 		}
 		attributeID := strings.TrimPrefix(key, "attribute.")
 		if attributeID == "" || len(values) == 0 {
-			writeError(w, http.StatusBadRequest, "invalid attribute filter")
-			return
+			return query, errors.New("invalid attribute filter")
 		}
 		for _, value := range values {
 			if value == "" {
-				writeError(w, http.StatusBadRequest, "invalid attribute filter")
-				return
+				return query, errors.New("invalid attribute filter")
 			}
 			query.Attributes[ubom.AttributeDefID(attributeID)] = append(query.Attributes[ubom.AttributeDefID(attributeID)], value)
 		}
 	}
 	for attributeID, bounds := range query.Ranges {
 		if bounds.Minimum != nil && bounds.Maximum != nil && bounds.Minimum.Cmp(bounds.Maximum) > 0 {
-			writeError(w, http.StatusBadRequest, "numeric range minimum exceeds maximum for "+string(attributeID))
-			return
+			return query, errors.New("numeric range minimum exceeds maximum for " + string(attributeID))
 		}
 	}
-	result, err := s.service.SearchPartNumberViews(query)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not load part numbers")
-		return
-	}
-	// Keep the original unpaginated list response for existing callers. Query
-	// parameters opt into the part-log envelope and pagination metadata.
-	if r.URL.RawQuery == "" {
-		writeJSON(w, result.Items)
-		return
-	}
-	writeJSON(w, result)
+	return query, nil
 }
 
 func parseCatalogDecimal(value string) (*big.Rat, bool) {

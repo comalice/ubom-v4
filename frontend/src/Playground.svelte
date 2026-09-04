@@ -13,6 +13,8 @@
   import CatalogPlayground from './CatalogPlayground.svelte'
   import PartViewsPlayground from './PartViewsPlayground.svelte'
 
+  let navigationOpen = true
+
   const links = [
     { label: 'Core components', path: '/playground/core-components', page: 'core-components' as const },
     { label: 'HTML primitives', path: '/playground/html-primitives', page: 'html-primitives' as const },
@@ -28,7 +30,7 @@
   ]
 </script>
 
-<div class="playground">
+<div class:playground-nav-collapsed={!navigationOpen} class="playground">
   <aside class="playground-nav" aria-label="Playground navigation">
     <p class="eyebrow">Playground</p>
     <h1>Experiments</h1>
@@ -41,6 +43,9 @@
   </aside>
 
   <main class="playground-content">
+    <button class="playground-nav-toggle" type="button" aria-expanded={navigationOpen} on:click={() => navigationOpen = !navigationOpen}>
+      {navigationOpen ? 'Hide experiments' : 'Show experiments'}
+    </button>
     {#if page === 'core-components'}
       <CoreComponentsPlayground />
     {:else if page === 'html-primitives'}

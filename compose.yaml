@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
+      network: host
       args:
         UBOM_BUILD_ID: ${UBOM_BUILD_ID:-dev}
     command: ["-listen", "0.0.0.0:8080"]
@@ -22,6 +23,7 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      network: host
       args:
         VITE_APP_BUILD_ID: ${UBOM_BUILD_ID:-dev}
     depends_on:

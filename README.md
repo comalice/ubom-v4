@@ -1,64 +1,95 @@
-# ubom-v4
+# UBOM
 
-The fourth draft of my mini BOM manager, which encapsulates my very opionated way of thinking about how parts, bills of materials, and revisions relate to one another.
+UBOM is a single-user part-number and taxonomy manager. It defines the language
+used by part numbers, organizes that language into a taxonomy, captures typed
+attributes, and provides a searchable catalog of released parts.
 
-Unique ideas here are
+The initial release deliberately focuses on durable part-number workflows. BOM
+authoring, artifact integrations, and quality-system workflows are later work.
 
-1. sequences
-2. taxonomy trees
-3. attributes
-4. artifacts
+## Current Capabilities
 
-## Sequences
+- Define sequence grammars using literals, concatenation, choices, ranges,
+  range-radix nodes, bindings, and character sets.
+- Validate and preview sequence definitions in the browser.
+- Save immutable sequence-definition revisions and open historical revisions
+  read-only.
+- Build taxonomy trees bound to sequence definitions.
+- Add exact and numeric-range taxonomy predicates.
+- Define typed string, decimal, and enum attributes.
+- Inherit and override taxonomy attributes at descendant nodes.
+- Save immutable taxonomy revisions with a server-owned current revision.
+- Create, preview, allocate, and release part-number drafts against a taxonomy
+  node.
+- Search and browse parts by taxonomy scope, part-number value, attributes, and
+  status.
+- Browse current taxonomies through a grouped catalog home page with
+  human-readable taxonomy URLs.
+- Use multi-value filters, numeric ranges, facets, pagination, sorting, and
+  archived-part filtering.
+- Persist deployed data in Postgres, with SQLite and memory stores for local
+  development and tests.
 
-A sequence is a user generated grammar definition for arbitrary string sequences. It supports 'choice' for alternatives within a string, 'range' for values that span ranges such as 0-99 -- as well as padding out those ranges, 'rangeradix' for ranges that require position dependent radices (not radishes :D), and so on.
+## Domain Model
 
-A sequence definition can parse a value OR generate a new value, something like `mySeq.Parse("a123")` or `mySeq.Next('a123') -> "a124"`.
+Sequence definitions describe arbitrary string grammars. They support parsing
+existing values and generating new values. Saved definitions are immutable
+revisions; changes create a new revision rather than changing the definition
+used by existing parts.
 
-Saved sequence definitions are immutable revisions; changes are recorded as a
-new revision rather than modifying the definition used by existing parts.
+A taxonomy applies meaning to sequence fields. Its nodes can carry predicates,
+attributes, children, and directly classified parts independently. Taxonomy
+revisions are immutable, and a part retains the exact sequence and taxonomy
+revisions used when it was created.
 
-## Taxonomy
+Part-number values are globally unique canonical values. Drafts do not reserve a
+number; allocation happens transactionally during release. Released parts are
+not silently deleted and can be archived instead.
 
-A taxonomy tree applies labels to a sequence, so we can give some degree of meaning to each segment of a sequence.
+## Local Development
 
-This all builds up to `PartNumber`, which possesses a part number literal, and the accompanying taxonomy tree so you can see what categories a given part number occupies.
+Run the API and frontend with SQLite:
 
-Part number values are globally unique canonical values across the application.
-Taxonomy definitions are also immutable revisions, and a part number retains
-the exact sequence and taxonomy revisions used to generate and classify it.
+```sh
+make dev
+```
 
-From `PartNumber`, we jump to the recursive DAG that is a BOM: `PartNumber + Revision -> BOM -> []LineItem(PartNumber, Revision)`, and the cycle continues.
+The frontend is available at `http://localhost:5173` and proxies `/api` to the
+API at `http://localhost:8080`.
 
-## Attributes
+Useful checks:
 
-An attribute is essentially metadata that can hang off of a taxonomy node (and is applied to all part numbers that the node is applied to). For example, suppose we have a part number schema like `RES-<GGG>-<NNN>` where `GGG` is some arbitrary group number and `NNN` is just a unique ID within a given group. If we hang a 'resistance value' attribute off the `RES` taxonomy node, now all resistors have a 'resistance value' field that can be filled in on creation.
+```sh
+go test ./...  # run from server/
+make -C frontend test
+make -C frontend typecheck
+make -C frontend build
+```
 
-## Artifacts
+The development endpoint stress harness exercises the API and Vite server with
+per-request timing output:
 
-An artifact is the engineering record that lives behind a part number + revision combination. It could be anything. Right now we treat these as pure byte-streams and keep an 'artifact snapshot' in UBOM for every part number + revision combination.
+```sh
+./scripts/stress-dev-endpoints.sh 100
+```
 
-Our first implementation is simply a file system artifact source. A periodic scan kicks off, changes are ingested, and a new artifact snapshot is recorded internally.
+## Compose Deployment
 
-# Roadmap
+`docker compose up --build` starts the frontend, API, and durable Postgres
+volume. Open `http://localhost:8080`.
 
-## Local containers
+The API runs embedded, versioned Postgres migrations before serving. The API
+provides `/healthz` for process health and `/readyz` for database readiness.
+The frontend proxies both endpoints and the `/api` routes to the API service.
 
-`docker compose up --build` starts the frontend, API, and a durable Postgres
-instance. Open `http://localhost:8080`; the frontend proxies `/api` to the API.
-The API runs embedded, versioned Postgres migrations before it starts serving.
-The API's `/healthz` endpoint reports process health, while `/readyz` verifies
-the database connection and is used by Compose startup checks.
+The repository supports Docker installations using the classic builder. The
+Compose build configuration uses the host network for build-time dependency
+downloads because some classic-builder installations cannot resolve external
+package registries through the default builder network. Runtime service
+networking is unchanged.
 
-For frontend development, keep using `make -C frontend dev` in one terminal and
-`make server` (or `make dev`) in another. Vite proxies `/api` to port 8080.
-
-### Production startup
-
-The Compose defaults are suitable only for local evaluation. Set
-`POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, and optionally
-`UBOM_HTTP_PORT` through the deployment environment or a secrets manager; do
-not use the documented development password in a real deployment. Start with:
+For a production-like startup, provide deployment credentials rather than the
+development defaults:
 
 ```sh
 POSTGRES_PASSWORD='use-a-secret' docker compose up -d --build
@@ -66,27 +97,28 @@ docker compose ps
 docker compose logs -f ubom
 ```
 
-Set `UBOM_BUILD_ID` to the same immutable release identifier for the API and
-frontend images, for example `UBOM_BUILD_ID=2026-09-04.1`. Compose passes it to
-the API as `UBOM_BUILD_ID` and to the Vite build as `VITE_APP_BUILD_ID`. If it is
-unset, local builds use `dev`. The API publishes this identity at
-`/api/version`, in `X-UBOM-Build-ID`, and through the `/api/events` SSE stream;
-the frontend probes `/api/version` once at startup and shows a refresh notice
-when the identity changes, mismatches, or the compatibility endpoint is missing
-from an older backend.
+Set `POSTGRES_USER`, `POSTGRES_DB`, and optionally `UBOM_HTTP_PORT` through the
+deployment environment or a secrets manager. Do not expose the development
+password outside local evaluation.
 
-This first release assumes one trusted user per deployment. There is no login,
+Set `UBOM_BUILD_ID` to the same immutable release identifier for the API and
+frontend images, for example `UBOM_BUILD_ID=v0.0.1`. Compose passes it to the
+API as `UBOM_BUILD_ID` and to the Vite build as `VITE_APP_BUILD_ID`. If it is
+unset, local builds use `dev`. The API publishes this identity at
+`/api/version`, in `X-UBOM-Build-ID`, and through the `/api/events` SSE stream.
+The frontend checks the identity at startup and shows a refresh notice when the
+running application and API no longer match.
+
+The deployment boundary is explicitly single-user. There is no login,
 authorization, tenant isolation, or audit actor identity. Put the deployment
 behind an authenticated network boundary before exposing it to other users.
 
-### Migrations and backups
+## Migrations And Backups
 
 Postgres migrations are embedded in `server/store/postgres_migrations.go` and
-applied automatically, in order, at API startup. A failed migration prevents
-the API from starting. Back up before upgrades; there is no automatic rollback
-of a migration. Roll back the application only when its schema remains
-compatible, or restore the database backup into a fresh volume and deploy the
-previous application version.
+applied automatically in order at API startup. A failed migration prevents the
+API from starting. Back up before upgrades; migrations do not have automatic
+rollback.
 
 Create a logical backup from the running Compose database:
 
@@ -95,7 +127,7 @@ docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES
   --format=custom' > ubom-$(date +%Y%m%d-%H%M%S).dump
 ```
 
-Restore into a stopped application and an empty database (this replaces data):
+Restore into a stopped application and an empty database:
 
 ```sh
 docker compose stop frontend ubom
@@ -104,20 +136,30 @@ cat backup.dump | docker compose exec -T postgres sh -c 'pg_restore -U "$POSTGRE
 docker compose start ubom frontend
 ```
 
-The Postgres named volume is persistent, but it is not a backup. Artifact
+The named Postgres volume is persistent, but it is not a backup. Artifact
 snapshot files, when configured, live outside Postgres and must be backed up
-separately. Expect data loss since the last successful backup if the volume and
-its backup are both lost.
+separately. Expect data loss since the last successful backup if both the
+volume and its backup are lost.
 
-- strongly typed attributes, can be applied to any node in a taxonomy tree, to a part number, or to a bill of materials -- this allows you to do things like add resistor values to a specific branch of the taxonomy tree. It also enables things like querying parts by attribute, requirements satisfaction (maybe), and so on.
-  - We now have attributes, but they aren't strongly typed yet. Soon.
-- A user interface. :D McMaster has the right idea here, though I'll also be barrowing ideas from Inventree.
-  - We have one in progress. It isn't great. It stinks of GPT-5.6 styling. If you've seen one UI from GPT-5.6, you've seen them all. We'll get it tightened up before MVP release.
-- CRUD ops for the user facing stuff (part numbers, sequence grammars, taxonomy trees, etc.)
-  - Standard workflows including system standup, core ECO/ECR pipelines, BOM creation, etc.
-- A minimal change control workflow; all quality systems subsist on their change control workflows. To build a quality system from scratch, and have traceability, one needs at least an atomic change control workflow.
-- Multi BOM, where a part number can have a number of BOMs, one for each unit of responsibility: mech, elec, docs, production flows (depends on workflows, I think), and so on.
-- Solidworks integration.
-- Altium integration.
-- KiCAD integration.
-- Others? Is this giving you ideas? Drop an issue and lets discuss!
+## Release Scope
+
+Included in the initial release:
+
+- Sequence definition authoring and immutable revisions.
+- Taxonomy authoring, predicates, attributes, and immutable revisions.
+- Context-sensitive part draft creation, preview, allocation, and release.
+- Searchable catalog browsing with filters, facets, pagination, and sorting.
+- SQLite, memory, and Postgres persistence adapters.
+- Docker Compose deployment with health and readiness checks.
+
+Deferred:
+
+- BOM authoring and multi-BOM support.
+- Artifact sources, snapshots, and file integrations.
+- Release approvals and formal ECO/ECR change control.
+- CAD integrations.
+- Advanced reporting and analytics.
+- Fine-grained permissions and multi-user tenancy.
+
+Planning and design notes live under `docs/`. Operational QA runbooks live
+under `test/qa/`.

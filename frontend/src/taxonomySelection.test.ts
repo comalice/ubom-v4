@@ -18,6 +18,17 @@ describe('taxonomy summary selection', () => {
     expect(currentTaxonomySummaries([summary({}), current])).toEqual([current])
   })
 
+  it('keeps all current summaries available when selection is ambiguous', () => {
+    const first = summary({ id: 'taxonomy-v1', definitionId: 'components' })
+    const second = summary({ id: 'other-v1', definitionId: 'other', current: true })
+
+    expect(currentTaxonomySummaries([first, second])).toEqual([second])
+    expect(currentTaxonomySummaries([
+      { ...first, current: true },
+      second,
+    ])).toEqual([{ ...first, current: true }, second])
+  })
+
   it('selects the current summary for a sequence definition', () => {
     const historical = summary({ id: 'taxonomy-v1' })
     const current = summary({ id: 'taxonomy-v2', version: 2, current: true })

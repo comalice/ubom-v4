@@ -8,8 +8,9 @@
   import FilterRange from './FilterRange.svelte'
   import FilterWidget from './FilterWidget.svelte'
   import PartTable from './PartTable.svelte'
-  import { getCatalogFacets, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type CatalogFacets, type PartListItem, type TaxonomyDefinitionView, type TaxonomyNodeView } from './api'
+  import { getCatalogFacets, getCurrentTaxonomyDef, getTaxonomyDef, getTaxonomyDefs, getTaxonomyNode, resolveTaxonomyPath, searchParts, type CatalogFacets, type PartListItem, type TaxonomyDefinitionView, type TaxonomyDefSummary, type TaxonomyNodeView } from './api'
   import { catalogPageSizeOptions, catalogPath, catalogServerMaxPageSize, taxonomySlug, type CatalogRouteState } from './routes'
+  import { currentTaxonomySummaries } from './taxonomySelection'
 
   export let state: CatalogRouteState | undefined = undefined
   export let navigate: (path: string, replace?: boolean) => void
@@ -27,6 +28,7 @@
   let currentPage = 1
   let currentPageSize = 50
   let request = 0
+  let taxonomyChoices: TaxonomyDefSummary[] = []
 
   const pageSizeOptions = [...catalogPageSizeOptions, catalogServerMaxPageSize]
   const sortOptions = [
@@ -48,6 +50,7 @@
     const requestID = ++request
     loading = true
     error = ''
+    taxonomyChoices = []
     try {
       const taxonomy = routeState.taxonomyDef
         ? await getTaxonomyDef(routeState.taxonomyDef)
@@ -97,9 +100,18 @@
   }
 
   async function getCurrentTaxonomy() {
-    const current = (await getTaxonomyDefs()).find(item => item.current)
-    if (!current) throw new Error('No current taxonomy is available')
-    return getCurrentTaxonomyDef(current.seqDef)
+    const current = currentTaxonomySummaries(await getTaxonomyDefs())
+    if (current.length === 0) throw new Error('No current taxonomy is available')
+    if (current.length > 1) {
+      taxonomyChoices = current
+      throw new Error('Multiple current taxonomies are available. Select one to browse the catalog.')
+    }
+    return getCurrentTaxonomyDef(current[0].seqDef)
+  }
+
+  function selectTaxonomy(event: Event) {
+    const taxonomyDef = (event.currentTarget as HTMLSelectElement).value
+    if (taxonomyDef) navigate(catalogPath({ ...state, taxonomyDef }))
   }
 
   function scopedState(overrides: Partial<CatalogRouteState> = {}): CatalogRouteState {
@@ -211,7 +223,22 @@
 {#if loading}
   <AsyncState state="loading" message="Loading catalog..." />
 {:else if error}
-  <AsyncState state="error" message={error} />
+  {#if taxonomyChoices.length > 1}
+    <section class="catalog-taxonomy-selection" aria-labelledby="catalog-taxonomy-selection-heading">
+      <p class="eyebrow">Catalog setup</p>
+      <h2 id="catalog-taxonomy-selection-heading">Choose a catalog taxonomy</h2>
+      <p class="muted">More than one current taxonomy is available. Select the taxonomy you want to browse.</p>
+      <label for="catalog-taxonomy-select">Taxonomy</label>
+      <select id="catalog-taxonomy-select" on:change={selectTaxonomy}>
+        <option value="">Select a taxonomy</option>
+        {#each taxonomyChoices as choice}
+          <option value={choice.id}>{choice.definitionId} v{choice.version} ({choice.seqDef})</option>
+        {/each}
+      </select>
+    </section>
+  {:else}
+    <AsyncState state="error" message={error} />
+  {/if}
 {:else if node && definition}
   <CatalogBrowser title={node.label} subtitle="Browse parts by taxonomy and filter the current scope.">
     <form class="catalog-search" slot="search" on:submit|preventDefault={submitSearch}>
@@ -317,4 +344,9 @@
   .catalog-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; color: var(--muted); font: .7rem ui-monospace, monospace; }
   .catalog-pagination button { padding: .45rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; cursor: pointer; font: inherit; }
   .catalog-pagination button:disabled { color: var(--muted); cursor: not-allowed; opacity: .55; }
+  .catalog-taxonomy-selection { max-width: 34rem; margin: 4rem auto; padding: 2rem; border: 1px solid var(--hairline); background: var(--surface); }
+  .catalog-taxonomy-selection h2 { margin: .25rem 0 .75rem; font: 400 1.6rem Georgia, serif; }
+  .catalog-taxonomy-selection p { margin: .5rem 0 1.25rem; }
+  .catalog-taxonomy-selection label { display: grid; gap: .35rem; color: var(--muted); font: .65rem ui-monospace, monospace; }
+  .catalog-taxonomy-selection select { padding: .6rem .7rem; color: var(--ink); background: var(--surface); border: 1px solid var(--hairline); border-radius: .2rem; font: .75rem Inter, sans-serif; }
 </style>

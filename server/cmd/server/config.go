@@ -12,6 +12,7 @@ type Config struct {
 	HTTP      HTTPConfig
 	Database  DatabaseConfig
 	Artifacts ArtifactConfig
+	BuildID   string
 }
 
 type HTTPConfig struct {

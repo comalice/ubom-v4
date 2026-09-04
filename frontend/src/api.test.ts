@@ -1,7 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSeqDefVersion, getCatalogFacets, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
+import { ApiVersionMismatchError, BackendVersionProbeError, createSeqDefVersion, getCatalogFacets, getPart, getSeqDef, getSeqDefs, getTaxonomyDef, getTaxonomyDefHistory, getTaxonomyDefs, getCurrentTaxonomyDef, getTaxonomyNode, getTaxonomyNodeByPath, getTaxonomyNodeBySlugPath, previewSeqDefCandidate, previewSeqDefRoot, probeBackendVersion, resolveTaxonomyPath, searchParts, type SeqDefNode, type TaxonomyDefinitionView, type TaxonomyNodeView, type TaxonomyDefSummary } from './api'
 
 afterEach(() => vi.restoreAllMocks())
+
+describe('backend compatibility probe', () => {
+  it('accepts a matching build identity', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ buildId: 'dev' }), { status: 200, headers: { 'X-UBOM-Build-ID': 'dev' } }))
+    await expect(probeBackendVersion()).resolves.toBe('dev')
+  })
+
+  it('reports a changed build identity distinctly', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ buildId: 'release-2' }), { status: 200 }))
+    await expect(probeBackendVersion()).rejects.toBeInstanceOf(ApiVersionMismatchError)
+  })
+
+  it('reports a missing version endpoint as a compatibility failure', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not found', { status: 404 }))
+    await expect(probeBackendVersion()).rejects.toBeInstanceOf(BackendVersionProbeError)
+  })
+
+  it('keeps ordinary API errors as ordinary errors', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: 'not found' }), { status: 404, statusText: 'Not Found' }))
+    const error = await getPart('missing').catch(reason => reason)
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(BackendVersionProbeError)
+    expect((error as Error).message).toBe('404 Not Found')
+  })
+})
 
 describe('previewSeqDefRoot', () => {
   const root: SeqDefNode = { kind: 'literal', text: 'PN-' }

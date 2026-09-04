@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	ubom "ubom-v4"
 	"ubom-v4/app"
@@ -16,26 +17,40 @@ import (
 	"ubom-v4/store"
 )
 
+// BuildID is replaced by the release build with -ldflags, while the command
+// also accepts UBOM_BUILD_ID for deployments that configure containers at run time.
+var BuildID = "dev"
+
 var catalogDecimalPattern = regexp.MustCompile(`^[-+]?(?:\d+(?:\.\d*)?|\.\d+)$`)
 
 type Server struct {
 	service         *app.Service
 	snapshotService *app.SnapshotService
 	readiness       func() error
+	buildID         string
 }
 
 func NewServer(service *app.Service) *Server {
-	return &Server{service: service}
+	return NewServerWithBuildID(service, BuildID)
 }
 
 func NewServerWithSnapshotService(service *app.Service, snapshotService *app.SnapshotService) *Server {
-	return &Server{service: service, snapshotService: snapshotService}
+	return &Server{service: service, snapshotService: snapshotService, buildID: BuildID}
+}
+
+func NewServerWithBuildID(service *app.Service, buildID string) *Server {
+	if buildID == "" {
+		buildID = BuildID
+	}
+	return &Server{service: service, buildID: buildID}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/readyz", s.handleReady)
+	mux.HandleFunc("/api/version", s.handleVersion)
+	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/parts", s.handlePartNumbers)
 	mux.HandleFunc("/api/catalog/facets", s.handleCatalogFacets)
 	mux.HandleFunc("/api/seq-defs", s.handleSeqDefs)
@@ -60,7 +75,54 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/artifact-sources", s.handleSources)
 	mux.HandleFunc("/api/artifacts", s.handleArtifacts)
 	mux.HandleFunc("/api/artifacts/", s.handleArtifact)
-	return mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-UBOM-Build-ID", s.buildID)
+		mux.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, map[string]string{"buildId": s.buildID})
+}
+
+func (s *Server) SetBuildID(buildID string) { s.buildID = buildID }
+
+func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming is not supported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	writeSSE(w, "app-version", map[string]string{"buildId": s.buildID})
+	flusher.Flush()
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			_, _ = w.Write([]byte(": keep-alive\n\n"))
+			flusher.Flush()
+		}
+	}
+}
+
+func writeSSE(w http.ResponseWriter, event string, value any) {
+	data, _ := json.Marshal(value)
+	_, _ = w.Write([]byte("event: " + event + "\ndata: " + string(data) + "\n\n"))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {

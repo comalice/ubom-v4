@@ -21,7 +21,8 @@
   import Home from './Home.svelte'
   import Catalog from './Catalog.svelte'
   import PartLog from './PartLog.svelte'
-  import { getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, searchParts, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
+  import { ApiVersionMismatchError, BackendVersionProbeError, frontendBuildID, getArtifact, getArtifacts, getCurrentTaxonomyDef, getPart, getRevision, getSnapshots, getSources, getTaxonomyDefs, getTaxonomyNodeByPath, probeBackendVersion, searchParts, type ArtifactView, type PartListItem, type PartNumberView, type RevisionView, type SnapshotView, type SourceView, type TaxonomyNodeView } from './api'
+  import { updateNoticeForBuild, type UpdateNotice } from './updateNotice'
   import { parseRoute, partPath, revisionPath, taxonomyPath, type Route } from './routes'
 
   let route: Route = parseRoute()
@@ -35,6 +36,8 @@
   let snapshots: SnapshotView[] = []
   let error = ''
   let loading = true
+  let updateNotice: UpdateNotice | null = null
+  let bootstrapped = false
 
   $: breadcrumbs = route.kind === 'catalog'
     ? [{ label: 'Catalog' }]
@@ -101,6 +104,9 @@
         else if (route.kind === 'settings' || route.kind === 'grammar-editor' || route.kind === 'seq-def-list' || route.kind === 'seq-def-new' || route.kind === 'seq-def' || route.kind === 'taxonomy-list' || route.kind === 'taxonomy-new' || route.kind === 'taxonomy-detail' || route.kind === 'playground') return
       else error = 'Page not found'
     } catch (reason) {
+      if (reason instanceof ApiVersionMismatchError) {
+        updateNotice ??= updateNoticeForBuild(frontendBuildID, reason.backendBuildID, 'mismatch')
+      }
       error = reason instanceof Error ? reason.message : 'Unable to load page'
     } finally {
       loading = false
@@ -109,16 +115,69 @@
 
   function navigate(path: string, replace = false) {
     history[replace ? 'replaceState' : 'pushState']({}, '', path)
-    load()
+    if (bootstrapped) void load()
   }
 
   onMount(() => {
-    load()
-    const handlePopState = () => load()
+    const handlePopState = () => {
+      if (bootstrapped) void load()
+    }
     window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
+    let disposed = false
+    let events: EventSource | undefined
+    const handleVersion = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as { buildId?: string }
+        const notice = updateNoticeForBuild(frontendBuildID, payload.buildId ?? '')
+        if (notice) updateNotice ??= notice
+      } catch {
+        // Ignore malformed event data; API requests still validate their response header.
+      }
+    }
+
+    const bootstrap = async () => {
+      try {
+        const backendBuildID = await probeBackendVersion()
+        if (disposed) return
+        const notice = updateNoticeForBuild(frontendBuildID, backendBuildID)
+        if (notice) updateNotice ??= notice
+        events = new EventSource('/api/events')
+        events.addEventListener('app-version', handleVersion)
+        bootstrapped = true
+        await load()
+      } catch (reason) {
+        if (disposed) return
+        bootstrapped = true
+        if (reason instanceof ApiVersionMismatchError) {
+          updateNotice ??= updateNoticeForBuild(frontendBuildID, reason.backendBuildID, 'mismatch')
+          error = reason.message
+          loading = false
+        } else if (reason instanceof BackendVersionProbeError) {
+          updateNotice ??= updateNoticeForBuild(frontendBuildID, reason.backendBuildID || 'unknown', 'mismatch')
+          error = reason.message
+          loading = false
+        } else {
+          // A transient probe/network failure is not evidence of an old backend.
+          await load()
+        }
+      }
+    }
+    void bootstrap()
+    return () => {
+      disposed = true
+      window.removeEventListener('popstate', handlePopState)
+      events?.removeEventListener('app-version', handleVersion)
+      events?.close()
+    }
   })
 </script>
+
+{#if updateNotice}
+  <div class="update-notice" role="alert" aria-live="assertive">
+    <span>{updateNotice.reason === 'mismatch' ? 'The frontend and API versions do not match.' : 'The app has updated.'}</span>
+    <button type="button" onclick={() => window.location.reload()}>Refresh</button>
+  </div>
+{/if}
 
 <Shell fullWidth={route.kind === 'parts' || route.kind === 'taxonomy' || route.kind === 'artifacts' || route.kind === 'catalog'}>
   <Breadcrumbs items={breadcrumbs} />

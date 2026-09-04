@@ -133,14 +133,67 @@ export type PartNumberDraft = {
   releasedPartNumberId?: string
 }
 
+export const frontendBuildID = import.meta.env.VITE_APP_BUILD_ID || 'dev'
+
+export class ApiVersionMismatchError extends Error {
+  readonly backendBuildID: string
+
+  constructor(backendBuildID: string) {
+    super(`The frontend and API builds do not match (${frontendBuildID} and ${backendBuildID})`)
+    this.name = 'ApiVersionMismatchError'
+    this.backendBuildID = backendBuildID
+  }
+}
+
+export class BackendVersionProbeError extends Error {
+  readonly backendBuildID?: string
+
+  constructor(message: string, backendBuildID?: string) {
+    super(message)
+    this.name = 'BackendVersionProbeError'
+    this.backendBuildID = backendBuildID
+  }
+}
+
+function assertBuildCompatible(response: Response) {
+  const backendBuildID = response.headers.get('X-UBOM-Build-ID')
+  if (backendBuildID && backendBuildID !== frontendBuildID) throw new ApiVersionMismatchError(backendBuildID)
+}
+
+/** The bootstrap probe is deliberately separate from normal API error handling. */
+export async function probeBackendVersion(): Promise<string> {
+  let response: Response
+  try {
+    response = await fetch('/api/version')
+  } catch (reason) {
+    throw reason
+  }
+  const advertisedBuildID = response.headers.get('X-UBOM-Build-ID') || undefined
+  if (!response.ok) throw new BackendVersionProbeError(`API compatibility endpoint returned ${response.status}`, advertisedBuildID)
+  let body: unknown
+  try {
+    body = await response.json()
+  } catch {
+    throw new BackendVersionProbeError('API compatibility endpoint returned invalid JSON', advertisedBuildID)
+  }
+  if (!body || typeof body !== 'object' || typeof (body as { buildId?: unknown }).buildId !== 'string' || !(body as { buildId: string }).buildId.trim()) {
+    throw new BackendVersionProbeError('API compatibility endpoint returned an invalid build identity', advertisedBuildID)
+  }
+  const buildID = (body as { buildId: string }).buildId
+  if (buildID !== frontendBuildID) throw new ApiVersionMismatchError(buildID)
+  return buildID
+}
+
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(path)
+  assertBuildCompatible(response)
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
   return response.json() as Promise<T>
 }
 
 async function post<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })
+  assertBuildCompatible(response)
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { error?: string } | null
     throw new Error(body?.error ?? `${response.status} ${response.statusText}`)
@@ -150,6 +203,7 @@ async function post<T>(path: string, value: unknown): Promise<T> {
 
 async function patch<T>(path: string, value: unknown): Promise<T> {
   const response = await fetch(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })
+  assertBuildCompatible(response)
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { error?: string } | null
     throw new Error(body?.error ?? `${response.status} ${response.statusText}`)

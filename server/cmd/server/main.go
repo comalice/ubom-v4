@@ -15,10 +15,12 @@ func main() {
 	config := Config{
 		HTTP:     HTTPConfig{ListenAddress: "127.0.0.1:8080"},
 		Database: DatabaseConfig{},
+		BuildID:  os.Getenv("UBOM_BUILD_ID"),
 	}
 	flag.StringVar(&config.Database.Path, "db", "", "SQLite database path; empty uses the in-memory sample")
 	flag.StringVar(&config.Database.DSN, "database-url", os.Getenv("UBOM_DATABASE_URL"), "Postgres connection URL (or UBOM_DATABASE_URL)")
 	flag.StringVar(&config.HTTP.ListenAddress, "listen", config.HTTP.ListenAddress, "HTTP listen address")
+	flag.StringVar(&config.BuildID, "build-id", config.BuildID, "application build identity (or UBOM_BUILD_ID)")
 	flag.StringVar(&config.Artifacts.SnapshotRoot, "artifact-snapshot-root", "", "durable artifact snapshot content root")
 	flag.StringVar(&config.Artifacts.LocalSource.ID, "local-source-id", "", "existing local artifact source ID")
 	flag.StringVar(&config.Artifacts.LocalSource.Root, "local-source-root", "", "local artifact source root")
@@ -59,6 +61,9 @@ func main() {
 	server := api.NewServer(service)
 	if snapshotService != nil {
 		server = api.NewServerWithSnapshotService(service, snapshotService)
+	}
+	if config.BuildID != "" {
+		server.SetBuildID(config.BuildID)
 	}
 	if pinger, ok := persistence.(interface{ Ping() error }); ok {
 		server.SetReadiness(pinger.Ping)

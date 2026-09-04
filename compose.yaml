@@ -3,9 +3,12 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
+      args:
+        UBOM_BUILD_ID: ${UBOM_BUILD_ID:-dev}
     command: ["-listen", "0.0.0.0:8080"]
     environment:
       UBOM_DATABASE_URL: postgresql://${POSTGRES_USER:-ubom}:${POSTGRES_PASSWORD:-ubom-dev-only}@postgres:5432/${POSTGRES_DB:-ubom}?sslmode=disable
+      UBOM_BUILD_ID: ${UBOM_BUILD_ID:-dev}
     depends_on:
       postgres:
         condition: service_healthy
@@ -19,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_APP_BUILD_ID: ${UBOM_BUILD_ID:-dev}
     depends_on:
       ubom:
         condition: service_healthy

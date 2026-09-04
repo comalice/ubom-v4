@@ -1,6 +1,8 @@
 package api
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +16,40 @@ import (
 	"ubom-v4/artifact"
 	"ubom-v4/store"
 )
+
+func TestVersionAndEventsExposeBuildID(t *testing.T) {
+	server := NewServerWithBuildID(app.NewService(store.NewMemoryStore()), "release-2026-09-04")
+	version := httptest.NewRecorder()
+	server.Handler().ServeHTTP(version, httptest.NewRequest(http.MethodGet, "/api/version", nil))
+	if version.Code != http.StatusOK || version.Header().Get("X-UBOM-Build-ID") != "release-2026-09-04" || version.Body.String() != `{"buildId":"release-2026-09-04"}`+"\n" {
+		t.Fatalf("version response = status %d, header %q, body %q", version.Code, version.Header().Get("X-UBOM-Build-ID"), version.Body.String())
+	}
+
+	httpServer := httptest.NewServer(server.Handler())
+	defer httpServer.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, httpServer.URL+"/api/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Header.Get("Content-Type") != "text/event-stream" || response.Header.Get("X-UBOM-Build-ID") != "release-2026-09-04" {
+		t.Fatalf("event headers = %#v", response.Header)
+	}
+	scanner := bufio.NewScanner(response.Body)
+	lines := []string{}
+	for len(lines) < 3 && scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	cancel()
+	response.Body.Close()
+	if len(lines) != 3 || lines[0] != "event: app-version" || lines[1] != `data: {"buildId":"release-2026-09-04"}` || lines[2] != "" {
+		t.Fatalf("initial event = %#v", lines)
+	}
+}
 
 func TestHealthAndReadiness(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
@@ -169,23 +205,35 @@ func TestPartNumberListSupportsRepeatedAttributeFilters(t *testing.T) {
 
 func TestCatalogFacetsUseCurrentFilteredScope(t *testing.T) {
 	persistence := store.NewMemoryStore()
-	if _, err := app.LoadSampleData(persistence); err != nil { t.Fatal(err) }
+	if _, err := app.LoadSampleData(persistence); err != nil {
+		t.Fatal(err)
+	}
 	server := NewServer(app.NewService(persistence))
 	recording := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/api/catalog/facets?taxonomyDef=sample-taxonomy-v1&taxonomyNode=components&attribute=footprint=0603", nil)
 	server.Handler().ServeHTTP(recording, request)
-	if recording.Code != http.StatusOK { t.Fatalf("status = %d; body = %s", recording.Code, recording.Body) }
+	if recording.Code != http.StatusOK {
+		t.Fatalf("status = %d; body = %s", recording.Code, recording.Body)
+	}
 	var facets app.CatalogFacets
-	if err := json.NewDecoder(recording.Body).Decode(&facets); err != nil { t.Fatal(err) }
-	if len(facets.Categories) != 2 || facets.Categories[0].Count != 1 || facets.Categories[1].Count != 1 { t.Fatalf("categories = %#v", facets.Categories) }
-	if len(facets.Attributes) != 1 || facets.Attributes[0].ID != "footprint" || facets.Attributes[0].Values[0].Count != 2 || facets.Attributes[0].Values[1].Count != 0 { t.Fatalf("attributes = %#v", facets.Attributes) }
+	if err := json.NewDecoder(recording.Body).Decode(&facets); err != nil {
+		t.Fatal(err)
+	}
+	if len(facets.Categories) != 2 || facets.Categories[0].Count != 1 || facets.Categories[1].Count != 1 {
+		t.Fatalf("categories = %#v", facets.Categories)
+	}
+	if len(facets.Attributes) != 1 || facets.Attributes[0].ID != "footprint" || facets.Attributes[0].Values[0].Count != 2 || facets.Attributes[0].Values[1].Count != 0 {
+		t.Fatalf("attributes = %#v", facets.Attributes)
+	}
 }
 
 func TestCatalogFacetsRejectInvalidQuery(t *testing.T) {
 	server := NewServer(app.NewService(store.NewMemoryStore()))
 	recording := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/catalog/facets?includeArchived=maybe", nil))
-	if recording.Code != http.StatusBadRequest { t.Fatalf("status = %d; want %d", recording.Code, http.StatusBadRequest) }
+	if recording.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d; want %d", recording.Code, http.StatusBadRequest)
+	}
 }
 
 func TestPartNumberListSupportsNumericRangeFilters(t *testing.T) {

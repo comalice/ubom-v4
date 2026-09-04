@@ -66,6 +66,15 @@ docker compose ps
 docker compose logs -f ubom
 ```
 
+Set `UBOM_BUILD_ID` to the same immutable release identifier for the API and
+frontend images, for example `UBOM_BUILD_ID=2026-09-04.1`. Compose passes it to
+the API as `UBOM_BUILD_ID` and to the Vite build as `VITE_APP_BUILD_ID`. If it is
+unset, local builds use `dev`. The API publishes this identity at
+`/api/version`, in `X-UBOM-Build-ID`, and through the `/api/events` SSE stream;
+the frontend probes `/api/version` once at startup and shows a refresh notice
+when the identity changes, mismatches, or the compatibility endpoint is missing
+from an older backend.
+
 This first release assumes one trusted user per deployment. There is no login,
 authorization, tenant isolation, or audit actor identity. Put the deployment
 behind an authenticated network boundary before exposing it to other users.

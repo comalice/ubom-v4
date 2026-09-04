@@ -445,14 +445,17 @@ type LineItemView struct {
 }
 
 type TaxonomyNodeView struct {
-	ID            ubom.TaxonomyNodeID  `json:"id"`
-	TaxonomyDefID ubom.TaxonomyDefID   `json:"taxonomyDefId"`
-	SeqDefID      ubom.SeqDefID        `json:"seqDefId"`
-	Label         string               `json:"label"`
-	Path          []TaxonomyPathItem   `json:"path"`
-	Attributes    []AttributeView      `json:"attributes"`
-	Children      []TaxonomyChildView  `json:"children"`
-	PartNumbers   []PartNumberListItem `json:"partNumbers"`
+	ID             ubom.TaxonomyNodeID  `json:"id"`
+	TaxonomyDefID  ubom.TaxonomyDefID   `json:"taxonomyDefId"`
+	SeqDefID       ubom.SeqDefID        `json:"seqDefId"`
+	Label          string               `json:"label"`
+	Description    string               `json:"description,omitempty"`
+	Image          string               `json:"image,omitempty"`
+	ImageReference string               `json:"imageReference,omitempty"`
+	Path           []TaxonomyPathItem   `json:"path"`
+	Attributes     []AttributeView      `json:"attributes"`
+	Children       []TaxonomyChildView  `json:"children"`
+	PartNumbers    []PartNumberListItem `json:"partNumbers"`
 }
 
 type AttributeView struct {
@@ -470,8 +473,11 @@ type TaxonomyPathItem struct {
 }
 
 type TaxonomyChildView struct {
-	ID    ubom.TaxonomyNodeID `json:"id"`
-	Label string              `json:"label"`
+	ID             ubom.TaxonomyNodeID `json:"id"`
+	Label          string              `json:"label"`
+	Description    string              `json:"description,omitempty"`
+	Image          string              `json:"image,omitempty"`
+	ImageReference string              `json:"imageReference,omitempty"`
 }
 
 type PartNumberSummary struct {
@@ -841,17 +847,20 @@ func (s *Service) GetTaxonomyNodeView(taxonomyID ubom.TaxonomyDefID, nodeID ubom
 	}
 
 	view := TaxonomyNodeView{
-		ID:            node.ID,
-		TaxonomyDefID: taxonomyID,
-		SeqDefID:      taxonomyDef.SeqDef,
-		Label:         node.Label,
-		Path:          path,
-		Attributes:    attributes,
-		Children:      make([]TaxonomyChildView, 0, len(node.Children)),
-		PartNumbers:   make([]PartNumberListItem, 0, len(parts)),
+		ID:             node.ID,
+		TaxonomyDefID:  taxonomyID,
+		SeqDefID:       taxonomyDef.SeqDef,
+		Label:          node.Label,
+		Description:    node.Description,
+		Image:          node.Image,
+		ImageReference: node.ImageReference,
+		Path:           path,
+		Attributes:     attributes,
+		Children:       make([]TaxonomyChildView, 0, len(node.Children)),
+		PartNumbers:    make([]PartNumberListItem, 0, len(parts)),
 	}
 	for _, child := range node.Children {
-		view.Children = append(view.Children, TaxonomyChildView{ID: child.ID, Label: child.Label})
+		view.Children = append(view.Children, TaxonomyChildView{ID: child.ID, Label: child.Label, Description: child.Description, Image: child.Image, ImageReference: child.ImageReference})
 	}
 	for _, part := range parts {
 		item, err := s.partNumberListItem(part)

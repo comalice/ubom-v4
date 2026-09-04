@@ -26,6 +26,9 @@ export type TaxonomyPredicate = {
 export type TaxonomyNodeInput = {
   id: string
   label: string
+  description?: string
+  image?: string
+  imageReference?: string
   predicates?: TaxonomyPredicate[]
   attributes?: { attributeDefId: string; required: boolean }[]
   children?: TaxonomyNodeInput[]
@@ -48,7 +51,7 @@ export type TaxonomyDefinitionInput = {
   root: TaxonomyNodeInput
 }
 
-export type TaxonomyChild = { id: string; label: string }
+export type TaxonomyChild = { id: string; label: string; description?: string; image?: string; imageReference?: string }
 export type TaxonomyPathItem = { id: string; label: string }
 export type PartSummary = { id: string; value: string }
 export type RevisionSummary = { id: string; revision: string }
@@ -70,6 +73,9 @@ export type TaxonomyNodeView = {
   taxonomyDefId: string
   seqDefId: string
   label: string
+  description?: string
+  image?: string
+  imageReference?: string
   path: TaxonomyPathItem[]
   attributes: (AttributeColumn & { valueType: string; required: boolean })[]
   children: TaxonomyChild[]

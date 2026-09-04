@@ -97,6 +97,9 @@ func (s *SQLiteStore) init() error {
 			id TEXT NOT NULL,
 			parent_id TEXT,
 			label TEXT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			image TEXT NOT NULL DEFAULT '',
+			image_reference TEXT NOT NULL DEFAULT '',
 			matches TEXT NOT NULL,
 			predicates TEXT NOT NULL DEFAULT '[]',
 			attributes TEXT NOT NULL DEFAULT '[]',
@@ -179,6 +182,34 @@ func (s *SQLiteStore) init() error {
 	if !hasPredicates {
 		if _, err = s.db.Exec("ALTER TABLE taxonomy_nodes ADD COLUMN predicates TEXT NOT NULL DEFAULT '[]'"); err != nil {
 			return err
+		}
+	}
+	for _, column := range []string{"description TEXT NOT NULL DEFAULT ''", "image TEXT NOT NULL DEFAULT ''", "image_reference TEXT NOT NULL DEFAULT ''"} {
+		name := strings.Split(column, " ")[0]
+		var exists bool
+		rows, err := s.db.Query("PRAGMA table_info(taxonomy_nodes)")
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var cid, notNull, pk int
+			var n, typ string
+			var defaultValue any
+			if err := rows.Scan(&cid, &n, &typ, &notNull, &defaultValue, &pk); err != nil {
+				rows.Close()
+				return err
+			}
+			if n == name {
+				exists = true
+			}
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		if !exists {
+			if _, err := s.db.Exec("ALTER TABLE taxonomy_nodes ADD COLUMN " + column); err != nil {
+				return err
+			}
 		}
 	}
 	for _, column := range []string{"definition_id TEXT", "version INTEGER", "parent_id TEXT"} {
@@ -682,8 +713,8 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 		return err
 	}
 	if _, err := tx.Exec(`INSERT INTO taxonomy_nodes
-		(taxonomy_def_id, id, parent_id, label, matches, predicates, attributes, position)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, matches, predicates, attributes, position); err != nil {
+		(taxonomy_def_id, id, parent_id, label, description, image, image_reference, matches, predicates, attributes, position)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, node.Description, node.Image, node.ImageReference, matches, predicates, attributes, position); err != nil {
 		return err
 	}
 	parent := string(node.ID)
@@ -696,7 +727,7 @@ func insertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, parentID *str
 }
 
 func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error) {
-	rows, err := s.db.Query(`SELECT id, parent_id, label, matches, predicates, attributes, position
+	rows, err := s.db.Query(`SELECT id, parent_id, label, description, image, image_reference, matches, predicates, attributes, position
 		FROM taxonomy_nodes WHERE taxonomy_def_id = ?`, id)
 	if err != nil {
 		return ubom.Taxonomy{}, err
@@ -714,11 +745,14 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		var id string
 		var parent sql.NullString
 		var label string
+		var description string
+		var image string
+		var imageReference string
 		var data []byte
 		var predicateData []byte
 		var attributeData []byte
 		var position int
-		if err := rows.Scan(&id, &parent, &label, &data, &predicateData, &attributeData, &position); err != nil {
+		if err := rows.Scan(&id, &parent, &label, &description, &image, &imageReference, &data, &predicateData, &attributeData, &position); err != nil {
 			return ubom.Taxonomy{}, err
 		}
 		matches := map[string]string{}
@@ -733,7 +767,7 @@ func (s *SQLiteStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error)
 		if err := json.Unmarshal(attributeData, &attributes); err != nil {
 			return ubom.Taxonomy{}, err
 		}
-		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Matches: matches, Predicates: predicates, Attributes: attributes}
+		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Description: description, Image: image, ImageReference: imageReference, Matches: matches, Predicates: predicates, Attributes: attributes}
 		nodes[node.ID] = node
 		relations = append(relations, relation{id: node.ID, parent: parent, position: position})
 	}

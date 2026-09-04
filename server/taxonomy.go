@@ -76,8 +76,11 @@ type Taxonomy struct {
 }
 
 type TaxonomyNode struct {
-	ID    TaxonomyNodeID `json:"id"`
-	Label string         `json:"label"`
+	ID             TaxonomyNodeID `json:"id"`
+	Label          string         `json:"label"`
+	Description    string         `json:"description,omitempty"`
+	Image          string         `json:"image,omitempty"`
+	ImageReference string         `json:"imageReference,omitempty"`
 	// Deprecated: use Predicates. Retained for persisted/API compatibility.
 	Matches    map[string]string     `json:"matches,omitempty"`
 	Predicates []TaxonomyPredicate   `json:"predicates,omitempty"`

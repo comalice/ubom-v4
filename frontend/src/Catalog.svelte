@@ -217,7 +217,7 @@
       {#if node.children.length > 0}
         <section class="catalog-category-section" aria-labelledby="catalog-categories-main-heading">
           <div class="catalog-section-heading"><h3 id="catalog-categories-main-heading">Categories</h3><span>{node.children.length} categories</span></div>
-          <CategoryTileGrid tiles={node.children.map(child => ({ id: child.id, title: child.label, href: categoryHref(child.id) }))} />
+          <CategoryTileGrid tiles={node.children.map(child => ({ id: child.id, title: child.label, href: categoryHref(child.id), description: child.description, image: child.imageReference ?? child.image }))} />
         </section>
       {/if}
       <section class="catalog-parts-section" aria-labelledby="catalog-parts-heading">

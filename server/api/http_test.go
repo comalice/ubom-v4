@@ -331,7 +331,7 @@ func TestTaxonomyDefinitionDetail(t *testing.T) {
 		}
 	}
 	post("/api/seq-defs", `{"id":"detail-seq","root":{"kind":"concat","children":[{"kind":"bind","name":"family","child":{"kind":"literal","text":"A"}}]}}`)
-	post("/api/taxonomy-defs", `{"seqDef":"detail-seq","attributeDefs":[{"id":"finish","label":"Finish","valueType":"string"}],"root":{"id":"root","label":"Parts","attributes":[{"attributeDefId":"finish","required":true}]}}`)
+	post("/api/taxonomy-defs", `{"seqDef":"detail-seq","attributeDefs":[{"id":"finish","label":"Finish","valueType":"string"}],"root":{"id":"root","label":"Parts","description":"All catalog parts","image":"ROOT","imageReference":"asset://parts","attributes":[{"attributeDefId":"finish","required":true}],"children":[{"id":"hardware","label":"Hardware","description":"Joining hardware","imageReference":"asset://hardware"}]}}`)
 	recording := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recording, httptest.NewRequest(http.MethodGet, "/api/taxonomy-defs/detail-seq-taxonomy-v1", nil))
 	if recording.Code != http.StatusOK {
@@ -343,6 +343,12 @@ func TestTaxonomyDefinitionDetail(t *testing.T) {
 	}
 	if view.ID != "detail-seq-taxonomy-v1" || view.DefinitionID != "detail-seq-taxonomy" || view.Version != 1 || !view.Current || view.SeqDef != "detail-seq" || view.Root.ID != "root" || len(view.AttributeDefs) != 1 {
 		t.Fatalf("detail view = %#v", view)
+	}
+	if view.Root.Description != "All catalog parts" || view.Root.Image != "ROOT" || view.Root.ImageReference != "asset://parts" {
+		t.Fatalf("taxonomy metadata = %#v", view.Root)
+	}
+	if len(view.Root.Children) != 1 || view.Root.Children[0].Description != "Joining hardware" || view.Root.Children[0].ImageReference != "asset://hardware" {
+		t.Fatalf("taxonomy child metadata = %#v", view.Root.Children)
 	}
 	notFound := httptest.NewRecorder()
 	server.Handler().ServeHTTP(notFound, httptest.NewRequest(http.MethodGet, "/api/taxonomy-defs/missing", nil))

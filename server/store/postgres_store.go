@@ -496,8 +496,8 @@ func postgresInsertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, paren
 		return err
 	}
 	if _, err := postgresTxExec(tx, `INSERT INTO taxonomy_nodes
-		(taxonomy_def_id, id, parent_id, label, matches, predicates, attributes, position)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, matches, predicates, attributes, position); err != nil {
+		(taxonomy_def_id, id, parent_id, label, description, image, image_reference, matches, predicates, attributes, position)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, taxonomyID, node.ID, parentID, node.Label, node.Description, node.Image, node.ImageReference, matches, predicates, attributes, position); err != nil {
 		return err
 	}
 	parent := string(node.ID)
@@ -510,7 +510,7 @@ func postgresInsertTaxonomyNode(tx *sql.Tx, taxonomyID ubom.TaxonomyDefID, paren
 }
 
 func (s *PostgresStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, error) {
-	rows, err := s.query(`SELECT id, parent_id, label, matches, predicates, attributes, position
+	rows, err := s.query(`SELECT id, parent_id, label, description, image, image_reference, matches, predicates, attributes, position
 		FROM taxonomy_nodes WHERE taxonomy_def_id = ?`, id)
 	if err != nil {
 		return ubom.Taxonomy{}, err
@@ -528,11 +528,14 @@ func (s *PostgresStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, erro
 		var id string
 		var parent sql.NullString
 		var label string
+		var description string
+		var image string
+		var imageReference string
 		var data []byte
 		var predicateData []byte
 		var attributeData []byte
 		var position int
-		if err := rows.Scan(&id, &parent, &label, &data, &predicateData, &attributeData, &position); err != nil {
+		if err := rows.Scan(&id, &parent, &label, &description, &image, &imageReference, &data, &predicateData, &attributeData, &position); err != nil {
 			return ubom.Taxonomy{}, err
 		}
 		matches := map[string]string{}
@@ -547,7 +550,7 @@ func (s *PostgresStore) loadTaxonomy(id ubom.TaxonomyDefID) (ubom.Taxonomy, erro
 		if err := json.Unmarshal(attributeData, &attributes); err != nil {
 			return ubom.Taxonomy{}, err
 		}
-		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Matches: matches, Predicates: predicates, Attributes: attributes}
+		node := &ubom.TaxonomyNode{ID: ubom.TaxonomyNodeID(id), Label: label, Description: description, Image: image, ImageReference: imageReference, Matches: matches, Predicates: predicates, Attributes: attributes}
 		nodes[node.ID] = node
 		relations = append(relations, relation{id: node.ID, parent: parent, position: position})
 	}

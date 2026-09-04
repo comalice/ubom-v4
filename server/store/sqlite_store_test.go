@@ -141,7 +141,7 @@ func TestSQLiteStoreRoundTripsTypedTaxonomyPredicates(t *testing.T) {
 		ubom.Bind("code", ubom.Range(0, 9).Width(1)),
 	)).WithID("pn-range-v1")
 	definition := ubom.TaxonomyDef{ID: "taxonomy-range-v1", SeqDef: seqDef.ID, Taxonomy: ubom.Taxonomy{Root: ubom.TaxonomyNode{
-		ID: "root", Children: []ubom.TaxonomyNode{{ID: "mid", Predicates: []ubom.TaxonomyPredicate{
+		ID: "root", Description: "Catalog root", Image: "root-image", ImageReference: "asset://root", Children: []ubom.TaxonomyNode{{ID: "mid", Description: "Middle category", ImageReference: "asset://mid", Predicates: []ubom.TaxonomyPredicate{
 			ubom.NumericRangePredicate("group", 100, 199), ubom.ExactPredicate("code", "4"),
 		}}},
 	}}}

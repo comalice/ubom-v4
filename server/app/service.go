@@ -862,7 +862,7 @@ func catalogFacetPartMatches(part ubom.PartNumber, taxonomy ubom.TaxonomyDef, qu
 }
 
 func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult, error) {
-	parts, err := s.store.ListPartNumbers()
+	parts, revisionSummaries, err := s.listPartNumbersWithRevisionSummaries()
 	if err != nil {
 		return PartSearchResult{}, err
 	}
@@ -973,7 +973,7 @@ func (s *Service) SearchPartNumberViews(query PartSearchQuery) (PartSearchResult
 	}
 	items := make([]PartNumberListItem, 0, end-start)
 	for _, part := range filtered[start:end] {
-		item, itemErr := s.partNumberListItemWithCache(part, definitions)
+		item, itemErr := s.partNumberListItemWithCacheAndRevisionSummaries(part, definitions, revisionSummaries)
 		if itemErr != nil {
 			return PartSearchResult{}, itemErr
 		}
@@ -1148,20 +1148,29 @@ func partAttributeViews(part ubom.PartNumber, taxonomyDef ubom.TaxonomyDef) ([]P
 }
 
 func (s *Service) ListPartNumberViews() ([]PartNumberListItem, error) {
-	parts, err := s.store.ListPartNumbers()
+	parts, revisionSummaries, err := s.listPartNumbersWithRevisionSummaries()
 	if err != nil {
 		return nil, err
 	}
 	items := make([]PartNumberListItem, 0, len(parts))
 	definitions := newDefinitionCache(s.store)
 	for _, part := range parts {
-		item, err := s.partNumberListItemWithCache(part, definitions)
+		item, err := s.partNumberListItemWithCacheAndRevisionSummaries(part, definitions, revisionSummaries)
 		if err != nil {
 			return nil, err
 		}
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+func (s *Service) listPartNumbersWithRevisionSummaries() ([]ubom.PartNumber, map[ubom.PartRevisionID]string, error) {
+	if lister, ok := s.store.(store.AllPartNumberRevisionLister); ok {
+		result, err := lister.ListPartNumbersWithRevisionSummaries()
+		return result.Parts, result.RevisionSummaries, err
+	}
+	parts, err := s.store.ListPartNumbers()
+	return parts, nil, err
 }
 
 func (s *Service) GetPartNumberViewByValue(value string) (PartNumberView, error) {
@@ -1263,6 +1272,10 @@ func (s *Service) partNumberListItem(part ubom.PartNumber) (PartNumberListItem, 
 }
 
 func (s *Service) partNumberListItemWithCache(part ubom.PartNumber, definitions *definitionCache) (PartNumberListItem, error) {
+	return s.partNumberListItemWithCacheAndRevisionSummaries(part, definitions, nil)
+}
+
+func (s *Service) partNumberListItemWithCacheAndRevisionSummaries(part ubom.PartNumber, definitions *definitionCache, revisionSummaries map[ubom.PartRevisionID]string) (PartNumberListItem, error) {
 	seqDef, err := definitions.seqDef(part.SeqDefID)
 	if err != nil {
 		return PartNumberListItem{}, err
@@ -1271,7 +1284,7 @@ func (s *Service) partNumberListItemWithCache(part ubom.PartNumber, definitions 
 	if err != nil {
 		return PartNumberListItem{}, err
 	}
-	return s.partNumberListItemWithDefinitions(part, seqDef, taxonomyDef)
+	return s.partNumberListItemWithDefinitionsAndRevisionSummaries(part, seqDef, taxonomyDef, revisionSummaries)
 }
 
 func (s *Service) partNumberListItemWithDefinitions(part ubom.PartNumber, seqDef ubom.SeqDef, taxonomyDef ubom.TaxonomyDef) (PartNumberListItem, error) {

@@ -55,6 +55,12 @@ type TaxonomyNodePartNumberRevisionLister interface {
 	ListPartNumbersByTaxonomyNodeWithRevisionSummaries(ubom.TaxonomyDefID, ubom.TaxonomyNodeID) (TaxonomyNodePartNumbers, error)
 }
 
+// AllPartNumberRevisionLister is the optimized general list path. It returns
+// all part rows together with the revision data needed for list rendering.
+type AllPartNumberRevisionLister interface {
+	ListPartNumbersWithRevisionSummaries() (TaxonomyNodePartNumbers, error)
+}
+
 type TaxonomyNodePartNumbers struct {
 	Parts             []ubom.PartNumber
 	RevisionSummaries map[ubom.PartRevisionID]string

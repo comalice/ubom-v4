@@ -110,6 +110,13 @@ func TestSQLiteStoreRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(gotPart.PartRevisionID, []ubom.PartRevisionID{revision.ID}) {
 		t.Fatalf("PartRevisionID = %#v, want %#v", gotPart.PartRevisionID, []ubom.PartRevisionID{revision.ID})
 	}
+	allParts, err := store.ListPartNumbersWithRevisionSummaries()
+	if err != nil {
+		t.Fatalf("ListPartNumbersWithRevisionSummaries() error = %v", err)
+	}
+	if len(allParts.Parts) != 1 || allParts.Parts[0].ID != part.ID || allParts.RevisionSummaries[revision.ID] != "1" {
+		t.Fatalf("all-part bulk result = %#v, summaries = %#v", allParts.Parts, allParts.RevisionSummaries)
+	}
 
 	parent, err := store.CreatePartRevision(ubom.PartRevision{
 		PartNumberID: part.ID, Revision: "2", RevisionSeqDefID: revisionSeqDef.ID,

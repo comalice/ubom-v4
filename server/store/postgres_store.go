@@ -724,16 +724,24 @@ func (s *PostgresStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber
 }
 
 func (s *PostgresStore) ListPartNumbers() ([]ubom.PartNumber, error) {
-	rows, err := s.query(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status
-		FROM part_numbers ORDER BY value`)
+	result, err := s.ListPartNumbersWithRevisionSummaries()
 	if err != nil {
 		return nil, err
 	}
+	return result.Parts, nil
+}
+
+func (s *PostgresStore) ListPartNumbersWithRevisionSummaries() (TaxonomyNodePartNumbers, error) {
+	rows, err := s.query(`SELECT id, value, seq_def_id, taxonomy_def_id, taxonomy_node_id, attributes, status
+		FROM part_numbers ORDER BY value`)
+	if err != nil {
+		return TaxonomyNodePartNumbers{}, err
+	}
 	parts, partsByID, err := scanPartNumberRows(rows)
 	if closeErr := rows.Close(); err != nil {
-		return nil, err
+		return TaxonomyNodePartNumbers{}, err
 	} else if closeErr != nil {
-		return nil, closeErr
+		return TaxonomyNodePartNumbers{}, closeErr
 	}
 
 	revisionRows, err := s.query(`SELECT r.part_number_id, r.id, r.revision
@@ -741,15 +749,15 @@ func (s *PostgresStore) ListPartNumbers() ([]ubom.PartNumber, error) {
 		JOIN part_numbers p ON p.id = r.part_number_id
 		ORDER BY p.value, r.id`)
 	if err != nil {
-		return nil, err
+		return TaxonomyNodePartNumbers{}, err
 	}
-	_, err = scanPartRevisionRows(revisionRows, parts, partsByID)
+	revisionSummaries, err := scanPartRevisionRows(revisionRows, parts, partsByID)
 	if closeErr := revisionRows.Close(); err != nil {
-		return nil, err
+		return TaxonomyNodePartNumbers{}, err
 	} else if closeErr != nil {
-		return nil, closeErr
+		return TaxonomyNodePartNumbers{}, closeErr
 	}
-	return parts, nil
+	return TaxonomyNodePartNumbers{Parts: parts, RevisionSummaries: revisionSummaries}, nil
 }
 
 func (s *PostgresStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {

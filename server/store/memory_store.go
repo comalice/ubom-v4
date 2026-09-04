@@ -341,12 +341,27 @@ func (s *MemoryStore) GetPartNumberByID(id ubom.PartNumberID) (ubom.PartNumber, 
 }
 
 func (s *MemoryStore) ListPartNumbers() ([]ubom.PartNumber, error) {
+	result, err := s.ListPartNumbersWithRevisionSummaries()
+	if err != nil {
+		return nil, err
+	}
+	return result.Parts, nil
+}
+
+func (s *MemoryStore) ListPartNumbersWithRevisionSummaries() (TaxonomyNodePartNumbers, error) {
 	parts := make([]ubom.PartNumber, 0, len(s.partNumbers))
+	revisionSummaries := map[ubom.PartRevisionID]string{}
 	for _, part := range s.partNumbers {
-		parts = append(parts, clonePartNumber(part))
+		cloned := clonePartNumber(part)
+		parts = append(parts, cloned)
+		for _, revisionID := range cloned.PartRevisionID {
+			if revision, ok := s.partRevisions[revisionID]; ok {
+				revisionSummaries[revisionID] = revision.Revision
+			}
+		}
 	}
 	sort.Slice(parts, func(i, j int) bool { return parts[i].Value < parts[j].Value })
-	return parts, nil
+	return TaxonomyNodePartNumbers{Parts: parts, RevisionSummaries: revisionSummaries}, nil
 }
 
 func (s *MemoryStore) ListPartNumbersByTaxonomyNode(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) ([]ubom.PartNumber, error) {

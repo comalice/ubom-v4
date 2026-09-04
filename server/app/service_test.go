@@ -26,11 +26,25 @@ type countingNodeRevisionStore struct {
 	revisionCalls int
 }
 
+type countingAllRevisionStore struct {
+	store.Store
+	revisionCalls int
+}
+
 func (s *countingNodeRevisionStore) ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID ubom.TaxonomyDefID, nodeID ubom.TaxonomyNodeID) (store.TaxonomyNodePartNumbers, error) {
 	return s.Store.(store.TaxonomyNodePartNumberRevisionLister).ListPartNumbersByTaxonomyNodeWithRevisionSummaries(taxonomyID, nodeID)
 }
 
 func (s *countingNodeRevisionStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision, error) {
+	s.revisionCalls++
+	return s.Store.GetPartRevision(id)
+}
+
+func (s *countingAllRevisionStore) ListPartNumbersWithRevisionSummaries() (store.TaxonomyNodePartNumbers, error) {
+	return s.Store.(store.AllPartNumberRevisionLister).ListPartNumbersWithRevisionSummaries()
+}
+
+func (s *countingAllRevisionStore) GetPartRevision(id ubom.PartRevisionID) (ubom.PartRevision, error) {
 	s.revisionCalls++
 	return s.Store.GetPartRevision(id)
 }
@@ -166,6 +180,39 @@ func TestSearchPartNumberViewsCachesDefinitionsAcrossFilteringAndRendering(t *te
 	}
 	if counting.taxonomyCalls != 1 || counting.seqDefCalls != 1 {
 		t.Fatalf("definition calls = taxonomy %d, sequence %d; want one of each", counting.taxonomyCalls, counting.seqDefCalls)
+	}
+}
+
+func TestGeneralPartNumberViewsUseBulkRevisionSummaries(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		list func(*Service) ([]PartNumberListItem, error)
+	}{
+		{name: "list", list: func(service *Service) ([]PartNumberListItem, error) {
+			return service.ListPartNumberViews()
+		}},
+		{name: "search", list: func(service *Service) ([]PartNumberListItem, error) {
+			result, err := service.SearchPartNumberViews(PartSearchQuery{})
+			return result.Items, err
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			persistence := store.NewMemoryStore()
+			if _, err := LoadSampleData(persistence); err != nil {
+				t.Fatal(err)
+			}
+			counting := &countingAllRevisionStore{Store: persistence}
+			items, err := test.list(NewService(counting))
+			if err != nil {
+				t.Fatalf("rendering error = %v", err)
+			}
+			if len(items) != 2 || items[0].Value != "PN-A" || len(items[0].Revisions) != 1 || items[0].Revisions[0].ID == "" || items[0].Revisions[0].Revision != "1" || items[1].Value != "PN-B" || len(items[1].Revisions) != 1 || items[1].Revisions[0].Revision != "1" {
+				t.Fatalf("items = %#v, want ordered parts and revisions", items)
+			}
+			if counting.revisionCalls != 0 {
+				t.Fatalf("GetPartRevision calls = %d, want 0", counting.revisionCalls)
+			}
+		})
 	}
 }
 
